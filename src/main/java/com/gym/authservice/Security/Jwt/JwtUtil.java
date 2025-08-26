@@ -5,10 +5,12 @@ import io.jsonwebtoken.JwtException;
 import io.jsonwebtoken.Jwts;
 import io.jsonwebtoken.security.Keys;
 import org.springframework.beans.factory.annotation.Value;
+import org.springframework.stereotype.Component;
 
 import javax.crypto.SecretKey;
 import java.util.Date;
 
+@Component
 public class JwtUtil {
     @Value("${spring.secret.key}")
     private String secretKey;
@@ -34,6 +36,7 @@ public class JwtUtil {
         return
                 Jwts
                         .parserBuilder()
+                        .setSigningKey(getKey())
                         .build()
                         .parseClaimsJws(token)
                         .getBody();
@@ -52,15 +55,10 @@ public class JwtUtil {
     }
 
     public boolean isValidToken(String token) {
-        boolean expired = false;
-        if (!isExpired(token)) {
-            try {
-                extractAllClaims(token);
-                expired = true;
-            } catch (JwtException e) {
-                expired = false;
-            }
+        try {
+            return !isExpired(token) && extractAllClaims(token) != null;
+        } catch (JwtException e) {
+            return false;
         }
-        return expired;
     }
 }
