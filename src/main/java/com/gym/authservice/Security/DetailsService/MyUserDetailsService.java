@@ -22,11 +22,13 @@ public class MyUserDetailsService implements UserDetailsService {
     public UserDetails loadUserByUsername(String username) throws UsernameNotFoundException {
         SignedUps signedUps = signedUpsRepository.findByEmail(username)
                 .orElseThrow(()->new UsernameNotFoundException("no user found with this email id"));
+
+        boolean enabled = signedUps.isEmailVerified() && signedUps.isPhoneVerified() && signedUps.isApproved();
         return new User(
                 signedUps.getEmail(),
                 signedUps.getPassword(),
-                signedUps.isEmailVerified(),
-                signedUps.isPhoneVerified(),
+                enabled,
+                true,
                 true,
                 true,
                 getAuthorities(signedUps.getRole().name())
