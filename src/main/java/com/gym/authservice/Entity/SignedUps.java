@@ -2,10 +2,7 @@ package com.gym.authservice.Entity;
 
 import com.gym.authservice.Roles.PaymentMode;
 import com.gym.authservice.Roles.RoleType;
-import jakarta.persistence.Column;
-import jakarta.persistence.Entity;
-import jakarta.persistence.Id;
-import jakarta.persistence.Table;
+import jakarta.persistence.*;
 import jakarta.validation.constraints.Email;
 import lombok.AllArgsConstructor;
 import lombok.Builder;
@@ -24,29 +21,43 @@ public class SignedUps {
     @Id
     @Column(name = "gymId")
     private String id;
-    @Column(name = "firstName",nullable = false)
-    private String  firstName;
-    @Column(name = "lastName",nullable = false)
-    private String  lastName;
+
+    @Column(name = "firstName", nullable = false)
+    private String firstName;
+
+    @Column(name = "lastName", nullable = false)
+    private String lastName;
+
     @Column(name = "gender", nullable = false)
     private String gender;
+
     @Email
-    @Column(name = "UserMail")
+    @Column(name = "UserMail", nullable = false, unique = true)
     private String email;
-    @Column(name = "phoneNo",length = 12,nullable = false,unique = true)
+
+    @Column(name = "phoneNo", length = 12, nullable = false, unique = true)
     private String phone;
-    @Column(name = "password")
+
+    @Column(name = "password", nullable = false)
     private String password;
-    @Column(name = "role",nullable = false)
+
+    @Enumerated(EnumType.STRING)
+    @Column(name = "role", nullable = false)
     private RoleType role;
-    @Column(name = "joined_on",nullable = false)
+
+    @Column(name = "joined_on", nullable = false)
     private LocalDate joinDate;
-    @Column (name = "payment", nullable = false)
+
+    @Enumerated(EnumType.STRING)
+    @Column(name = "payment", nullable = false)
     private PaymentMode firstPayment;
-    @Column(name = "isVerifiedEmail")
+
+    @Column(name = "isVerifiedEmail", nullable = false)
     private boolean emailVerified = false;
-    @Column(name = "isVerifiedPhone")
+
+    @Column(name = "isVerifiedPhone", nullable = false)
     private boolean phoneVerified = false;
-    @Column(name = "approved")
-    private boolean isApproved;
+
+    @Column(name = "approved", nullable = false)
+    private boolean isApproved = false;
 }
