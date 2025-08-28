@@ -1,6 +1,5 @@
 package com.gym.authservice.Entity;
 
-import com.gym.authservice.Roles.PaymentMode;
 import com.gym.authservice.Roles.RoleType;
 import jakarta.persistence.*;
 import jakarta.validation.constraints.Email;
@@ -47,10 +46,6 @@ public class SignedUps {
 
     @Column(name = "joined_on", nullable = false)
     private LocalDate joinDate;
-
-    @Enumerated(EnumType.STRING)
-    @Column(name = "payment", nullable = false)
-    private PaymentMode firstPayment;
 
     @Column(name = "isVerifiedEmail", nullable = false)
     private boolean emailVerified = false;
