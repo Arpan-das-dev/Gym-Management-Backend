@@ -15,4 +15,5 @@ public class EmailVerificationRequestDto {
     @NotBlank
     @Size(min = 6,max = 6,message = "otp should be in six digit")
     private String otp;
+
 }
