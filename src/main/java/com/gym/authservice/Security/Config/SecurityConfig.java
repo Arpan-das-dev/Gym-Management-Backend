@@ -40,7 +40,7 @@ public class SecurityConfig {
                         .sessionManagement(Session -> Session
                                 .sessionCreationPolicy(SessionCreationPolicy.STATELESS))
                         .authorizeHttpRequests(auth -> auth
-                                .requestMatchers("/auth/**").permitAll()
+                                .requestMatchers("/fitStudio/auth/**").permitAll()
                                 .requestMatchers("/admin/**").hasRole("ADMIN")
                                 .requestMatchers("/member/**").hasAnyRole("ADMIN", "MEMBER")
                                 .requestMatchers("/trainer/**").hasAnyRole("ADMIN", "TRAINER")
