@@ -1,12 +1,11 @@
 package com.gym.authservice.Dto.Request;
 
-import com.gym.authservice.Roles.PaymentMode;
 import com.gym.authservice.Roles.RoleType;
 import jakarta.validation.constraints.Email;
 import jakarta.validation.constraints.NotBlank;
+import jakarta.validation.constraints.NotNull;
 import jakarta.validation.constraints.Size;
 import lombok.AllArgsConstructor;
-import lombok.Builder;
 import lombok.Data;
 import lombok.NoArgsConstructor;
 
@@ -31,10 +30,9 @@ public class SignupRequestDto {
     private String password;
    @NotBlank(message = "Gender is required")
    private String gender;
-   @NotBlank(message = "Please Select a role to signUp")
+   @NotNull(message = "Please Select a role to signUp")
     private RoleType role;
-   @NotBlank(message = "joining date can not be empty")
+   @NotNull(message = "joining date can not be empty")
     private LocalDate joinDate;
-    @NotBlank(message = "select a payment mode")
-    private PaymentMode firstPayment;
+
 }
