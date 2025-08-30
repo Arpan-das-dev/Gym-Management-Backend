@@ -152,3 +152,7 @@ text
 
 For bugs, feature requests, or questions, please open an issue on the GitHub repository or contact the maintainer:
 
+- **Name:** Arpan Das 
+- **Email:** dasarpan915@gmail.com
+
+---
