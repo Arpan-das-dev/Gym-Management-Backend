@@ -121,3 +121,34 @@ auth-service
 ## Setup & Running Locally
 
 1. Clone the repository:
+
+2. 2. Configure application properties (`application.properties` or environment variables) for:
+- Database (MySQL or Aurora endpoint, username, password)
+- Redis connection details
+- JWT secret key
+- Notification service base URL and credentials
+
+3. Build and run:
+mvn clean install
+mvn spring-boot:run
+
+text
+
+4. Access API at `http://localhost:8080/api/auth/`
+
+---
+
+## Future Enhancements
+
+- Integrate fully with Admin microservice for approval workflows.
+- Support user profile management including profile images.
+- Add OAuth2 / Social Login support.
+- Expand logging and monitoring for production readiness.
+- Containerize with Docker and orchestrate with Kubernetes.
+
+---
+
+## Contact & Support
+
+For bugs, feature requests, or questions, please open an issue on the GitHub repository or contact the maintainer:
+
