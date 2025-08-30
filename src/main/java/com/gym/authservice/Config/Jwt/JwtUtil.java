@@ -1,8 +1,8 @@
-package com.gym.authservice.Security.Jwt;
+package com.gym.authservice.Config.Jwt;
 
-import io.jsonwebtoken.Claims;
-import io.jsonwebtoken.JwtException;
-import io.jsonwebtoken.Jwts;
+import com.gym.authservice.Exceptions.Custom.TokenExpiredException;
+import com.gym.authservice.Exceptions.Custom.UnauthorizedAccessException;
+import io.jsonwebtoken.*;
 import io.jsonwebtoken.security.Keys;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.stereotype.Component;
@@ -21,11 +21,12 @@ public class JwtUtil {
         return Keys.hmacShaKeyFor(bytes);
     }
 
-    public String generateToken(String email, String role) {
+    public String generateToken(String email, String role,String id) {
         return
                 Jwts.builder()
                         .setSubject(email)
                         .claim("role", role)
+                        .claim("id",id)
                         .setIssuedAt(new Date())
                         .setExpiration(new Date(System.currentTimeMillis() + expiration))
                         .signWith(getKey())
@@ -33,13 +34,20 @@ public class JwtUtil {
     }
 
     public Claims extractAllClaims(String token) {
-        return
-                Jwts
-                        .parserBuilder()
-                        .setSigningKey(getKey())
-                        .build()
-                        .parseClaimsJws(token)
-                        .getBody();
+        try {
+            return
+                    Jwts
+                            .parserBuilder()
+                            .setSigningKey(getKey())
+                            .build()
+                            .parseClaimsJws(token)
+                            .getBody();
+        } catch (ExpiredJwtException e) {
+            throw new TokenExpiredException("Jwt Token expired");
+        } catch (JwtException e) {
+           throw new UnauthorizedAccessException("Invalid Jwt Token");
+        }
+
     }
 
     public String extractEmail(String token) {

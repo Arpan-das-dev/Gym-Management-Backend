@@ -1,6 +1,6 @@
-package com.gym.authservice.Security.Jwt;
+package com.gym.authservice.Config.Jwt;
 
-import com.gym.authservice.Security.DetailsService.MyUserDetailsService;
+import com.gym.authservice.Config.DetailsService.MyUserDetailsService;
 import jakarta.servlet.FilterChain;
 import jakarta.servlet.ServletException;
 import jakarta.servlet.http.HttpServletRequest;
