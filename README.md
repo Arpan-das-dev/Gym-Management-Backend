@@ -48,3 +48,76 @@ auth-service
 ├── Service # Business logic services (signup, login, credentials, verification, notification)
 ├── Utils # Utilities for ID and OTP generation
 └── AuthServiceApplication.java # Main Spring Boot application class
+---
+
+## API Endpoints
+
+| Endpoint                       | Method | Description                                   |
+|-------------------------------|--------|-----------------------------------------------|
+| `/signup`                     | POST   | Register new user; trainer role set to pending approval |
+| `/login`                      | POST   | Authenticate user by email or ID, return JWT  |
+| `/verify/email`               | POST   | Verify user email with OTP                     |
+| `/verify/phone`               | POST   | Verify user phone with OTP (after email verified) |
+| `/password/forgot`            | POST   | Initiate forgot password; sends email OTP     |
+| `/password/reset`             | POST   | Reset password by validating old password     |
+| `/password/change`            | POST   | Change password (email verification required) |
+
+---
+
+## How It Works
+
+### Signup Service
+- Validates that email/phone don't exist.
+- Creates user with encoded password.
+- Assigns `TRAINER_PENDING` role for trainers.
+- Sends approval request to Admin service asynchronously.
+- Generates and stores OTPs for email and phone verification in Redis.
+- Sends welcome message and OTPs via Notification service asynchronously.
+
+### Verification Service
+- Stores OTPs in Redis with 15-minute TTL.
+- Validates OTP against cached value, updates user verification status in DB.
+- Phone verification requires prior email verification.
+- Deletes OTP from Redis upon successful verification.
+
+### Credential Service
+- Handles forgot password by generating OTP and sending email.
+- Resets password validating old password and updating with new hashed password.
+- Changes password post email verification.
+
+### Login Service
+- Authenticates user by email or ID.
+- Validates password with Spring Security encoder.
+- Generates JWT token embedding user email, role, and ID.
+- Returns JWT token for use in secured API calls.
+
+### Notification Service
+- Sends various notifications asynchronously using Spring's @Async.
+- Uses reactive WebClient to make non-blocking REST calls to notification endpoints.
+- Supports email OTP, phone OTP, password reset, and welcome messages.
+
+---
+
+## Security
+
+- Passwords stored encrypted using BCrypt.
+- JWT tokens provide secure stateless authentication.
+- Role-based access control enabled via Spring Security.
+- OTPs stored temporarily in Redis, never persisted in DB.
+- Asynchronous notification ensures responsive user interactions.
+
+---
+
+## Prerequisites
+
+- Java 11 or higher
+- Maven 3.x
+- Redis Server (for OTP caching)
+- MySQL / AWS Aurora RDS (for persistent user data)
+- SMTP service or Email API for sending mails
+
+---
+
+## Setup & Running Locally
+
+1. Clone the repository:
