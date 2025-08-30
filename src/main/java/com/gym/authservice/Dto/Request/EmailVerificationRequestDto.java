@@ -9,6 +9,7 @@ import lombok.Data;
 @Data
 @AllArgsConstructor
 public class EmailVerificationRequestDto {
+
     @Email(message = "this email is not valid")
     private String email;
 
