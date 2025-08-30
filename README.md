@@ -49,7 +49,7 @@ auth-service
 ├── Service # Business logic services (signup, login, credentials, verification, notification)
 ├── Utils # Utilities for ID and OTP generation
 └── AuthServiceApplication.java # Main Spring Boot application class
----
+
 ```
 
 ## API Endpoints
@@ -124,7 +124,7 @@ auth-service
 
 1. Clone the repository:
 
-2. 2. Configure application properties (`application.properties` or environment variables) for:
+2. Configure application properties (`application.properties` or environment variables) for:
 - Database (MySQL or Aurora endpoint, username, password)
 - Redis connection details
 - JWT secret key
@@ -134,7 +134,6 @@ auth-service
 mvn clean install
 mvn spring-boot:run
 
-text
 
 4. Access API at `http://localhost:8080/api/auth/`
 
