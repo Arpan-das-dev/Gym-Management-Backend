@@ -33,6 +33,7 @@ This service is designed for scalability, security, and smooth interaction with 
 ---
 
 ## Project Structure
+```
 auth-service
 └── src/main/java/com/gym/authservice
 ├── Config # Redis, WebClient, Security config classes
