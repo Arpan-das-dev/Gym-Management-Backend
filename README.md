@@ -50,6 +50,7 @@ auth-service
 ├── Utils # Utilities for ID and OTP generation
 └── AuthServiceApplication.java # Main Spring Boot application class
 ---
+```
 
 ## API Endpoints
 
