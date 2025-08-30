@@ -1,4 +1,4 @@
-package com.gym.authservice.Security.Config;
+package com.gym.authservice.Config.Configuraion;
 
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
