@@ -1,9 +1,8 @@
-package com.gym.authservice.Util;
+package com.gym.authservice.Utils;
 
 import org.springframework.stereotype.Component;
 
 import java.security.SecureRandom;
-import java.util.Random;
 
 @Component
 public class OtpGenerationUtil {

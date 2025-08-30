@@ -1,4 +1,4 @@
-package com.gym.authservice.Util;
+package com.gym.authservice.Utils;
 
 import org.springframework.stereotype.Component;
 
