@@ -33,4 +33,18 @@ This service is designed for scalability, security, and smooth interaction with 
 ---
 
 ## Project Structure
-
+auth-service
+└── src/main/java/com/gym/authservice
+├── Config # Redis, WebClient, Security config classes
+├── DetailsService # Spring Security UserDetailsService implementation
+├── Jwt # JWT utility and filters
+├── Security # Security configurations and method-based security
+├── Controller # REST API controllers for signup, login, verification, credentials
+├── Dto # Request and Response DTOs
+├── Entity # JPA entities representing users and signups
+├── Exceptions # Custom exceptions and global exception handler
+├── Repository # Spring Data repositories
+├── Roles # User role definitions
+├── Service # Business logic services (signup, login, credentials, verification, notification)
+├── Utils # Utilities for ID and OTP generation
+└── AuthServiceApplication.java # Main Spring Boot application class
