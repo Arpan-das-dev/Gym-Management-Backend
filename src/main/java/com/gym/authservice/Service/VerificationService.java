@@ -1,6 +1,7 @@
 package com.gym.authservice.Service;
 
 import com.gym.authservice.Entity.SignedUps;
+import com.gym.authservice.Exceptions.Custom.UserNotFoundException;
 import com.gym.authservice.Repository.SignedUpsRepository;
 import lombok.RequiredArgsConstructor;
 import org.springframework.data.redis.core.StringRedisTemplate;
@@ -27,23 +28,23 @@ public class VerificationService {
 
     @Transactional
     public boolean verifyEmail(String key, String otp) {
-        if (signedUpsRepository.existsByEmail(key)) {
+        SignedUps user = signedUpsRepository.findByEmail(key)
+                .orElseThrow(() -> new UserNotFoundException("User not found"));
+
             String value = redisTemplate.opsForValue().get("OTP:EMAIL:" + key);
             if (otp != null && otp.equals(value)) {
                 deleteEmailOtp(key);
-                SignedUps user = signedUpsRepository.findByEmail(key)
-                        .orElseThrow(() -> new RuntimeException("User not found"));
                 user.setEmailVerified(true);
                 return true;
             }
-        }
+
         return false;
     }
 
     @Transactional
     public boolean verifyPhone(String key, String otp) {
         SignedUps user = signedUpsRepository.findByPhone(key)
-                .orElseThrow(() -> new RuntimeException("User not found"));
+                .orElseThrow(() -> new UserNotFoundException("User not found"));
 
         if (!user.isEmailVerified()) {
             throw new RuntimeException("Please verify email before verifying phone");
