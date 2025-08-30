@@ -1,4 +1,4 @@
-package com.gym.authservice.Security.Config;
+package com.gym.authservice.Config.Security;
 
 import org.springframework.context.annotation.Configuration;
 import org.springframework.security.config.annotation.method.configuration.EnableMethodSecurity;

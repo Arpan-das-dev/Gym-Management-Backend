@@ -1,6 +1,6 @@
-package com.gym.authservice.Security.Config;
+package com.gym.authservice.Config.Security;
 
-import com.gym.authservice.Security.Jwt.JwtFilter;
+import com.gym.authservice.Config.Jwt.JwtFilter;
 import lombok.RequiredArgsConstructor;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
