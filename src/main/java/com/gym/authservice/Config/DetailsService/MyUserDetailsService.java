@@ -1,4 +1,4 @@
-package com.gym.authservice.Security.DetailsService;
+package com.gym.authservice.Config.DetailsService;
 
 import com.gym.authservice.Entity.SignedUps;
 import com.gym.authservice.Repository.SignedUpsRepository;
