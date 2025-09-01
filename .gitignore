@@ -1,9 +1,39 @@
-# Ignore everything by default
-*
+# =========================
+# Build and IDE Artifacts
+# =========================
+target/
+build/
+out/
 
-# Allow these files/folders
+# Maven Wrapper
+.mvn/wrapper/maven-wrapper.jar
+mvnw
+mvnw.cmd
+
+# IDE Specific
+.idea/
+*.iml
+*.ipr
+*.iws
+.vscode/
+.project
+.classpath
+.settings/
+.springBeans
+.sts4-cache
+
+# Logs
+*.log
+
+# OS-specific files
+.DS_Store
+Thumbs.db
+
+# =========================
+# Keep essential files
+# =========================
 !.gitignore
 !README.md
+!pom.xml
 !src/
 !src/**
-
