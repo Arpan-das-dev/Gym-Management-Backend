@@ -1,66 +1,18 @@
-############################
-# Build output
-############################
-target/
-build/
-out/
+# Ignore target build folders for all services
+*/target/
+*/bin/
 
-############################
-# Maven Wrapper
-############################
-.mvn/wrapper/maven-wrapper.jar
-!/.mvn/wrapper/maven-wrapper.properties
-mvnw
-mvnw.cmd
-
-############################
-# IDE specific files
-############################
-# IntelliJ IDEA
+# IDE files
 .idea/
-*.iws
 *.iml
-*.ipr
+*.class
 
-# Eclipse
-.project
-.classpath
-.settings/
-.springBeans
-.sts4-cache
-.apt_generated
-
-# VS Code
-.vscode/
-
-############################
-# Logs and temp files
-############################
+# Logs
 *.log
-logs/
-*.tmp
-*.swp
-*.swo
 
-############################
-# OS-specific files
-############################
+# System files
 .DS_Store
 Thumbs.db
 
-############################
-# Environment and secrets
-############################
-*.env
-*.env.local
-application-*.yml
-application-*.yaml
-application-*.properties
-
-############################
-# Keep essential files
-############################
-!.gitignore
-!README.md
-!pom.xml
-!src/
+# Maven wrapper cache
+.mvn/wrapper/maven-wrapper.jar
