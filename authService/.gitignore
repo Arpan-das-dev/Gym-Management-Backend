@@ -1,0 +1,66 @@
+############################
+# Build output
+############################
+target/
+build/
+out/
+
+############################
+# Maven Wrapper
+############################
+.mvn/wrapper/maven-wrapper.jar
+!/.mvn/wrapper/maven-wrapper.properties
+mvnw
+mvnw.cmd
+
+############################
+# IDE specific files
+############################
+# IntelliJ IDEA
+.idea/
+*.iws
+*.iml
+*.ipr
+
+# Eclipse
+.project
+.classpath
+.settings/
+.springBeans
+.sts4-cache
+.apt_generated
+
+# VS Code
+.vscode/
+
+############################
+# Logs and temp files
+############################
+*.log
+logs/
+*.tmp
+*.swp
+*.swo
+
+############################
+# OS-specific files
+############################
+.DS_Store
+Thumbs.db
+
+############################
+# Environment and secrets
+############################
+*.env
+*.env.local
+application-*.yml
+application-*.yaml
+application-*.properties
+
+############################
+# Keep essential files
+############################
+!.gitignore
+!README.md
+!pom.xml
+!src/
