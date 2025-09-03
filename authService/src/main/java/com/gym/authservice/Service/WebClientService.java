@@ -8,7 +8,7 @@ import org.springframework.web.reactive.function.client.WebClient;
 
 @Service
 @RequiredArgsConstructor
-public class NotificationService {
+public class WebClientService {
     private final WebClient.Builder webClient;
     @Value("${authentication.notification}")
     private final String BASE_URL;
@@ -40,7 +40,11 @@ public class NotificationService {
     }
 
     private void sendAsyncNotification(String endpoint, Object payload) {
-        webClient.build().post().uri(BASE_URL + endpoint).bodyValue(payload).retrieve().toBodilessEntity().subscribe(success -> System.out.println("Notification sent successfully to " + endpoint), error -> System.err.println("Failed to send notification to " + endpoint + ": " + error.getMessage()));
+        webClient.build().post().uri(BASE_URL + endpoint).bodyValue(payload)
+                .retrieve().toBodilessEntity()
+                .subscribe(
+                        success -> System.out.println("Notification sent successfully to " + endpoint),
+                        error -> System.err.println("Failed to send notification to " + endpoint + ": " + error.getMessage()));
     }
 
 
