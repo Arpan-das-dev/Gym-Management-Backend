@@ -7,9 +7,11 @@ import org.springframework.context.annotation.Configuration;
 
 @Configuration
 public class SendGridEmailConfig {
+
     // API key for SendGrid, from application.properties
     @Value("${app.mail.secret_key}")
     private String sendGridApiKey;
+
     /**
      * Creates a SendGrid bean that can be injected anywhere in the app.
      */
