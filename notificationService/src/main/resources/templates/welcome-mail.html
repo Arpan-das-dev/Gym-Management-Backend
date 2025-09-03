@@ -1,0 +1,50 @@
+<!DOCTYPE html>
+<html xmlns:th="http://www.thymeleaf.org">
+<head>
+    <title>Welcome to FitStudio</title>
+    <style>
+        body {
+            font-family: 'Arial', sans-serif;
+            background-color: #f4f6f8;
+            margin: 0;
+            padding: 0;
+        }
+        .container {
+            max-width: 600px;
+            margin: 30px auto;
+            background-color: #ffffff;
+            padding: 30px;
+            border-radius: 10px;
+            box-shadow: 0 4px 15px rgba(0,0,0,0.1);
+        }
+        h2 {
+            color: #1a73e8;
+            text-align: center;
+        }
+        p {
+            color: #333333;
+            line-height: 1.6;
+            font-size: 16px;
+        }
+        .highlight {
+            color: #1a73e8;
+            font-weight: bold;
+        }
+        .footer {
+            margin-top: 30px;
+            font-size: 14px;
+            color: #888888;
+            text-align: center;
+        }
+    </style>
+</head>
+<body>
+<div class="container">
+    <h2>Welcome to FitStudio, [[${name}]]!</h2>
+    <p>Your Gym ID is <span class="highlight">[[${gymId}]]</span>. Use it to log in and contact support.</p>
+    <p>Please verify your email <span class="highlight">[[${gmail}]]</span> and your phone number <span class="highlight">[[${phone}]]</span> via OTP.</p>
+    <p>We are excited to have you on board and start your fitness journey with us!</p>
+    <p class="footer"> The FitStudio Team</p>
+</div>
+</body>
+</html>
