@@ -1,4 +1,4 @@
-package com.gym.adminservice.Services;
+package com.gym.adminservice.Services.WebClientServices;
 
 import com.gym.adminservice.Dto.Responses.ApproveEmailNotificationDto;
 import lombok.RequiredArgsConstructor;

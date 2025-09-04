@@ -1,4 +1,4 @@
-package com.gym.adminservice.Services;
+package com.gym.adminservice.Services.WebClientServices;
 
 import com.gym.adminservice.Dto.Responses.MemberResponseDto;
 import com.gym.adminservice.Dto.Responses.SignupResponseDto;
@@ -17,41 +17,27 @@ public class WebClientAuthService {
     private final WebClient.Builder webClient;
 
     @Async
+    public void sendSignupDetailsAdmin(SignupResponseDto responseDto) {
+        String endpoint = authServiceAdmin_URL+"/CreateAdmin";
+        sendAsynchronously(endpoint,responseDto);
+    }
+
+    @Async
     public void sendSignupDetailsMember(SignupResponseDto responseDto) {
         String endpoint = authServiceAdmin_URL+"/CreateMember";
         sendAsynchronously(endpoint, responseDto);
     }
-    @Async
-    public void sendMemberDetails(MemberResponseDto memberResponseDto) {
-        System.out.println("hello honey bunny");
-    }
-    @Async
-    public void deleteMember(String email) {
-        System.out.println("add url later on");
-    }
 
-    
     @Async
     public void sendSignupDetailsTrainer(SignupResponseDto responseDto){
         String endpoint =authServiceAdmin_URL+"/createTrainer";
         sendAsynchronously(endpoint,responseDto);
     }
-    @Async
-    public void sendTrainerDetails(TrainerResponseDto trainerResponseDto) {
-        System.out.println("hello honey bunny");
-    }
-    @Async
-    public void deleteTrainer( String email) {
-        System.out.println("add url later on");
-        // deleteAsynchronously(url,email);
-    }
 
-    
     @Async
     public void deleteUser(String identifier) {
         String url = authServiceAdmin_URL+"/delete";
         deleteAsynchronously(url,identifier);
-
     }
     
     private void sendAsynchronously(String endpoint, Object body) {
@@ -92,4 +78,6 @@ public class WebClientAuthService {
                         error -> System.out.println("Failed to send API request to " + url + ": " + error.getMessage())
                 );
     }
+
+
 }
