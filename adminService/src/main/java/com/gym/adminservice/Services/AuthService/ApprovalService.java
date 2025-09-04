@@ -1,4 +1,4 @@
-package com.gym.adminservice.Services;
+package com.gym.adminservice.Services.AuthService;
 
 import com.gym.adminservice.Dto.Requests.ApprovalRequestDto;
 import com.gym.adminservice.Dto.Responses.ApprovalResponseDto;
@@ -6,6 +6,8 @@ import com.gym.adminservice.Dto.Responses.ApproveEmailNotificationDto;
 import com.gym.adminservice.Enums.RoleType;
 import com.gym.adminservice.Models.PendingRequest;
 import com.gym.adminservice.Repository.PendingRequestRepository;
+import com.gym.adminservice.Services.WebClientServices.WebClientAuthService;
+import com.gym.adminservice.Services.WebClientServices.WebClientNotificationService;
 import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
