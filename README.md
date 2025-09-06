@@ -67,4 +67,3 @@ Currently implemented microservices:
 
 Feel free to contribute or extend this architecture as per your project needs!
 This README guides you through the architecture, dependencies, services, and communication strategies specifically for your gym microservices project including auth and notification services using AWS SES/SNS.
-
