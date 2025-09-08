@@ -8,4 +8,5 @@ import java.util.Optional;
 public interface AdminRepository extends JpaRepository<AdminEntity,String > {
 
     Optional<AdminEntity> findByEmail(String email);
+    void deleteByEmail(String email);
 }
