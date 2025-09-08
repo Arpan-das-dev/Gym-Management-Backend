@@ -20,10 +20,8 @@ import java.time.LocalDate;
 @Builder
 public class PendingRequest {
     @Id
-    @GeneratedValue(generator = "UUID")
-    @GenericGenerator(name = "UUID", strategy = "org.hibernate.id.UUIDGenerator")
     @Column(name = "id", updatable = false, nullable = false)
-    private UUID id;
+    private String  id;
 
     @Email(message = "Please provide a valid email address")
     @NotBlank(message = "Email is required")
