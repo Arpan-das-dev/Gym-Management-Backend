@@ -20,10 +20,20 @@ import org.springframework.web.bind.annotation.RestController;
 @RequestMapping("${authService.base_url}")
 @RequiredArgsConstructor
 @Validated
+/*
+ * This controller manages user credential operations, including password management functionalities.
+ * It provides endpoints for users to change their passwords, initiate password recovery (forgot password),
+ * and reset their passwords using a verification process.
+ * The controller utilizes CredentialService to handle the underlying business logic for these operations.
+ */
 public class CredentialController {
 
     private final CredentialService credentialService;
 
+    /*
+     * Endpoint to handle forgot password requests.
+     * Accepts a ForgotPasswordRequestDto containing user identification details and returns a ForgotPasswordResponseDto.
+     */
     @PostMapping("forgotPassword")
     public ResponseEntity<ForgotPasswordResponseDto> forgotPassword
             (@Valid @RequestBody ForgotPasswordRequestDto requestDto){
@@ -31,6 +41,10 @@ public class CredentialController {
         return ResponseEntity.status(HttpStatus.OK).body(responseDto);
     }
 
+    /*
+     * Endpoint to handle password reset requests.
+     * Accepts a ResetPasswordRequestDto containing the new password and verification details, and returns a ResetPasswordResponseDto.
+     */
     @PostMapping("resetPassword")
     public ResponseEntity<ResetPasswordResponseDto> resetPassword
             (@Valid @RequestBody ResetPasswordRequestDto requestDto){
@@ -38,6 +52,11 @@ public class CredentialController {
         return ResponseEntity.status(HttpStatus.OK).body(responseDto);
     }
 
+    /*
+     * Endpoint to handle password change requests.
+     * Accepts a ChangePasswordRequestDto containing the current and new passwords.
+     * Returns a success message upon successful password change.
+     */
     @PostMapping("changePassword")
     public ResponseEntity<String> changePassword(@Valid @RequestBody ChangePasswordRequestDto requestDto){
          credentialService.changePassword(requestDto);
