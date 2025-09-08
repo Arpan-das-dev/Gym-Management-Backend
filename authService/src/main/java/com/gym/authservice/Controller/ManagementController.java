@@ -28,7 +28,12 @@ public class ManagementController {
         return ResponseEntity.status(HttpStatus.OK).body(responseDto);
     }
 
-    @GetMapping("admin/getUser-id/${id}")
+    @PostMapping("admin/createAdmin")
+    public ResponseEntity<SignUpResponseDto> createAdmin(@Valid @RequestBody SignupRequestDto requestDto){
+        SignUpResponseDto responseDto = managementService.createAdminByAdmin(requestDto);
+        return ResponseEntity.status(HttpStatus.OK).body(responseDto);
+    }
+    @GetMapping("admin/getUser-id/{id}")
     public ResponseEntity<SignupDetailsInfoDto> getUserById(@PathVariable String id){
         SignupDetailsInfoDto responseDto = managementService.getUserById(id);
         return ResponseEntity.status(HttpStatus.OK).body(responseDto);
@@ -40,8 +45,14 @@ public class ManagementController {
         return ResponseEntity.status(HttpStatus.OK).body(responseDto);
     }
 
-    @DeleteMapping({"delete/${identifier}", "delete/{identifier}"})
-    public ResponseEntity<String> deleteAccount(String identifier ){
+    @PostMapping("admin/approve")
+    public ResponseEntity<String> approveUser(@RequestParam String email,@RequestParam boolean approve){
+        String response = managementService.approve(email,approve);
+        return ResponseEntity.status(HttpStatus.OK).body(response);
+    }
+
+    @DeleteMapping("admin/delete")
+    public ResponseEntity<String> deleteAccount(@RequestParam String identifier ){
         String response = managementService.deleteByIdentifier(identifier);
         return ResponseEntity.status(HttpStatus.OK).body(response);
     }
