@@ -23,26 +23,45 @@ public class ApprovalController {
 
     private final ApprovalService approvalService;
 
+    /*
+     * Endpoint to add a new approval request which will be processed later via
+     * admin panel
+     */
+
     @PostMapping("/insert")
-    public ResponseEntity addRequests(ApprovalRequestDto requestDto){
+    public ResponseEntity addRequests(ApprovalRequestDto requestDto) {
         String response = approvalService.insertRequest(requestDto);
         return ResponseEntity.status(HttpStatus.CREATED).body(response);
     }
 
+    /*
+     * Endpoint to get all pending approval requests stored in the database so that
+     * admin can take action on them (approve/decline)
+     */
     @GetMapping("/getList")
-    public ResponseEntity<List<PendingRequest>> getAll(){
+    public ResponseEntity<List<PendingRequest>> getAll() {
         List<PendingRequest> response = approvalService.getAll();
         return ResponseEntity.status(HttpStatus.OK).body(response);
     }
 
+    /*
+     * Endpoint to approve a pending request. This will also send the data to auth
+     * service to set them as approved by admin as a role of member/trainer
+     */
+
     @PostMapping("/approved")
-    public ResponseEntity<ApprovalResponseDto> approved(ApprovalRequestDto requestDto){
+    public ResponseEntity<ApprovalResponseDto> approved(ApprovalRequestDto requestDto) {
         ApprovalResponseDto response = approvalService.sendApproval(requestDto);
         return ResponseEntity.status(HttpStatus.ACCEPTED).body(response);
     }
 
+    /*
+     * Endpoint to decline a pending request. This will also send the data to auth
+     * service to set them as declined by admin and delete the user 
+     */
+
     @PostMapping("/declined")
-    public ResponseEntity<ApprovalResponseDto> decline (ApprovalRequestDto requestDto){
+    public ResponseEntity<ApprovalResponseDto> decline(ApprovalRequestDto requestDto) {
         ApprovalResponseDto response = approvalService.declineApproval(requestDto);
         return ResponseEntity.status(HttpStatus.ACCEPTED).body(response);
     }
