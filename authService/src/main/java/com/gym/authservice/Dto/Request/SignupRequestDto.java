@@ -34,5 +34,4 @@ public class SignupRequestDto {
     private RoleType role;
    @NotNull(message = "joining date can not be empty")
     private LocalDate joinDate;
-
 }
