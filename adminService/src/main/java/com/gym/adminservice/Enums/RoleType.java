@@ -1,5 +1,8 @@
 package com.gym.adminservice.Enums;
 
+/**
+ * Enum representing different types of user roles in the gym management system.
+ */
 public enum RoleType {
     ADMIN,
     MEMBER,
