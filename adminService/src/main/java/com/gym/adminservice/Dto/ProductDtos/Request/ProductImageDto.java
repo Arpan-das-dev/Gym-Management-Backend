@@ -10,18 +10,9 @@ import org.springframework.web.multipart.MultipartFile;
 @AllArgsConstructor
 @Builder
 public class ProductImageDto {
-    @Pattern(
-            regexp = "^(http|https)://.*$",
-            message = "Image URL must be valid and start with http or https"
-    )
-    private String imageUrl;
-    private MultipartFile imageFile;
-
-    public boolean isUrl() {
-        return imageUrl != null && !imageUrl.isBlank();
-    }
-
-    public boolean isFile() {
-        return imageFile != null && !imageFile.isEmpty();
+    private Object image;
+    public boolean isUrl(){
+        if(image instanceof String) return true;
+        return false;
     }
 }
