@@ -5,6 +5,8 @@ import lombok.Builder;
 import lombok.Data;
 import lombok.NoArgsConstructor;
 
+import java.util.List;
+
 @Builder
 @Data
 @AllArgsConstructor
@@ -15,5 +17,5 @@ public class ProductVariantResponseDto {
     private Integer weight;
     private String  unit;
     private Integer quantity;
-    private String url;
+    private List<String> url;
 }
