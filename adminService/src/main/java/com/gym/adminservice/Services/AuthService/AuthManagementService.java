@@ -39,7 +39,7 @@ public class AuthManagementService {
                 .password(memberRequestDto.getPassword())
                 .build();
         // create the member dto to send to the member service but
-        // as we dont have member service yet so we will comment it out
+        // as we don't have member service yet so we will comment it out
         MemberResponseDto memberResponseDto = MemberResponseDto.builder()
                 .firstName(memberRequestDto.getFirstName()).lastName(memberRequestDto.getLastName())
                 .age(memberRequestDto.getAge()).gender(memberRequestDto.getGender())
@@ -49,7 +49,7 @@ public class AuthManagementService {
                 .build();
         // send the request to the auth service via webclient
         webClientService.sendSignupDetailsMember(responseDto);
-        // as we dont have member service yet so we will comment it out
+        // as we don't have member service yet so we will comment it out
         // webClientMemberService.sendMemberDetails(memberResponseDto)
 
         return "Member created successfully";
@@ -82,7 +82,7 @@ public class AuthManagementService {
                 .build();
         // send the request to the auth service via webclient
         webClientService.sendSignupDetailsTrainer(responseDto);
-        // as we dont have member service yet so we will comment it out
+        // as we don't have member service yet so we will comment it out
         // webClientTrainerService.sendTrainerDetails(trainerResponseDto)
 
         return "Trainer created successfully";
