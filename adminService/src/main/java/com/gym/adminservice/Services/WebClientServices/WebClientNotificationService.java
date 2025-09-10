@@ -22,7 +22,6 @@ public class WebClientNotificationService {
     private final String adminNotificationService_URL;
     private final WebClient.Builder webClient;
 
-
     public WebClientNotificationService(@Value("${app.admin_notificationService.url}") String adminNotificationService_URL, WebClient.Builder webClient) {
         this.adminNotificationService_URL = adminNotificationService_URL;
         this.webClient = webClient;
