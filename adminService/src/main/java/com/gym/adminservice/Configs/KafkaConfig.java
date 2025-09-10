@@ -19,13 +19,20 @@ import java.util.Map;
 
 @Configuration
 @EnableKafka
-@RequiredArgsConstructor
 public class KafkaConfig {
 
     @Value("${app.kafka.port}")
     private final String KAFKA_PORT;
     @Value("${app.kafka.groupId}")
     private final String KAFKA_PLAN_GROUP_ID;
+
+
+    public KafkaConfig(@Value("${app.kafka.port}") String KAFKA_PORT,
+                       @Value("${app.kafka.groupId}") String KAFKA_PLAN_GROUP_ID) {
+        this.KAFKA_PORT = KAFKA_PORT;
+        this.KAFKA_PLAN_GROUP_ID = KAFKA_PLAN_GROUP_ID;
+    }
+
     @Bean
     public ProducerFactory<String , Object> producerFactory(){
         Map<String,Object> producerConfig = new HashMap<>();

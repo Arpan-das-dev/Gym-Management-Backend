@@ -11,7 +11,6 @@ import software.amazon.awssdk.regions.Region;
 import software.amazon.awssdk.services.s3.S3Client;
 
 @Configuration
-@RequiredArgsConstructor
 
 /*
  * This class is used to configure the S3 client
@@ -33,6 +32,14 @@ public class S3Config {
     // Injecting values from application.properties file for AWS region
     @Value("${aws.region}")
     private final String region;
+
+    public S3Config( @Value("${aws.access.key}") String accessKey,
+                     @Value("${aws.secret.key}")  String secretKey,
+                     @Value("${aws.region}") String region) {
+        this.accessKey = accessKey;
+        this.secretKey = secretKey;
+        this.region = region;
+    }
 
     /*
      * This method creates and returns an S3 client bean
