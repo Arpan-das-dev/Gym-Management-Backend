@@ -29,7 +29,7 @@ public class ApprovalController {
      */
 
     @PostMapping("/insert")
-    public ResponseEntity addRequests(ApprovalRequestDto requestDto) {
+    public ResponseEntity addRequests( ApprovalRequestDto requestDto) {
         String response = approvalService.insertRequest(requestDto);
         return ResponseEntity.status(HttpStatus.CREATED).body(response);
     }
