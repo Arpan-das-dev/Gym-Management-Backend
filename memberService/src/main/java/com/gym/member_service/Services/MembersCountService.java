@@ -1,8 +1,13 @@
 package com.gym.member_service.Services;
 
+import com.gym.member_service.Model.MembersActive;
+import com.gym.member_service.Repositories.MemberActiveRepository;
 import lombok.RequiredArgsConstructor;
 import org.springframework.data.redis.core.RedisTemplate;
+import org.springframework.scheduling.annotation.Scheduled;
 import org.springframework.stereotype.Service;
+
+import java.time.LocalDateTime;
 
 @Service
 @RequiredArgsConstructor
@@ -15,6 +20,7 @@ import org.springframework.stereotype.Service;
 public class MembersCountService {
     // we will use redis set to store the active members
     private final RedisTemplate<String, String> redisTemplate;
+    private final MemberActiveRepository memberActiveRepository;
     // the name of the set
     private final String ACTIVE_MEMBER_SET = "memberCountCache";
 
@@ -46,11 +52,23 @@ public class MembersCountService {
                                                                                     // or not
     }
 
+
     /*
      * later on we will add a scheduler task which will sent to the frontend
-     * if the member is active or not via websocket
+     * if the member is active or not via websocket,
      * and also we will remove the member from the active set if he didn't respond
      * and the above methods will also be sent to the frontend via websocket
      * so that the frontend can show the active members in real time
      */
+
+    @Scheduled(fixedRate = 900000)
+    public void savedData(){
+        MembersActive activeMembers = MembersActive.builder()
+                .dateTime(LocalDateTime.now())
+                .time(String.valueOf(LocalDateTime.now().getHour()))
+                .memberCount(getActiveMembersCount())
+                .build();
+        memberActiveRepository.save(activeMembers);
+    }
+
 }
