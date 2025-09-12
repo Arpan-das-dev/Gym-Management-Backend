@@ -1,4 +1,4 @@
-package com.gym.member_service.Dto.MemberManagementDto.Requests;
+package com.gym.member_service.Dto.MemberPlanDto.Requests;
 
 import jakarta.validation.constraints.NotBlank;
 import lombok.AllArgsConstructor;
