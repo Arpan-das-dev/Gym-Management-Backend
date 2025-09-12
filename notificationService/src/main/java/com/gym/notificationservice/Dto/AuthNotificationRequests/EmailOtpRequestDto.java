@@ -17,5 +17,6 @@ public class EmailOtpRequestDto {
     @NotBlank(message = "Otp is required")
     @Size(message = "otp must have 6 digits or characters")
     private String otp;
-
+    @NotBlank(message = "name is required")
+    private String name;
 }

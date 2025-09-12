@@ -16,4 +16,6 @@ public class PhoneOtpRequestDto {
     @NotBlank(message = "otp is required")
     @Size(min = 6,max = 6,message = "otp should be in six digit")
     private String otp;
+    @NotBlank(message = "name is required")
+    private String name;
 }
