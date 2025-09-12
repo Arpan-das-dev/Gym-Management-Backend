@@ -1,4 +1,4 @@
-package com.gym.member_service.Dto.MemberManagementDto.Requests;
+package com.gym.member_service.Dto.MemberPlanDto.Requests;
 
 import lombok.AllArgsConstructor;
 import lombok.Builder;
