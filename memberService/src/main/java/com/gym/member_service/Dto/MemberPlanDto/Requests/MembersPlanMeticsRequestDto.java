@@ -5,11 +5,12 @@ import lombok.Builder;
 import lombok.Data;
 import lombok.NoArgsConstructor;
 
-@AllArgsConstructor
-@NoArgsConstructor
+import java.util.List;
+
 @Data
 @Builder
-public class FreezeRequestDto {
-    private String id;
-    private boolean freeze;
+@AllArgsConstructor
+@NoArgsConstructor
+public class MembersPlanMeticsRequestDto {
+    private List<String> planNames;
 }
