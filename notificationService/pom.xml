@@ -63,11 +63,6 @@
             <artifactId>sendgrid-java</artifactId>
             <version>4.10.0</version>
         </dependency>
-        <dependency>
-            <groupId>com.twilio.sdk</groupId>
-            <artifactId>twilio</artifactId>
-            <version>11.0.0-rc.5</version>
-        </dependency>
 <!--        <dependency>-->
 <!--            <groupId>software.amazon.awssdk</groupId>-->
 <!--            <artifactId>ses</artifactId>-->
