@@ -12,16 +12,13 @@ import java.time.LocalDateTime;
 @NoArgsConstructor
 @Data
 @Builder
-public class MemberResponseDto {
+public class AllMemberResponseDto {
     private String id;
     private String firstName;
     private String lastName;
     private String email;
     private String phone;
     private String gender;
-    private LocalDate joinDate;
-    private double currentBmi;
-    private Integer loginStreak;
     private LocalDateTime planExpiration;
     private boolean frozen;
 }
