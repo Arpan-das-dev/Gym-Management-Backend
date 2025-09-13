@@ -61,7 +61,7 @@ public class MembersCountService {
      * so that the frontend can show the active members in real time
      */
 
-    @Scheduled(fixedRate = 900000)
+    @Scheduled(cron = "0 */15 * * * MON-SAT")
     public void savedData(){
         MembersActive activeMembers = MembersActive.builder()
                 .dateTime(LocalDateTime.now())
