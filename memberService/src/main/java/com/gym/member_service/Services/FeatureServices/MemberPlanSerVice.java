@@ -1,4 +1,4 @@
-package com.gym.member_service.Services;
+package com.gym.member_service.Services.FeatureServices;
 
 import com.gym.member_service.Dto.MemberPlanDto.Requests.MembersPlanMeticsRequestDto;
 import com.gym.member_service.Dto.MemberPlanDto.Requests.PlanRequestDto;
@@ -23,13 +23,12 @@ public class MemberPlanSerVice {
 
 
     /*
-     * ========================================> UPDATE PLAN <============================================
-     *
-     *
      * updates the current plan duration time and plan id
-     * if still time left it will just add on rather than resting previous left
-     * days
+     * if still time left it will just add on rather than
+     * reseting previous left days
      * then update the data stored in the cache
+     * @Transactional: use to ensure
+     *  if any problem occurs the data will be rolled back
      */
     @Caching(evict = {
             @CacheEvict(value = "memberListCache", key = "'All'"),
@@ -39,8 +38,8 @@ public class MemberPlanSerVice {
     public String updatePlan(String id, PlanRequestDto requestDto) {
         Member member = memberRepository.findById(id)
                 .orElseThrow(() -> new UserNotFoundException("Member with this id does not exist")); // throws exception
-        // if no user is
-        // not found the id
+                                                                                                      // if no user is
+                                                                                                     // not found the id
         member.setPlanID(requestDto.getPlanId()); // set the new plan id
         LocalDateTime current = member.getPlanExpiration(); // get the current expiration date
         member.setPlanExpiration(current.plusDays(requestDto.getDuration())); // add on the duration on previous days
@@ -53,14 +52,14 @@ public class MemberPlanSerVice {
     }
 
     /*
-     *  ================================ GET MEMBER PLAN MATRICES ========================================
-     *
      *  This method return a response dto includes the member and plan matrices
-     *
+     *  to show the admin which plan is most popular
+     *  and how many members are currently active on a plan
      */
 
     public List<MemberPlansMeticsResponseDto> getAllMatrices(MembersPlanMeticsRequestDto requestDto){
         List<MemberPlansMeticsResponseDto> responseDtoList = new LinkedList<>();
+        // using form loop to get data member for each plan
         for(String name : requestDto.getPlanNames()){
             int memberCount =  memberRepository.memberCountWithPlansNameOf(name);
             List<Member> memberList = memberRepository.getMemberListByPlanName(name);
