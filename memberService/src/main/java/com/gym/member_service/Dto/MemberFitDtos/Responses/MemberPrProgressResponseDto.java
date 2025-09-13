@@ -11,7 +11,7 @@ import java.time.LocalDate;
 @AllArgsConstructor
 @NoArgsConstructor
 @Builder
-public class PrProgressResponseDto {
+public class MemberPrProgressResponseDto {
     private String workoutName;
     private Double weight;
     private Integer repetitions;
