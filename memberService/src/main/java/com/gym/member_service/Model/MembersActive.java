@@ -19,10 +19,12 @@ import java.util.List;
 @NoArgsConstructor
 @Builder
 public class MembersActive {
+
     @Id
     private LocalDateTime dateTime;
 
     @Column(nullable = false)
     private String time;
+
     private long memberCount;
 }
