@@ -1,5 +1,6 @@
-package com.gym.member_service.Dto.MemberFitDtos.Responses;
+package com.gym.member_service.Dto.MemberFitDtos.Wrappers;
 
+import com.gym.member_service.Dto.MemberFitDtos.Responses.MemberWeighBmiEntryResponseDto;
 import lombok.*;
 
 import java.util.List;
@@ -10,5 +11,5 @@ import java.util.List;
 @AllArgsConstructor
 @NoArgsConstructor
 public class MemberBmiResponseWrapperDto {
-    List<MemberWeighBmiEntryResponseDto> bmiEntryResponseDtoList;
+    private List<MemberWeighBmiEntryResponseDto> bmiEntryResponseDtoList;
 }
