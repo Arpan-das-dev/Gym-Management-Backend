@@ -1,4 +1,4 @@
-package com.gym.member_service.Services;
+package com.gym.member_service.Services.OtherService;
 
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.stereotype.Service;
