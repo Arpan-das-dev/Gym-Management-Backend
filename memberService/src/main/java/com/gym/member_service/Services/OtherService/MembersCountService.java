@@ -1,4 +1,4 @@
-package com.gym.member_service.Services;
+package com.gym.member_service.Services.OtherService;
 
 import com.gym.member_service.Model.MembersActive;
 import com.gym.member_service.Repositories.MemberActiveRepository;
@@ -61,7 +61,12 @@ public class MembersCountService {
      * so that the frontend can show the active members in real time
      */
 
-    @Scheduled(cron = "0 */15 * * * MON-SAT")
+    /*
+     * this method runs on every 20 mins from Monday to Saturday
+     * from 6 am to 11(23:00) pm
+     * and saves user load so admin can see the gym load
+     */
+    @Scheduled(cron = "0 */20 6-23 * * MON-SAT")
     public void savedData(){
         MembersActive activeMembers = MembersActive.builder()
                 .dateTime(LocalDateTime.now())
@@ -71,4 +76,5 @@ public class MembersCountService {
         memberActiveRepository.save(activeMembers);
     }
 
+   
 }
