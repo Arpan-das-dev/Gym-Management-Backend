@@ -4,7 +4,6 @@ import lombok.AllArgsConstructor;
 import lombok.Builder;
 import lombok.Data;
 import lombok.NoArgsConstructor;
-import software.amazon.awssdk.services.s3.endpoints.internal.Value;
 
 import java.time.LocalDate;
 
@@ -13,6 +12,8 @@ import java.time.LocalDate;
 @Data
 @Builder
 public class PlanActivationNotificationDto {
+    private String mailId;
+    private String phone;
     private String planName;
     private String subject;
     private LocalDate activationDate;
