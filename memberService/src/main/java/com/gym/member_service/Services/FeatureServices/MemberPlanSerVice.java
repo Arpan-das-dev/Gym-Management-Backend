@@ -6,6 +6,7 @@ import com.gym.member_service.Dto.MemberPlanDto.Responses.MemberPlansMeticsRespo
 import com.gym.member_service.Exception.Exceptions.UserNotFoundException;
 import com.gym.member_service.Model.Member;
 import com.gym.member_service.Repositories.MemberRepository;
+import com.gym.member_service.Services.OtherService.WebClientServices;
 import lombok.RequiredArgsConstructor;
 import org.springframework.cache.annotation.CacheEvict;
 import org.springframework.cache.annotation.Caching;
@@ -20,7 +21,7 @@ import java.util.List;
 @RequiredArgsConstructor
 public class MemberPlanSerVice {
     private final MemberRepository memberRepository;
-
+    private final WebClientServices webClientServices;
 
     /*
      * updates the current plan duration time and plan id
@@ -48,6 +49,7 @@ public class MemberPlanSerVice {
         if (!member.getActivePlan())
             member.setActivePlan(true);
         memberRepository.save(member);
+        webClientServices.sendUpdatePlanNotification(requestDto,member.getFirstName()+" "+member.getLastName());
         return "plan updated successfully";
     }
 
