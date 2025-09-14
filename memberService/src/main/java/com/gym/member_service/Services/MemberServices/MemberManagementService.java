@@ -1,4 +1,4 @@
-package com.gym.member_service.Services;
+package com.gym.member_service.Services.MemberServices;
 
 import com.gym.member_service.Dto.MemberManagementDto.Requests.FreezeRequestDto;
 import com.gym.member_service.Dto.MemberManagementDto.Requests.MemberCreationRequestDto;
@@ -7,6 +7,7 @@ import com.gym.member_service.Exception.Exceptions.UserNotFoundException;
 import com.gym.member_service.Dto.MemberManagementDto.Responses.AllMemberResponseDto;
 import com.gym.member_service.Model.*;
 import com.gym.member_service.Repositories.MemberRepository;
+import com.gym.member_service.Services.OtherService.WebClientServices;
 import lombok.RequiredArgsConstructor;
 import org.springframework.cache.annotation.CacheEvict;
 import org.springframework.cache.annotation.Cacheable;
@@ -16,7 +17,6 @@ import org.springframework.transaction.annotation.Transactional;
 
 import java.time.LocalDateTime;
 import java.util.List;
-
 
 @Service
 @RequiredArgsConstructor
@@ -30,9 +30,11 @@ public class MemberManagementService {
     private final MemberRepository memberRepository;
     private final WebClientServices webClientService;
 
-    // ===========================> CREATE MEMBER <========================================
-
     /*
+     *  This method creates a new member and save
+     * there data in the database
+     * this happens after a successful login and when admin creates
+     * a new member
      * Caching by redis(using docker) and when a new member stored in the db
      * the cache will update data in both cache(memberListCache::All,
      * memberCache:id(dynamic id))
@@ -64,9 +66,7 @@ public class MemberManagementService {
     }
 
     /*
-     * ===============================> GET MEMBER BY ID <=====================================
-     * 
-     * 
+     * This method returns user data and took member id to perform service logic
      * When the method calls it fetches the data from db, but then it stores the data
      * in Cache
      * and also get updated time to time when other methods changes the data.
@@ -75,7 +75,8 @@ public class MemberManagementService {
     @Cacheable(value = "memberCache", key = "#id")
     public AllMemberResponseDto getMemberById(String id) {
         Member member = memberRepository.findById(id)
-                .orElseThrow(() -> new UserNotFoundException("Member with this id does not exist"));
+                .orElseThrow(() -> new UserNotFoundException("Member with this id does not exist")); // if no user found
+                                                                                                   // throws a exception
         return responseDto(member); // a helper method defined below to return the required data
     }
 
@@ -93,9 +94,6 @@ public class MemberManagementService {
     }
 
     /*
-     * ==================================> GET ALL MEMBERS <=====================================
-     * 
-     * 
      * this method returns a list of members details which will be cached in the
      * redis data
      * so next time it does not require to fetch DB
@@ -104,6 +102,7 @@ public class MemberManagementService {
 
     @Cacheable(value = "memberListCache", key = "'All'")
     public List<AllMemberResponseDto> getAllMember() {
+        // using stream with map to build the return output
         List<Member> members = memberRepository.findAll();
         return members.stream().map(member -> AllMemberResponseDto.builder()
                 .id(member.getId()).imageUrl(member.getProfileImageUrl())
@@ -116,11 +115,11 @@ public class MemberManagementService {
     }
 
     /*
-     * ================================> DELETE MEMBER BY ID <================================
-     * 
-     * 
+     * Generally in Auth service user decided to delete account this
+     * method runs and delete a specific member and all records from database
      * this method take String id as query param and return results accordingly
      * and also update the cache data from the Cache
+     * so cache remains fresh
      */
 
     @Caching(evict = {
@@ -139,9 +138,9 @@ public class MemberManagementService {
     }
 
     /*
-     * ===================================> SET LOGIN STREAK <=======================================
-     * 
-     * 
+     *
+     * If any user is not Logged in on any day
+     * when next day the member will log in the streak resets to 1
      * when the member logsIn then a webclient will send the id, and it will change
      * the login streak
      * and then also update the cache
@@ -177,9 +176,9 @@ public class MemberManagementService {
     }
 
     /*
-     * ========================================> FREEZE OR UNFREEZE <=======================================
-     * 
-     * 
+     * This method here is to allow admin to freeze any
+     *  member account forcefully so that they can not access the
+     *  Dashboard or get details in the frontend
      * this method will set that if the account is frozen or not
      * if any account is frozen then he might not be able to access dashboard but
      * can log in
@@ -193,8 +192,8 @@ public class MemberManagementService {
     public String freezeOrUnFreezed(FreezeRequestDto requestDto) {
         String id = requestDto.getId();
         Member member = memberRepository.findById(id)
-                .orElseThrow(() -> new UserNotFoundException("Member with this id does not exist"));
-
+                .orElseThrow(() -> new UserNotFoundException("Member with this id does not exist")); // if no user found
+                                                                                                    // Throws exception
         member.setFrozen(requestDto.isFreeze()); // set the freeze status as per request
         memberRepository.save(member);
         if(requestDto.isFreeze()) webClientService.sendFrozenMessage(member);
