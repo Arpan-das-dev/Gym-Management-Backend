@@ -1,0 +1,90 @@
+<!DOCTYPE html>
+<html xmlns:th="http://www.thymeleaf.org" lang="en">
+<head>
+    <meta charset="UTF-8">
+    <title th:text="${subject}">Account Frozen</title>
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            background-color: #f8f8f8;
+            margin: 0;
+            padding: 0;
+        }
+        .container {
+            max-width: 600px;
+            margin: 30px auto;
+            background: #ffffff;
+            border-radius: 12px;
+            box-shadow: 0 4px 12px rgba(0,0,0,0.1);
+            border: 1px solid #ddd;
+            overflow: hidden;
+        }
+        .header {
+            background: linear-gradient(90deg, #d32f2f, #111); /* red-black gradient */
+            color: #fff;
+            padding: 20px;
+            text-align: center;
+        }
+        .header h2 {
+            margin: 0;
+            font-size: 22px;
+        }
+        .content {
+            padding: 25px;
+            color: #333;
+        }
+        .content p {
+            margin: 12px 0;
+            line-height: 1.6;
+        }
+        .highlight {
+            color: #ff7a00; /* orange */
+            font-weight: bold;
+        }
+        .danger {
+            color: #d32f2f; /* strong red */
+            font-weight: bold;
+        }
+        .footer {
+            background: #111;
+            color: #ccc;
+            text-align: center;
+            font-size: 12px;
+            padding: 15px;
+        }
+        .button {
+            display: inline-block;
+            margin-top: 20px;
+            padding: 12px 20px;
+            background-color: #d32f2f;
+            color: #fff !important;
+            text-decoration: none;
+            font-weight: bold;
+            border-radius: 6px;
+        }
+        .button:hover {
+            background-color: #b71c1c;
+        }
+    </style>
+</head>
+<body>
+<div class="container">
+    <div class="header">
+        <h2 th:text="${subject}">Account Frozen</h2>
+    </div>
+    <div class="content">
+        <p>Hello, <span class="highlight" th:text="${name}">Member</span>,</p>
+        <p class="danger">🚫 Your <strong>FIT STUDIO</strong> account has been <strong>frozen</strong>.</p>
+        <p>Reason: Your membership plan expired on
+            <span class="danger" th:text="${expired}">2025-09-01</span>
+            and has not been renewed within the 10-day grace period.
+        </p>
+        <p>To regain access, please renew your plan immediately.</p>
+        <a href="@{${frontend.plans.url}}" class="button">Reactivate Account</a>
+    </div>
+    <div class="footer">
+        © <span th:text="${#dates.format(time, 'yyyy')}">2025</span> FIT STUDIO. All rights reserved.
+    </div>
+</div>
+</body>
+</html>
