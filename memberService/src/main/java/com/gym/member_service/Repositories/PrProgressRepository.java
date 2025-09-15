@@ -30,15 +30,15 @@ public interface PrProgressRepository extends JpaRepository<PrProgresses, Long> 
      */
     @Query(value = "SELECT * FROM members.pr_progresses " +
             "WHERE member_id = :memberId " +
-            " AND achieved_date BETWEEN :startDate AND :endDate",
+            " AND achieved_date BETWEEN :endDate AND :startDate",
             nativeQuery = true)
     List<PrProgresses> findByMemberIdAndDateRange(@Param("memberId") String memberId,
-                                                  @Param("startDate") LocalDate startDate,
-                                                  @Param("endDate") LocalDate endDate);
+                                                  @Param("endDate") LocalDate endDate,
+                                                  @Param("startDate") LocalDate startDate);
 
     /*
      * a custom method(definition) with custom query to find member with data
-     * on a certain date
+     * on a certain dateFL
      */
     @Modifying
     @Query(value = "delete  FROM members.pr_progresses " +
@@ -58,4 +58,12 @@ public interface PrProgressRepository extends JpaRepository<PrProgresses, Long> 
     int deletePrByMemberIdWithDateAndName(@Param("memberId") String memberId,
                                           @Param("date") LocalDate date,
                                           @Param("workoutName") String workoutName);
+
+    @Query(value = "SELECT * FROM members.pr_progresses " +
+            "WHERE member_id = :memberId " +
+            "AND achieved_date BETWEEN : endDate AND :startDate",
+            nativeQuery = true)
+    List<PrProgresses> findAllByMemberIdAndWeek(@Param("memberId") String memberId,
+                                                @Param("endDate") LocalDate endDate,
+                                                @Param("startDate") LocalDate startDate);
 }

@@ -5,6 +5,6 @@ import org.springframework.data.jpa.repository.JpaRepository;
 
 import java.util.List;
 
-public interface PrRepositorySummary extends JpaRepository<PrSummary,Long> {
+public interface PrSummaryRepository extends JpaRepository<PrSummary,Long> {
     List<PrSummary> findByMemberId(String memberId);
 }
