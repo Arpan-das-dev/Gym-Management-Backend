@@ -2,6 +2,7 @@ package com.gym.member_service.Controllers;
 
 import com.gym.member_service.Dto.MemberFitDtos.Requests.MemberWeighBmiEntryRequestDto;
 import com.gym.member_service.Dto.MemberFitDtos.Requests.PrProgressRequestDto;
+import com.gym.member_service.Dto.MemberFitDtos.Wrappers.BmiSummaryResponseWrapperDto;
 import com.gym.member_service.Dto.MemberFitDtos.Wrappers.MemberBmiResponseWrapperDto;
 import com.gym.member_service.Dto.MemberFitDtos.Responses.MemberWeighBmiEntryResponseDto;
 import com.gym.member_service.Dto.MemberFitDtos.Responses.MemberPrProgressResponseDto;
@@ -18,58 +19,62 @@ import org.springframework.web.bind.annotation.*;
 
 import java.time.LocalDate;
 import java.util.List;
-
+/**
+ * REST controller for managing Member Fitness data (BMI entries and PR progress).
+ * <p>
+ * Handles CRUD operations for BMI & PR records and also exposes monthly summary reports.
+ * All business logic is delegated to {@link MemberFitService}.
+ *
+ * <p><b>Base URL:</b> configured via {@code member-service.Base_Url.Fit} in application.properties
+ */
 @RestController
 @RequiredArgsConstructor
 @RequestMapping("${member-service.Base_Url.Fit}")
 @Validated
-/*
- * This controller is responsible for interaction with database
- * using MemberFitService Class
- * @RequestMapping: map this controller on specific url
- * which is defined in application.properties
- */
+
 public class MemberFitController {
 
     private final MemberFitService fitService;
-
-    /*
-     * This method is responsible to add a new weight and bmi with date
-     * using logic present in MemberFitService
-     * and take memberId(@RequestParam) and a request dto(@RequestBody)
-     * as method parameter
+    /**
+     * Add a new BMI/weight entry for a given member.
+     *
+     * @param memberId   unique member identifier
+     * @param requestDto request payload containing BMI & weight details
+     * @return created entry details
+     *
+     * <p>Returns {@link HttpStatus#CREATED} if successfully inserted.</p>
      */
     @PostMapping("/weight-bmi-entry")
     ResponseEntity<MemberWeighBmiEntryResponseDto> addWeightBmi(@RequestParam String memberId,
                                                                 @Valid @RequestBody MemberWeighBmiEntryRequestDto
                                                                         requestDto)
-    {   // set the response using method present in MemberFitService
+    {
         MemberWeighBmiEntryResponseDto responseDto = fitService.addWeighBmiEntry(memberId, requestDto);
         return ResponseEntity.status(HttpStatus.CREATED).body(responseDto);
-        // if successfully done then returns CREATED as http status
     }
-
-    /*
-     * This method is responsible to get all weight and bmi  date
-     * using logic present in MemberFitService
-     * and take memberId(@RequestParam) and number of days(@RequestParam)
-     * as method parameter
+    /**
+     * Retrieve all BMI/weight entries for a member within the last given number of days.
+     *
+     * @param memberId member identifier
+     * @param days     number of days to look back
+     * @return list of BMI entries wrapped in response DTO
+     *
+     * <p>Returns {@link HttpStatus#ACCEPTED} when records are fetched successfully.</p>
      */
     @GetMapping("/weightBmi")
     ResponseEntity<MemberBmiResponseWrapperDto> getAllBmiListById(@RequestParam String memberId,
                                                                   @RequestParam int days) {
-        // set the response using method present in MemberFitService
         MemberBmiResponseWrapperDto responseDtoList = fitService.getAllBmiEntry(memberId, days);
         return ResponseEntity.status(HttpStatus.ACCEPTED).body(responseDtoList);
-        // if successfully retrieves data from DB then returns ACCEPTED as http status
     }
-
-    /*
-     * This method is responsible to delete weight and bmi data
-     * from a certain date
-     * using logic present in MemberFitService
-     * and take memberId(@RequestParam) and date(@RequestParam)
-     * as method parameter
+    /**
+     * Delete a BMI/weight entry for a given member on a specific date.
+     *
+     * @param memberId member identifier
+     * @param date     date for which BMI entry should be deleted (must not be in the future)
+     * @return confirmation message
+     *
+     * <p>Returns {@link HttpStatus#OK} if deletion was successful.</p>
      */
     @DeleteMapping("/weightBmi")
     ResponseEntity<String> deleteByIdDate(@RequestParam String memberId,
@@ -77,66 +82,69 @@ public class MemberFitController {
                                           @FutureOrPresent(message = "Can not delete a pr from future")
                                           LocalDate date)
     {
-       // set the response using method present in MemberFitService
        String response = fitService.deleteByDateAndId(memberId,date);
        return ResponseEntity.status(HttpStatus.OK).body(response);
-       // if successfully deletes data in DB then returns OK as http status
     }
-
-    /*
-     * This method is responsible to add a new Pr with date
-     * using logic present in MemberFitService
-     * and take memberId(@RequestParam) and a request dto(@RequestBody)
-     * as method parameter
+    /**
+     * Add one or more new PR (Personal Record) entries for a given member.
+     *
+     * @param memberId   member identifier
+     * @param requestDto list of PR request payloads
+     * @return list of created PR entries
+     *
+     * <p>Returns {@link HttpStatus#CREATED} if PR entries were added successfully.</p>
      */
     @PostMapping("/addPr")
     ResponseEntity<List<MemberPrProgressResponseDto>> addNewPr(@RequestParam String memberId,
                                                                @Valid @RequestBody List<PrProgressRequestDto>
                                                                        requestDto)
     {
-        // set the response using method present in MemberFitService
         List<MemberPrProgressResponseDto> responseDtoList = fitService.addANewPr(memberId,requestDto);
         return ResponseEntity.status(HttpStatus.CREATED).body(responseDtoList);
-        // if successfully adds data in DB then returns CREATED as http status
     }
-
-    /*
-     * This method is responsible get Pr with date etc.
-     * using logic present in MemberFitService
-     * and take memberId(@RequestParam) and no of days(@RequestParam)
-     * as method parameter
+    /**
+     * Retrieve all PR progress entries for a member within the last given number of days.
+     *
+     * @param memberId member identifier
+     * @param days     number of days to look back
+     * @return wrapper DTO containing list of PR progress entries
+     *
+     * <p>Returns {@link HttpStatus#ACCEPTED} when records are fetched successfully.</p>
      */
     @GetMapping("/pr")
     ResponseEntity<MemberPrProgressWrapperDto> getAllPrProgress(@RequestParam String memberId,
                                                                 @RequestParam int days)
-    {   // set the response using method present in MemberFitService
+    {
         MemberPrProgressWrapperDto response = fitService.getAllPrProgress(memberId,days);
         return ResponseEntity.status(HttpStatus.ACCEPTED).body(response);
-        // if successfully retrieves data from DB then returns ACCEPTED as http status
     }
-
-    /*
-     * This method is responsible delete all Pr on a certain date
-     * using logic present in MemberFitService
-     * and take memberId(@RequestParam) and a date(@RequestParam)
-     * as method parameter
+    /**
+     * Delete all PR progress entries for a given member on a specific date.
+     *
+     * @param memberId member identifier
+     * @param date     date for which PR entries should be deleted (must not be in the future)
+     * @return confirmation message
+     *
+     * <p>Returns {@link HttpStatus#OK} if deletion was successful.</p>
      */
     @DeleteMapping("/pr")
     ResponseEntity<String> deletePrByIdDate(@RequestParam String memberId,
                                             @RequestParam
                                             @PastOrPresent(message = "Can not delete a pr from future")
                                             LocalDate date)
-    {   // set the response using method present in MemberFitService
+    {
         String response = fitService.deleteByIdAndDate(memberId,date);
         return ResponseEntity.status(HttpStatus.OK).body(response);
-        // if successfully deletes data in DB then returns OK as http status
     }
-
-    /*
-     * This method is responsible delete a Pr on a certain date of certain workout
-     * using logic present in MemberFitService
-     * and take memberId(@RequestParam) and a date(@RequestParam)
-     * as method parameter
+    /**
+     * Delete a PR entry for a specific workout of a member on a given date.
+     *
+     * @param memberId    member identifier
+     * @param date        date for which PR entry should be deleted
+     * @param workoutName workout name to identify which PR to delete
+     * @return confirmation message
+     *
+     * <p>Returns {@link HttpStatus#OK} if deletion was successful.</p>
      */
     @DeleteMapping("/deletePr/{workoutName}")
     ResponseEntity<String> deleteByWorkoutName(@RequestParam String memberId,
@@ -144,9 +152,34 @@ public class MemberFitController {
                                                @PastOrPresent(message = "Can not delete a pr from future")
                                                LocalDate date,
                                                @PathVariable String workoutName)
-    {   // set the response using method present in MemberFitService
+    {
         String response = fitService.deleteByWorkoutNameWIthMemberIdAndDate(memberId,date,workoutName);
         return ResponseEntity.status(HttpStatus.OK).body(response);
-        // if successfully deletes data in DB then returns OK as http status
+    }
+    /**
+     * Retrieve pre-aggregated monthly BMI summary for a given member.
+     *
+     * @param memberId member identifier
+     * @return monthly BMI summary report
+     *
+     * <p>Returns {@link HttpStatus#OK} along with cached data (via Redis) if available.</p>
+     */
+    @GetMapping("/bmiSummary")
+    ResponseEntity<BmiSummaryResponseWrapperDto> getMonthlyBmiReport(@RequestParam String memberId){
+        BmiSummaryResponseWrapperDto response = fitService.getBmiReportByMonth(memberId);
+        return  ResponseEntity.status(HttpStatus.OK).body(response);
+    }
+    /**
+     * Retrieve pre-aggregated monthly PR summary for a given member.
+     *
+     * @param memberId member identifier
+     * @return monthly PR summary report
+     *
+     * <p>Returns {@link HttpStatus#OK} along with cached data (via Redis) if available.</p>
+     */
+    @GetMapping("/prSummary")
+    ResponseEntity<?> getMonthlyPrReport(@RequestParam String memberId){
+        Object response = fitService.getPrReportByMonth(memberId);
+        return  ResponseEntity.status(HttpStatus.OK).body(response);
     }
 }
