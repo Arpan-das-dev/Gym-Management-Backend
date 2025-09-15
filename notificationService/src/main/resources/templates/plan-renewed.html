@@ -1,0 +1,89 @@
+<!DOCTYPE html>
+<html xmlns:th="http://www.thymeleaf.org" lang="en">
+<head>
+    <meta charset="UTF-8">
+    <title th:text="${subject}">Plan Activated</title>
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            background: #f5faff; /* soft skyblue background */
+            margin: 0;
+            padding: 0;
+        }
+        .container {
+            max-width: 650px;
+            margin: 30px auto;
+            background: #ffffff;
+            border-radius: 14px;
+            box-shadow: 0 4px 14px rgba(0,0,0,0.1);
+            border: 1px solid #e6e6e6;
+            overflow: hidden;
+        }
+        .header {
+            background: linear-gradient(90deg, #00b4ff, #ff7a00);
+            color: #fff;
+            padding: 25px;
+            text-align: center;
+        }
+        .header h2 {
+            margin: 0;
+            font-size: 24px;
+        }
+        .content {
+            padding: 30px;
+            color: #333;
+        }
+        .content p {
+            margin: 14px 0;
+            line-height: 1.7;
+        }
+        .highlight {
+            color: #ff7a00;
+            font-weight: bold;
+        }
+        .positive {
+            color: #00b4ff;
+            font-weight: bold;
+        }
+        .footer {
+            background: #111;
+            color: #ccc;
+            text-align: center;
+            font-size: 13px;
+            padding: 15px;
+        }
+        .button {
+            display: inline-block;
+            margin-top: 25px;
+            padding: 14px 25px;
+            background-color: #00b4ff;
+            color: #fff !important;
+            text-decoration: none;
+            font-weight: bold;
+            border-radius: 8px;
+        }
+        .button:hover {
+            background-color: #0092cc;
+        }
+    </style>
+</head>
+<body>
+<div class="container">
+    <div class="header">
+        <h2 th:text="${subject}">Your Plan is Activated 🎉</h2>
+    </div>
+    <div class="content">
+        <p>Hello <span class="highlight" th:text="${name}">Member</span>,</p>
+        <p class="positive">Great news! Your <strong th:text="${planName}">Premium Plan</strong> has been successfully activated.</p>
+        <p>✅ Activation Date: <span th:text="${activationDate}">2025-09-14</span></p>
+        <p>⏳ Duration: <span th:text="${duration}">90</span> days</p>
+        <p>📅 Expiration Date: <span class="highlight" th:text="${planExpiration}">2025-12-14</span></p>
+        <p>We’re excited to continue your fitness journey with <strong>FIT STUDIO</strong> 💪</p>
+        <a href="@{${frontend.dashboard}}" class="button">Go to Dashboard</a>
+    </div>
+    <div class="footer">
+        © <span th:text="${activationYear}">2025</span> FIT STUDIO. Stay fit. Stay strong.
+    </div>
+</div>
+</body>
+</html>
