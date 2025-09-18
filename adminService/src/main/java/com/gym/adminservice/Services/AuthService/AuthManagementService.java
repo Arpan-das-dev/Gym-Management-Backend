@@ -45,7 +45,6 @@ public class AuthManagementService {
                 .age(memberRequestDto.getAge()).gender(memberRequestDto.getGender())
                 .joinDate(memberRequestDto.getJoinDate()).address(memberRequestDto.getAddress())
                 .email(memberRequestDto.getEmail()).phone(memberRequestDto.getPhone())
-                .password(memberRequestDto.getPassword())
                 .build();
         // send the request to the auth service via webclient
         webClientService.sendSignupDetailsMember(responseDto);
