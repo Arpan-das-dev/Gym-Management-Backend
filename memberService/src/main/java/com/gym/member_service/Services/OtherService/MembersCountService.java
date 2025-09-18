@@ -68,13 +68,14 @@ public class MembersCountService {
      */
     @Scheduled(cron = "0 */20 6-23 * * MON-SAT")
     public void savedData(){
-        MembersActive activeMembers = MembersActive.builder()
-                .dateTime(LocalDateTime.now())
-                .time(String.valueOf(LocalDateTime.now().getHour()))
-                .memberCount(getActiveMembersCount())
-                .build();
-        memberActiveRepository.save(activeMembers);
+        if(getActiveMembersCount()!=0){
+            MembersActive activeMembers = MembersActive.builder()
+                    .dateTime(LocalDateTime.now())
+                    .time(String.valueOf(LocalDateTime.now().getHour()))
+                    .memberCount(getActiveMembersCount())
+                    .build();
+            memberActiveRepository.save(activeMembers);
+        }
     }
 
-   
 }
