@@ -1,0 +1,87 @@
+<!DOCTYPE html>
+<html xmlns:th="http://www.thymeleaf.org" lang="en">
+<head>
+    <meta charset="UTF-8">
+    <title th:text="${subject}">Gym Plan Expiry Notification</title>
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            background-color: #f7f9fc;
+            margin: 0;
+            padding: 0;
+        }
+        .container {
+            max-width: 600px;
+            margin: 30px auto;
+            background: #ffffff;
+            border-radius: 12px;
+            box-shadow: 0 4px 12px rgba(0,0,0,0.1);
+            overflow: hidden;
+            border: 1px solid #e6e6e6;
+        }
+        .header {
+            background: linear-gradient(90deg, #ff7a00, #00b4ff);
+            color: #fff;
+            padding: 20px;
+            text-align: center;
+        }
+        .header h2 {
+            margin: 0;
+            font-size: 22px;
+        }
+        .content {
+            padding: 25px;
+            color: #333;
+        }
+        .content p {
+            margin: 12px 0;
+            line-height: 1.6;
+        }
+        .highlight {
+            color: #ff7a00;
+            font-weight: bold;
+        }
+        .footer {
+            background: #111;
+            color: #ccc;
+            text-align: center;
+            font-size: 12px;
+            padding: 15px;
+        }
+        .button {
+            display: inline-block;
+            margin-top: 20px;
+            padding: 12px 20px;
+            background-color: #00b4ff;
+            color: #fff !important;
+            text-decoration: none;
+            font-weight: bold;
+            border-radius: 6px;
+        }
+        .button:hover {
+            background-color: #0095d9;
+        }
+    </style>
+</head>
+<body>
+<div class="container">
+    <div class="header">
+        <h2 th:text="${subject}">Plan Expiry Reminder</h2>
+    </div>
+    <div class="content">
+        <p>Hello, <span class="highlight" th:text="${name}">Member</span>,</p>
+        <p>Your current <strong>FIT STUDIO</strong> gym plan has only <span class="highlight">3 days left</span>.</p>
+        <p>Your plan will expire on
+            <span class="highlight" th:text="${expired}">2025-09-17</span>.
+        </p>
+        <p>Please renew your plan to continue enjoying full access to our gym facilities.</p>
+        <p>If you have already purchased a new plan, please ignore this message.</p>
+        <p><strong>Note:</strong> Your account will be frozen <span class="highlight">10 days</span> after plan expiration.</p>
+        <a href="@{${frontend.plans.url}}" class="button">Renew Plan Now</a>
+    </div>
+    <div class="footer">
+        © <span th:text="${#dates.format(time, 'yyyy')}">2025</span> FIT STUDIO. All rights reserved.
+    </div>
+</div>
+</body>
+</html>

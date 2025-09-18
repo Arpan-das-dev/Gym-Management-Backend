@@ -9,10 +9,7 @@ import lombok.RequiredArgsConstructor;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.validation.annotation.Validated;
-import org.springframework.web.bind.annotation.PostMapping;
-import org.springframework.web.bind.annotation.RequestBody;
-import org.springframework.web.bind.annotation.RequestMapping;
-import org.springframework.web.bind.annotation.RestController;
+import org.springframework.web.bind.annotation.*;
 
 @RestController
 @RequestMapping("${authService.base_url}")
@@ -27,11 +24,26 @@ public class VerificationController {
 
     private final VerificationService verificationService;
 
+<<<<<<< Updated upstream
     /*
      * Endpoint to verify email using OTP.
      * Accepts an EmailVerificationRequestDto containing the email and OTP.
      * Returns a success message if the OTP is valid, otherwise returns an error message.
      */
+=======
+    @PostMapping("emailVerification/{email}/{name}")
+    public ResponseEntity<String> sendEmailOtp(@PathVariable String email,@PathVariable String name) {
+        verificationService.sendEmailOtp(email,name);
+        return ResponseEntity.status(HttpStatus.OK).body("email otp send successfully");
+    }
+
+    @PostMapping("phoneVerification/{phone}/{name}")
+    public ResponseEntity<String> sendPhoneOtp(@PathVariable String phone,@PathVariable String name) {
+        verificationService.sendPhoneOtp(phone,name);
+        return ResponseEntity.status(HttpStatus.OK).body("phone otp send successfully");
+    }
+
+>>>>>>> Stashed changes
     @PostMapping("verifyEmail")
     public ResponseEntity<String> verifyEmail(@Valid @RequestBody EmailVerificationRequestDto requestDto) {
         if (verificationService.verifyEmail(requestDto.getEmail(), requestDto.getOtp())) {

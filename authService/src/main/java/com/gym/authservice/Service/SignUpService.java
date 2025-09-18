@@ -7,7 +7,6 @@ import com.gym.authservice.Exceptions.Custom.DuplicateUserException;
 import com.gym.authservice.Repository.SignedUpsRepository;
 import com.gym.authservice.Roles.RoleType;
 import com.gym.authservice.Utils.IdGenerationUtil;
-import com.gym.authservice.Utils.OtpGenerationUtil;
 import lombok.RequiredArgsConstructor;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.security.crypto.password.PasswordEncoder;
@@ -15,17 +14,13 @@ import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 import org.springframework.web.reactive.function.client.WebClient;
 
-import javax.swing.*;
-
 @Service
 @RequiredArgsConstructor
 public class SignUpService {
     private final SignedUpsRepository signedUpsRepository;
     private final PasswordEncoder encoder;
     private final IdGenerationUtil idGenerationUtil;
-    private final OtpGenerationUtil generationUtil;
-    private final VerificationService verificationService;
-    private final NotificationService notificationService;
+    private final WebClientService notificationService;
     private final WebClient.Builder webClient;
 
     @Value("${admin.approval.url}")
@@ -76,8 +71,6 @@ public class SignUpService {
                 signedUps.getLastName());
 
         notificationService.sendWelcome(notificationDto);
-        sendEmailOtp(signedUps.getEmail());
-        sendPhoneOtp(signedUps.getPhone());
 
         return new SignUpResponseDto("user created successfully \n please verify your mobile no and email id");
     }
@@ -89,14 +82,5 @@ public class SignUpService {
                 .retrieve().toBodilessEntity().subscribe();
     }
 
-    public void sendEmailOtp(String email){
-        String otpEmail = generationUtil.generateOtp(6);
-        verificationService.StoreEmailOtp(email, otpEmail, 900);
-        notificationService.sendEmailOtp(new EmailOtpNotificationDto(email, otpEmail));
-    }
-    public void sendPhoneOtp(String phone){
-        String otpPhone = generationUtil.generateOtp(6);
-        verificationService.StorePhoneOtp(phone, otpPhone, 900);
-        notificationService.sendPhoneOtp(new PhoneOtpNotificationDto(phone, otpPhone));
-    }
+
 }
