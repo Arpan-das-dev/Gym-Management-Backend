@@ -8,4 +8,5 @@ import lombok.Data;
 public class PhoneOtpNotificationDto {
     private String phone;
     private String otp;
+    private String name;
 }

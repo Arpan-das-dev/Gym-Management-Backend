@@ -16,7 +16,7 @@ import org.springframework.stereotype.Service;
 public class UserManagementService {
 
     private final SignUpService signUpService;
-    private final NotificationService notificationService;
+    private final WebClientService notificationService;
     private final SignedUpsRepository signedUpsRepository;
 
 

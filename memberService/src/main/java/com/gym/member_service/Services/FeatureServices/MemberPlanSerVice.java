@@ -6,6 +6,7 @@ import com.gym.member_service.Dto.MemberPlanDto.Responses.MemberPlansMeticsRespo
 import com.gym.member_service.Exception.Exceptions.UserNotFoundException;
 import com.gym.member_service.Model.Member;
 import com.gym.member_service.Repositories.MemberRepository;
+import com.gym.member_service.Services.OtherService.WebClientServices;
 import lombok.RequiredArgsConstructor;
 import org.springframework.cache.annotation.CacheEvict;
 import org.springframework.cache.annotation.Caching;
@@ -20,7 +21,7 @@ import java.util.List;
 @RequiredArgsConstructor
 public class MemberPlanSerVice {
     private final MemberRepository memberRepository;
-
+    private final WebClientServices webClientServices;
 
     /*
      * updates the current plan duration time and plan id
@@ -32,7 +33,7 @@ public class MemberPlanSerVice {
      */
     @Caching(evict = {
             @CacheEvict(value = "memberListCache", key = "'All'"),
-            @CacheEvict(value = "memberCache", key = "#requestDto.id")
+            @CacheEvict(value = "memberCache", key = "#id")
     })
     @Transactional
     public String updatePlan(String id, PlanRequestDto requestDto) {
@@ -42,12 +43,18 @@ public class MemberPlanSerVice {
                                                                                                      // not found the id
         member.setPlanID(requestDto.getPlanId()); // set the new plan id
         LocalDateTime current = member.getPlanExpiration(); // get the current expiration date
+        if(current==null) current = LocalDateTime.now();
         member.setPlanExpiration(current.plusDays(requestDto.getDuration())); // add on the duration on previous days
         member.setPlanName(requestDto.getPlanName()); // setting the new plan
-        member.setPlanDurationLeft(requestDto.getDuration()); // increased the duration in days left ;
-        if (!member.getActivePlan())
+        member.setPlanDurationLeft(member.getPlanDurationLeft()+ requestDto.getDuration()); // increased the duration in days left ;
+        if (!member.getActivePlan()){
             member.setActivePlan(true);
+            member.setFrozen(false);
+        }
         memberRepository.save(member);
+        webClientServices.sendUpdatePlanNotification(requestDto,member.getFirstName()+" "+member.getLastName(),
+                                                        member.getPlanExpiration(),member.getPlanDurationLeft(),
+                                                        member.getEmail(),member.getPhone());
         return "plan updated successfully";
     }
 
