@@ -1,5 +1,4 @@
-package com.gym.member_service.Dto.MemberTrainerRequestDto.Requests;
-import jakarta.validation.constraints.*;
+package com.gym.member_service.Dto.MemberTrainerDtos.Requests;
 
 import lombok.AllArgsConstructor;
 import lombok.Builder;
