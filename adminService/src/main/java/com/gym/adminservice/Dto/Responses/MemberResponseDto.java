@@ -14,7 +14,6 @@ public class MemberResponseDto {
     private String  lastName;
     private String email;
     private String phone;
-    private String password;
     private String gender;
     private LocalDate joinDate;
     private String address;
