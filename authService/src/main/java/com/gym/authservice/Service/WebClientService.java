@@ -15,7 +15,6 @@ public class WebClientService {
 
     @Async
     public void sendEmailOtp(Object emailPayload) {
-
         sendAsyncNotification("/emailOtp", emailPayload);
     }
 

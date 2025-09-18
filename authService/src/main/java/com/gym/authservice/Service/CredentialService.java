@@ -23,7 +23,7 @@ public class CredentialService {
     private final SignedUpsRepository signedUpsRepository;
     private final OtpGenerationUtil otpGenerationUtil;
     private final VerificationService verificationService;
-    private final NotificationService notificationService;
+    private final WebClientService notificationService;
     private final PasswordEncoder encoder;
 
     @Transactional
@@ -32,7 +32,7 @@ public class CredentialService {
                 .orElseThrow(() -> new UserNotFoundException("user with this email doesn't exists"));
         String otp = otpGenerationUtil.generateOtp(6);
         verificationService.StoreEmailOtp(user.getEmail(),otp,900);
-        notificationService.sendPasswordReset(new EmailOtpNotificationDto(user.getEmail(), otp));
+        notificationService.sendPasswordReset(new EmailOtpNotificationDto(user.getEmail(), otp, user.getFirstName()));
 
         signedUpsRepository.save(user);
         return new ForgotPasswordResponseDto("OTP sent to registered email");

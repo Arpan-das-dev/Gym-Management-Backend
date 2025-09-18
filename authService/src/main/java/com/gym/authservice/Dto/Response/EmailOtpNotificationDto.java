@@ -9,4 +9,5 @@ import lombok.Data;
 public class EmailOtpNotificationDto {
     private String email;
     private String otp;
+    private String name;
 }
