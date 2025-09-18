@@ -1,4 +1,4 @@
-package com.gym.member_service.Dto.MemberTrainerRequestDto.Requests;
+package com.gym.member_service.Dto.MemberTrainerDtos.Requests;
 
 import jakarta.validation.constraints.*;
 import lombok.AllArgsConstructor;
@@ -20,7 +20,7 @@ public class TrainerAssignRequestDto {
     private String trainerId;
 
     @NotBlank(message = "TrainerName can not be empty")
-    private String TrainerName;
+    private String trainerName;
 
     @NotBlank(message = "Trainer profile image URL must be a valid URL")
     private String trainerProfileImageUrl;
