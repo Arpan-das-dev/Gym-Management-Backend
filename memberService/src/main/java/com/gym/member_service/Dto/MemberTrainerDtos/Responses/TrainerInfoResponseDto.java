@@ -1,4 +1,4 @@
-package com.gym.member_service.Dto.MemberTrainerRequestDto.Responses;
+package com.gym.member_service.Dto.MemberTrainerDtos.Responses;
 
 import lombok.AllArgsConstructor;
 import lombok.Builder;

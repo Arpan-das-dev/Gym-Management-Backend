@@ -12,7 +12,7 @@ import java.time.LocalDate;
 @Builder
 @AllArgsConstructor
 @NoArgsConstructor
-public class PlanActivationNotificationResponseDto {
+public class PlanActivationNotificationRequestDto {
     @NotBlank(message = "Plan name must not be blank")
     private String planName;
 

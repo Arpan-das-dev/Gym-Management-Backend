@@ -1,4 +1,4 @@
-package com.gym.member_service.Dto.MemberTrainerRequestDto.Responses;
+package com.gym.member_service.Dto.MemberTrainerDtos.Responses;
 
 import lombok.AllArgsConstructor;
 import lombok.Builder;
@@ -12,8 +12,10 @@ import java.time.LocalDateTime;
 @AllArgsConstructor
 @NoArgsConstructor
 public class SessionsResponseDto {
+    private String sessionId;
     private String sessionName;
-    private LocalDateTime sessionDate;
-    private double sessionDuration;
-    private String sessionNotes;
+    private LocalDateTime sessionStartTime;
+    private LocalDateTime sessionEndTime;
+    private String memberId;
+    private String trainerId;
 }

@@ -1,4 +1,4 @@
-package com.gym.member_service.Dto.MemberTrainerRequestDto.Responses;
+package com.gym.member_service.Dto.MemberTrainerDtos.Responses;
 
 import lombok.AllArgsConstructor;
 import lombok.Builder;
@@ -21,8 +21,8 @@ public class TrainerAssignResponseDto {
     private String memberName;
     private String trainerId;
     private String trainerProfileImageUrl;
-    private String TrainerName;
+    private String trainerName;
     private LocalDate requestDate;
-    private String planName;
+    private String memberPlanName;
     private LocalDate memberPlanExpirationDate;
 }
