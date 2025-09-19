@@ -55,10 +55,6 @@ public class Member {
     @OneToMany(mappedBy = "member", cascade = CascadeType.ALL, orphanRemoval = true)
     private Set<PrProgresses> prProgresses ;
 
-    @EqualsAndHashCode.Exclude
-    @OneToMany(mappedBy = "member", cascade = CascadeType.ALL, orphanRemoval = true)
-    private Set<DailyRoutine> dailyRoutines;
-
     @Column(name = "login_streak")
     private Integer loginStreak;
 
