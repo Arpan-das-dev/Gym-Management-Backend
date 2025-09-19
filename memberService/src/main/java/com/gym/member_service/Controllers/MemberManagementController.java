@@ -50,7 +50,7 @@ public class MemberManagementController {
      */
     @PostMapping("admin/freeze")
     public ResponseEntity<String> freeze(@Valid @RequestBody FreezeRequestDto requestDto){
-        String response =  memberManagementService.freezeOrUnFreezed(requestDto);
+        String response =  memberManagementService.freezeOrUnFrozen(requestDto);
         return ResponseEntity.status(HttpStatus.ACCEPTED).body(response);
     }
 
