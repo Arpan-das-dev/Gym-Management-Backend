@@ -7,6 +7,8 @@ import com.fasterxml.jackson.databind.SerializationFeature;
 import com.fasterxml.jackson.datatype.jsr310.JavaTimeModule;
 import com.gym.member_service.Dto.MemberManagementDto.Responses.AllMemberResponseDto;
 import com.gym.member_service.Dto.MemberManagementDto.Responses.MemberDetailsResponseDto;
+import com.gym.member_service.Dto.MemberTrainerDtos.Responses.TrainerInfoResponseDto;
+import com.gym.member_service.Dto.MemberTrainerDtos.Wrapper.AllSessionInfoResponseDto;
 import org.springframework.cache.CacheManager;
 import org.springframework.cache.annotation.EnableCaching;
 import org.springframework.context.annotation.Bean;
@@ -51,8 +53,20 @@ public class RedisConfig {
     }
 
     @Bean
+    public TypedJsonRedisSerializer<TrainerInfoResponseDto> trainerInfoResponseDtoSerializer
+            (ObjectMapper redisObjectMapper) {
+        return new TypedJsonRedisSerializer<>(redisObjectMapper, TrainerInfoResponseDto.class);
+    }
+    @Bean
+    public TypedJsonRedisSerializer<AllSessionInfoResponseDto> allSessionInfoResponseDtoSerializer(
+            ObjectMapper redisObjectMapper) {
+        return new TypedJsonRedisSerializer<>(redisObjectMapper, AllSessionInfoResponseDto.class);
+    }
+    @Bean
     public CacheManager cacheManager(RedisConnectionFactory connectionFactory,
                                      TypedJsonRedisSerializer<AllMemberResponseDto> memberDtoSerializer,
+                                     TypedJsonRedisSerializer<TrainerInfoResponseDto> trainerInfoResponseDtoSerializer,
+                                     TypedJsonRedisSerializer<AllSessionInfoResponseDto> allSessionInfoResponseDtoSerializer,
                                      GenericJackson2JsonRedisSerializer genericSerializer) {
 
         RedisCacheConfiguration defaultConfig = RedisCacheConfiguration.defaultCacheConfig()
@@ -73,8 +87,19 @@ public class RedisConfig {
                 .serializeValuesWith(RedisSerializationContext.SerializationPair.fromSerializer(memberDtoSerializer))
                 .entryTtl(Duration.ofHours(3)));
 
+        cacheConfigs.put("member'sTrainer",defaultConfig
+                .serializeValuesWith(RedisSerializationContext.SerializationPair
+                        .fromSerializer(trainerInfoResponseDtoSerializer))
+                .entryTtl(Duration.ofHours(3)));
+
+        cacheConfigs.put("member'sSessionCache",defaultConfig
+                .serializeValuesWith(RedisSerializationContext.SerializationPair
+                        .fromSerializer(allSessionInfoResponseDtoSerializer))
+                .entryTtl(Duration.ofHours(16)));
+
         cacheConfigs.put("memberCountCache",
                 RedisCacheConfiguration.defaultCacheConfig().entryTtl(Duration.ofHours(15)));
+
         cacheConfigs.put("profileImageUrl",
                 RedisCacheConfiguration.defaultCacheConfig().entryTtl(Duration.ofHours(18)));
 
