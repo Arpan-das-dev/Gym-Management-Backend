@@ -76,7 +76,7 @@ public class MemberManagementService {
     public AllMemberResponseDto getMemberById(String id) {
         Member member = memberRepository.findById(id)
                 .orElseThrow(() -> new UserNotFoundException("Member with this id does not exist")); // if no user found
-                                                                                                   // throws a exception
+                                                                                                   // throws an exception
         return responseDto(member); // a helper method defined below to return the required data
     }
 
@@ -189,7 +189,7 @@ public class MemberManagementService {
             @CacheEvict(value = "memberListCache", key = "'All'"),
             @CacheEvict(value = "memberCache", key = "#requestDto.id")
     })
-    public String freezeOrUnFreezed(FreezeRequestDto requestDto) {
+    public String freezeOrUnFrozen(FreezeRequestDto requestDto) {
         String id = requestDto.getId();
         Member member = memberRepository.findById(id)
                 .orElseThrow(() -> new UserNotFoundException("Member with this id does not exist")); // if no user found
