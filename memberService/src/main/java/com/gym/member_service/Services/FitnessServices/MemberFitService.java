@@ -379,7 +379,7 @@ public class MemberFitService {
      * @param memberId ID of the member whose BMI report is requested.
      * @return Wrapped DTO containing the list of BMI monthly summaries.
      */
-    @Cacheable(value = "member'sMonthlyBmrCache",key = "#memberId")
+    @Cacheable(value = "membersMonthlyBmiCache",key = "#memberId")
     @Transactional(readOnly = true)
     public BmiSummaryResponseWrapperDto getBmiReportByMonth(String memberId) {
         // Fetch raw BMI summaries for this member from DB
@@ -411,7 +411,7 @@ public class MemberFitService {
      * @param memberId ID of the member whose PR report is requested.
      * @return Wrapped DTO containing the list of PR monthly summaries.
      */
-    @Cacheable(value = "member'sMonthlyPrCache", key = "#memberId")
+    @Cacheable(value = "membersMonthlyPrCache", key = "#memberId")
     @Transactional(readOnly = true)
     public PrSummaryResponseWrapperDto getPrReportByMonth(String memberId) {
         // Fetch raw PR summaries for this member from DB
