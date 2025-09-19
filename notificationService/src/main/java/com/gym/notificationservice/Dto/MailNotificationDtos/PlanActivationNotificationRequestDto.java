@@ -1,4 +1,4 @@
-package com.gym.notificationservice.Dto.MemberNotificationRequests;
+package com.gym.notificationservice.Dto.MailNotificationDtos;
 
 import jakarta.validation.constraints.*;
 

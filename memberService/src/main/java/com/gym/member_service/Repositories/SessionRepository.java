@@ -8,6 +8,7 @@ import org.springframework.data.jpa.repository.JpaRepository;
 import com.gym.member_service.Model.Session;
 import org.springframework.data.jpa.repository.Query;
 
+import java.time.LocalDateTime;
 import java.util.List;
 
 public interface SessionRepository extends JpaRepository<Session,String>{
@@ -29,5 +30,8 @@ public interface SessionRepository extends JpaRepository<Session,String>{
             nativeQuery = true)
     List<Session> findUpcomingSessionsByMemberId(@Param("memberId") String memberId);
 
+    @Query(value = "SELECT s FROM Session s WHERE s.sessionStartTime BETWEEN :now AND :threshold")
+    List<Session> findSessionsStartingSoon(@Param("now") LocalDateTime now,
+                                           @Param("threshold") LocalDateTime threshold);
 
 }

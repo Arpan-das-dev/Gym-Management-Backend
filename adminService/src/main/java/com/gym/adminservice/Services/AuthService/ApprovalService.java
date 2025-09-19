@@ -8,7 +8,6 @@ import com.gym.adminservice.Dto.Responses.ApproveEmailNotificationDto;
 import com.gym.adminservice.Dto.Responses.MemberAssignmentToTrainerResponseDto;
 import com.gym.adminservice.Dto.Responses.MemberRequestResponse;
 import com.gym.adminservice.Dto.Responses.TrainerAssignMentResponseDto;
-import com.gym.adminservice.Dto.Statuses.MemberRequestStatusForTrainer;
 import com.gym.adminservice.Exceptions.RequestNotFoundException;
 import com.gym.adminservice.Models.MemberRequest;
 import com.gym.adminservice.Models.PendingRequest;
@@ -18,14 +17,13 @@ import com.gym.adminservice.Services.WebClientServices.WebClientAuthService;
 import com.gym.adminservice.Services.WebClientServices.WebClientNotificationService;
 import lombok.RequiredArgsConstructor;
 
-import org.springframework.data.redis.core.RedisTemplate;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
 import java.time.LocalDate;
 import java.time.format.DateTimeFormatter;
 import java.util.List;
-import java.util.Optional;
+
 import java.util.UUID;
 
 @Service
@@ -45,9 +43,6 @@ public class ApprovalService {
     private final WebClientAuthService webAuthClientService;
     private final WebClientNotificationService webClientNotificationService;
     private final MemberRequestRepository memberRequestRepository;
-    private final RedisTemplate<String,Object> redisTemplate;
-
-    private final String  redisTemplatePrefix="request::status";
 
     /*
      * this service will insert all those request in the pending request table
@@ -142,7 +137,7 @@ public class ApprovalService {
                 .build();
     }
 
-    public void addMeberRequestForTrainer(TrainerAssignRequestDto requestDto) {
+    public void addMemberRequestForTrainer(TrainerAssignRequestDto requestDto) {
         String requestId = requestIdGen(requestDto.getMemberId(), requestDto.getTrainerId(),
                 requestDto.getRequestDate());
         MemberRequest request = MemberRequest.builder()
@@ -203,15 +198,12 @@ public class ApprovalService {
     }
 
     public void deleteRequest(String requestId){
-       MemberRequest request = memberRequestRepository.findById(requestId)
-       .orElseThrow(() -> new RequestNotFoundException("No request found with this id :" + requestId));
        memberRequestRepository.deleteById(requestId);
     }
 
 
     /**
  * Generates a unique requestId for member-trainer assignment requests.
- *
  * Format: {memberId}-{trainerId}-{yyyyMMdd}-{8-char-random}
  * Example: M123-T456-20250916-ab12cd34
  */

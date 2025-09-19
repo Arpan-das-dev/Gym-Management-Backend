@@ -1,14 +1,12 @@
 package com.gym.member_service.Dto.MemberTrainerDtos.Responses;
 
-import lombok.AllArgsConstructor;
-import lombok.Builder;
-import lombok.NoArgsConstructor;
-import lombok.Setter;
+import lombok.*;
 
 import java.time.LocalDate;
 
 @AllArgsConstructor
 @Setter
+@Getter
 @Builder
 @NoArgsConstructor
 /**

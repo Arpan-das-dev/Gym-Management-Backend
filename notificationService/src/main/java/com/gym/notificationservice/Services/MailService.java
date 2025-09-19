@@ -1,4 +1,4 @@
-package com.gym.notificationservice.Service;
+package com.gym.notificationservice.Services;
 
 import com.sendgrid.Method;
 import com.sendgrid.Request;

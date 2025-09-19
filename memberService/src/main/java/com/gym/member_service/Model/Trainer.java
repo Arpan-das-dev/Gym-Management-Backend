@@ -29,12 +29,6 @@ public class Trainer {
      * Usually auto-generated.
      */
     @Id
-    @GeneratedValue(strategy = GenerationType.IDENTITY)
-    private Long id;
-
-    /**
-     * ID of the trainer (external identifier).
-     */
     @Column(nullable = false)
     private String trainerId;
 
@@ -56,11 +50,6 @@ public class Trainer {
     @Column(nullable = false)
     private String memberId;
 
-    /**
-     * Date when the trainer assignment started.
-     */
-    @Column(nullable = false)
-    private LocalDate eligibilityStart;
 
     /**
      * Date until when the trainer is eligible to train this member.

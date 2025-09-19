@@ -1,11 +1,17 @@
 package com.gym.adminservice.Services.WebClientServices;
 
+import com.gym.adminservice.Dto.Responses.MemberAssignmentToTrainerResponseDto;
 import com.gym.adminservice.Dto.Responses.SignupResponseDto;
+import com.gym.adminservice.Dto.Responses.TrainerAssignMentResponseDto;
+
+import lombok.extern.slf4j.Slf4j;
+
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.scheduling.annotation.Async;
 import org.springframework.stereotype.Service;
 import org.springframework.web.reactive.function.client.WebClient;
 
+@Slf4j
 @Service
 
 /*
@@ -17,10 +23,15 @@ public class WebClientAuthService {
     // get the auth service url from the application properties file
     @Value("${app.authService.url}")
     private final String authServiceAdmin_URL;
+    @Value("${app.memberService.assign_url}")
+    private final String memberServiceAssignTrainer_URL;
     private final WebClient.Builder webClient;
 
-    public WebClientAuthService(@Value("${app.authService.url}") String authServiceAdmin_URL, WebClient.Builder webClient) {
+    public WebClientAuthService(@Value("${app.authService.url}") String authServiceAdmin_URL,
+                                @Value("${app.memberService.assign_url}") String memberServiceAssignTrainer_URL,
+                                WebClient.Builder webClient) {
         this.authServiceAdmin_URL = authServiceAdmin_URL;
+        this.memberServiceAssignTrainer_URL = memberServiceAssignTrainer_URL;
         this.webClient = webClient;
     }
 
@@ -133,4 +144,19 @@ public class WebClientAuthService {
                 );
     }
 
+    @Async
+    public void sendDtoForAssignTrainerToMember(TrainerAssignMentResponseDto responseDto) {
+        webClient.build().post()
+                .uri(memberServiceAssignTrainer_URL)
+                .bodyValue(responseDto)
+                .retrieve()
+                .toBodilessEntity()
+                .subscribe(success -> log.info("Dto send to {}", "MemberService"),
+                        error -> log.error("Unable to send dto to {} {}", "MemberService", error.getMessage()));
+    }
+
+    public void sendDtoForAssignMemberToTrainer(MemberAssignmentToTrainerResponseDto memberResponseDto) { 
+        /** * this method will be defined later when the trainer service will be created */
+
+    }
 }
