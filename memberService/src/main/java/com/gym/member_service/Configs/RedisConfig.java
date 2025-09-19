@@ -5,6 +5,8 @@ import com.fasterxml.jackson.databind.DeserializationFeature;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.fasterxml.jackson.databind.SerializationFeature;
 import com.fasterxml.jackson.datatype.jsr310.JavaTimeModule;
+import com.gym.member_service.Dto.MemberFitDtos.Wrappers.BmiSummaryResponseWrapperDto;
+import com.gym.member_service.Dto.MemberFitDtos.Wrappers.PrSummaryResponseWrapperDto;
 import com.gym.member_service.Dto.MemberManagementDto.Responses.AllMemberResponseDto;
 import com.gym.member_service.Dto.MemberManagementDto.Responses.MemberDetailsResponseDto;
 import com.gym.member_service.Dto.MemberTrainerDtos.Responses.TrainerInfoResponseDto;
@@ -63,10 +65,24 @@ public class RedisConfig {
         return new TypedJsonRedisSerializer<>(redisObjectMapper, AllSessionInfoResponseDto.class);
     }
     @Bean
+    public TypedJsonRedisSerializer<BmiSummaryResponseWrapperDto> monthlyBmiSummarySerializer
+            (ObjectMapper redisObjectMapper) {
+        return new TypedJsonRedisSerializer<>(redisObjectMapper, BmiSummaryResponseWrapperDto.class);
+    }
+
+    @Bean
+    public TypedJsonRedisSerializer<PrSummaryResponseWrapperDto> monthlyPrSummarySerializer
+            (ObjectMapper redisObjectMapper) {
+        return  new TypedJsonRedisSerializer<>(redisObjectMapper, PrSummaryResponseWrapperDto.class);
+    }
+
+    @Bean
     public CacheManager cacheManager(RedisConnectionFactory connectionFactory,
                                      TypedJsonRedisSerializer<AllMemberResponseDto> memberDtoSerializer,
                                      TypedJsonRedisSerializer<TrainerInfoResponseDto> trainerInfoResponseDtoSerializer,
                                      TypedJsonRedisSerializer<AllSessionInfoResponseDto> allSessionInfoResponseDtoSerializer,
+                                     TypedJsonRedisSerializer<BmiSummaryResponseWrapperDto> monthlyBmiSummarySerializer,
+                                     TypedJsonRedisSerializer<PrSummaryResponseWrapperDto> monthlyPrSummarySerializer,
                                      GenericJackson2JsonRedisSerializer genericSerializer) {
 
         RedisCacheConfiguration defaultConfig = RedisCacheConfiguration.defaultCacheConfig()
@@ -96,6 +112,16 @@ public class RedisConfig {
                 .serializeValuesWith(RedisSerializationContext.SerializationPair
                         .fromSerializer(allSessionInfoResponseDtoSerializer))
                 .entryTtl(Duration.ofHours(16)));
+
+        cacheConfigs.put("membersMonthlyBmiCache",defaultConfig
+                .serializeValuesWith(RedisSerializationContext.SerializationPair
+                        .fromSerializer(monthlyBmiSummarySerializer))
+                        .entryTtl(Duration.ofHours(12)));
+
+        cacheConfigs.put("membersMonthlyPrCache",defaultConfig
+                .serializeValuesWith(RedisSerializationContext.SerializationPair
+                        .fromSerializer(monthlyPrSummarySerializer))
+                .entryTtl(Duration.ofHours(12)));
 
         cacheConfigs.put("memberCountCache",
                 RedisCacheConfiguration.defaultCacheConfig().entryTtl(Duration.ofHours(15)));
