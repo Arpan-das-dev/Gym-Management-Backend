@@ -1,8 +1,8 @@
 package com.gym.notificationservice.Controller;
 
-import com.gym.notificationservice.Dto.MemberNotificationRequests.MailNotificationRequestDto;
-import com.gym.notificationservice.Dto.MemberNotificationRequests.PlanActivationNotificationRequestDto;
-import com.gym.notificationservice.Service.MemberNotificationService;
+import com.gym.notificationservice.Dto.MailNotificationDtos.MailNotificationRequestDto;
+import com.gym.notificationservice.Dto.MailNotificationDtos.PlanActivationNotificationRequestDto;
+import com.gym.notificationservice.Services.MemberNotificationService;
 import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
 import org.springframework.http.HttpStatus;

@@ -1,4 +1,4 @@
-package com.gym.notificationservice.Service;
+package com.gym.notificationservice.Services;
 
 
 

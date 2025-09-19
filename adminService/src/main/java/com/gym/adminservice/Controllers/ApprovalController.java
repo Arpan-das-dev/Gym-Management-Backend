@@ -71,7 +71,7 @@ public class ApprovalController {
 
     @PostMapping("/memberRequest")
     public ResponseEntity<String> addMemberRequestForTrainer(@RequestBody TrainerAssignRequestDto requestDto) {
-        approvalService.addMeberRequestForTrainer(requestDto);
+        approvalService.addMemberRequestForTrainer(requestDto);
         String response = "Add request for trainer for the member: " + requestDto.getMemberName();
         return ResponseEntity.status(HttpStatus.ACCEPTED).body(response);
     }

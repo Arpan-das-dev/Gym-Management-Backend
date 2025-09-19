@@ -1,6 +1,8 @@
-package com.gym.notificationservice.Service;
+package com.gym.notificationservice.Services;
 
 
+import com.gym.notificationservice.Dto.MailNotificationDtos.MailNotificationRequestDto;
+import com.gym.notificationservice.Dto.MailNotificationDtos.PlanActivationNotificationRequestDto;
 import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Service;
 import org.thymeleaf.TemplateEngine;
@@ -27,7 +29,7 @@ public class MemberNotificationService {
      * using template engine it sends email to the member
      * using member service where we used send grid for sms.
      */
-    public void sendAlertMail( requestDto) {
+    public void sendAlertMail(MailNotificationRequestDto requestDto) {
         // creating a context using a private generic method(defined below)
         Context context = contextBuilder(requestDto);
         // using template engine to stringify the context with html template
