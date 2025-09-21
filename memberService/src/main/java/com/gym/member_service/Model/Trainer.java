@@ -26,7 +26,6 @@ public class Trainer {
 
     /**
      * Primary key for Trainer entity.
-     * Usually auto-generated.
      */
     @Id
     @Column(nullable = false)
