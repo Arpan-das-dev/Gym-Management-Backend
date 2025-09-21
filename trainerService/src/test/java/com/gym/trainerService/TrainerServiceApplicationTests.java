@@ -1,4 +1,4 @@
-package com.gym.trainer_service;
+package com.gym.trainerService;
 
 import org.junit.jupiter.api.Test;
 import org.springframework.boot.test.context.SpringBootTest;
