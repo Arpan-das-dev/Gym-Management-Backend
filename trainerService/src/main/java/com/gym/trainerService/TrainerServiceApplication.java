@@ -1,4 +1,4 @@
-package com.gym.trainer_service;
+package com.gym.trainerService;
 
 import org.springframework.boot.SpringApplication;
 import org.springframework.boot.autoconfigure.SpringBootApplication;

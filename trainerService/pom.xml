@@ -12,7 +12,7 @@
 	<artifactId>trainer-service</artifactId>
 	<version>0.0.1-SNAPSHOT</version>
 	<name>trainerService</name>
-	<description>Demo project for Spring Boot</description>
+	<description>Trainer microservice for Gym Management System</description>
 	<url/>
 	<licenses>
 		<license/>
@@ -81,11 +81,11 @@
 			<artifactId>reactor-test</artifactId>
 			<scope>test</scope>
 		</dependency>
-		<dependency>
-			<groupId>org.springframework.kafka</groupId>
-			<artifactId>spring-kafka-test</artifactId>
-			<scope>test</scope>
-		</dependency>
+        <dependency>
+            <groupId>org.springframework.kafka</groupId>
+            <artifactId>spring-kafka-test</artifactId>
+            <scope>test</scope>
+        </dependency>
 	</dependencies>
 
 	<build>
