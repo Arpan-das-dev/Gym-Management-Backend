@@ -8,6 +8,7 @@ import com.gym.adminservice.Dto.Responses.ApproveEmailNotificationDto;
 import com.gym.adminservice.Dto.Responses.MemberAssignmentToTrainerResponseDto;
 import com.gym.adminservice.Dto.Responses.MemberRequestResponse;
 import com.gym.adminservice.Dto.Responses.TrainerAssignMentResponseDto;
+import com.gym.adminservice.Enums.RoleType;
 import com.gym.adminservice.Exceptions.RequestNotFoundException;
 import com.gym.adminservice.Models.MemberRequest;
 import com.gym.adminservice.Models.PendingRequest;
@@ -117,13 +118,13 @@ public class ApprovalService {
          * but we will implement this later when we will implement the trainer and
          * member services
          */
-        // if (request.getRole().equals(RoleType.TRAINER_PENDING)) {
-        // // delete the trainer details from trainer service's database
-        // webAuthClientService.deleteTrainer(requestDto.getEmail());
-        // } else if (request.getRole().equals(RoleType.MEMBER)) {
-        // // delete the member details from member service's database
-        // webAuthClientService.deleteMember(requestDto.getEmail());
-        // }
+        if (request.getRole().equals(RoleType.TRAINER_PENDING)) {
+        // delete the trainer details from trainer service's database
+        webAuthClientService.deleteTrainer(requestDto.getEmail());
+        } else if (request.getRole().equals(RoleType.MEMBER)) {
+        // delete the member details from member service's database
+        webAuthClientService.deleteMember(requestDto.getEmail());
+        }
         /*
          * now delete the user from the auth service's database
          */
