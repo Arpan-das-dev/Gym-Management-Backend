@@ -1,0 +1,54 @@
+package com.gym.trainerService.Models;
+
+import com.fasterxml.jackson.annotation.JsonFormat;
+import jakarta.persistence.*;
+import lombok.AllArgsConstructor;
+import lombok.Builder;
+import lombok.Data;
+import lombok.NoArgsConstructor;
+
+import java.time.LocalDate;
+import java.time.LocalDateTime;
+import java.util.List;
+
+@Data
+@AllArgsConstructor
+@Builder
+@NoArgsConstructor
+@Entity
+@Table(name = "trainer")
+public class Trainer {
+    @Id
+    private String trainerId;
+
+    @Column(nullable = false)
+    private String firstName;
+
+    @Column(nullable = false)
+    private String lastName;
+
+    @Column(nullable = false)
+    private String email;
+
+    @Column(nullable = false)
+    private String phone;
+
+    @Column(nullable = false)
+    private String gender;
+
+    @JsonFormat(shape = JsonFormat.Shape.STRING, pattern = "yyyy-MM-dd")
+    @Column(nullable = false)
+    private LocalDate joinDate = LocalDate.now();
+
+    @Column(nullable = false)
+    private boolean active = false;
+
+    @Column(nullable = false)
+    private LocalDateTime lastLogin = LocalDateTime.now();
+
+    @Column(nullable = false)
+    private double averageRating = 0.0;
+
+    @OneToMany(mappedBy = "trainer",cascade = CascadeType.ALL, orphanRemoval = true)
+    private List<Review> reviews;
+}
