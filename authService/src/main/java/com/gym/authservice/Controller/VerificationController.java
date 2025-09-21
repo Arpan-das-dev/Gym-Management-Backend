@@ -24,13 +24,12 @@ public class VerificationController {
 
     private final VerificationService verificationService;
 
-<<<<<<< Updated upstream
     /*
      * Endpoint to verify email using OTP.
      * Accepts an EmailVerificationRequestDto containing the email and OTP.
      * Returns a success message if the OTP is valid, otherwise returns an error message.
      */
-=======
+
     @PostMapping("emailVerification/{email}/{name}")
     public ResponseEntity<String> sendEmailOtp(@PathVariable String email,@PathVariable String name) {
         verificationService.sendEmailOtp(email,name);
@@ -43,7 +42,6 @@ public class VerificationController {
         return ResponseEntity.status(HttpStatus.OK).body("phone otp send successfully");
     }
 
->>>>>>> Stashed changes
     @PostMapping("verifyEmail")
     public ResponseEntity<String> verifyEmail(@Valid @RequestBody EmailVerificationRequestDto requestDto) {
         if (verificationService.verifyEmail(requestDto.getEmail(), requestDto.getOtp())) {

@@ -5,11 +5,9 @@ import com.gym.authservice.Dto.Response.SignUpResponseDto;
 import com.gym.authservice.Service.SignUpService;
 import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
-<<<<<<< Updated upstream
-import org.springframework.http.HttpStatus;
-=======
 
->>>>>>> Stashed changes
+import org.springframework.http.HttpStatus;
+
 import org.springframework.http.ResponseEntity;
 import org.springframework.validation.annotation.Validated;
 import org.springframework.web.bind.annotation.*;
@@ -36,26 +34,6 @@ public class SignUpController {
         return ResponseEntity.ok(signUpService.signUp(requestDto));
     }
 
-<<<<<<< Updated upstream
-    /* Endpoint to send OTP via email 
-     * Accepts an email address as a path variable and triggers the sending of an OTP to that email.
-     * Returns a success message upon successful OTP dispatch.
-    */
-    @PostMapping("signup/{email}")
-    public ResponseEntity<String> sendEmailOtp(@PathVariable String email) {
-        signUpService.sendEmailOtp(email);
-        return ResponseEntity.status(HttpStatus.OK).body("otp sent successfully via email");
-    }
-    
-    /* Endpoint to send OTP via phone
-     * Accepts a phone number as a path variable and triggers the sending of an OTP to that phone number.
-     * Returns a success message upon successful OTP dispatch.
-    */
-    @PostMapping("signup/{phone}")
-    public ResponseEntity<String> sendPhoneOtp(@PathVariable String phone) {
-        signUpService.sendPhoneOtp(phone);
-        return ResponseEntity.status(HttpStatus.OK).body("otp sent successfully via sms");
-    }
-=======
->>>>>>> Stashed changes
+
+
 }
