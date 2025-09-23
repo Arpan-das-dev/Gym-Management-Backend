@@ -14,6 +14,7 @@ import java.util.List;
  * Used in requests for adding specialities to a trainer profile.
  * </p>
  */
+
 @Data
 @Builder
 @AllArgsConstructor
