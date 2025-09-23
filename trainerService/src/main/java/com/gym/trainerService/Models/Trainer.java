@@ -21,31 +21,35 @@ public class Trainer {
     @Id
     private String trainerId;
 
+    @Builder.Default
+    @Column(nullable = false)
+    private String trainerProfileImageUrl="";
+
     @Column(nullable = false)
     private String firstName;
 
     @Column(nullable = false)
     private String lastName;
 
-    @Column(nullable = false)
+    @Column(nullable = false,unique = true)
     private String email;
 
-    @Column(nullable = false)
+    @Column(nullable = false,unique = true)
     private String phone;
 
     @Column(nullable = false)
     private String gender;
 
+    @Builder.Default
     @JsonFormat(shape = JsonFormat.Shape.STRING, pattern = "yyyy-MM-dd")
     @Column(nullable = false)
     private LocalDate joinDate = LocalDate.now();
 
-    @Column(nullable = false)
-    private boolean active = false;
-
+    @Builder.Default
     @Column(nullable = false)
     private LocalDateTime lastLogin = LocalDateTime.now();
 
+    @Builder.Default
     @Column(nullable = false)
     private double averageRating = 0.0;
 
