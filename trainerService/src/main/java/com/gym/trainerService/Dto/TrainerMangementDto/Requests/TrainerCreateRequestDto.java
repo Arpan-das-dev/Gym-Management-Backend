@@ -26,6 +26,7 @@ import java.time.LocalDate;
  *     <li>Join date cannot be in the future</li>
  * </ul>
  */
+
 @Data
 @Builder
 @AllArgsConstructor
