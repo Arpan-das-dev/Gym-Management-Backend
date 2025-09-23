@@ -8,6 +8,24 @@ import lombok.NoArgsConstructor;
 
 import java.time.LocalDate;
 
+/**
+ * Request DTO for creating a new Trainer.
+ * <p>
+ * Captures all required trainer details for creation, including personal information,
+ * contact information, gender, and join date. Includes validation annotations
+ * to ensure data correctness before persistence.
+ * </p>
+ *
+ * <p>Validations:</p>
+ * <ul>
+ *     <li>Id cannot be blank</li>
+ *     <li>First and last name are required with a max length of 50 characters</li>
+ *     <li>Email must be valid</li>
+ *     <li>Phone number must follow a specific regex pattern</li>
+ *     <li>Gender must be Male, Female, or Other</li>
+ *     <li>Join date cannot be in the future</li>
+ * </ul>
+ */
 @Data
 @Builder
 @AllArgsConstructor
