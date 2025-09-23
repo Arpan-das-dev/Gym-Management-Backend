@@ -42,7 +42,6 @@ import org.springframework.web.bind.annotation.*;
  * @version 1.0
  * @since 1.0
  */
-
 @RestController
 @RequiredArgsConstructor
 @Slf4j
