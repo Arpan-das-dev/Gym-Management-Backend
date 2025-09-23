@@ -4,7 +4,8 @@ import com.fasterxml.jackson.databind.DeserializationFeature;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.fasterxml.jackson.databind.SerializationFeature;
 import com.fasterxml.jackson.datatype.jsr310.JavaTimeModule;
-import com.gym.trainerService.Dto.TrainerMangementDto.Responses.AllTrainerResponseDto;
+import com.gym.trainerService.Dto.TrainerMangementDto.Responses.TrainerResponseDto;
+import com.gym.trainerService.Dto.TrainerMangementDto.Wrappers.AllTrainerResponseDtoWrapper;
 import org.springframework.cache.CacheManager;
 import org.springframework.cache.annotation.EnableCaching;
 import org.springframework.context.annotation.Bean;
@@ -17,6 +18,7 @@ import org.springframework.data.redis.serializer.StringRedisSerializer;
 
 import java.time.Duration;
 import java.util.HashMap;
+import java.util.List;
 import java.util.Map;
 
 @Configuration
@@ -32,15 +34,21 @@ public class RedisConfig {
     }
 
     @Bean
-    public TypedJsonRedisSerializer<AllTrainerResponseDto> allTrainerResponseDtoRedisSerializer
-            (ObjectMapper redisObjectMapper){
-        return new TypedJsonRedisSerializer<>(redisObjectMapper, AllTrainerResponseDto.class);
+    public TypedJsonRedisSerializer<AllTrainerResponseDtoWrapper> allTrainerResponseDtoRedisSerializer
+            (ObjectMapper redisObjectMapper) {
+        return new TypedJsonRedisSerializer<>(redisObjectMapper,AllTrainerResponseDtoWrapper.class );
+    }
+
+    @Bean
+    public TypedJsonRedisSerializer<TrainerResponseDto> trainerResponseDtoRedisSerializer
+            (ObjectMapper redisObjectMapper) {
+        return new TypedJsonRedisSerializer<>(redisObjectMapper, TrainerResponseDto.class);
     }
 
     @Bean
     public CacheManager cacheManager(RedisConnectionFactory connectionFactory,
-                                   TypedJsonRedisSerializer<AllTrainerResponseDto> allTrainerResponseDtoRedisSerializer
-    )
+                                     TypedJsonRedisSerializer<AllTrainerResponseDtoWrapper> allTrainerResponseDtoRedisSerializer,
+                                     TypedJsonRedisSerializer<TrainerResponseDto> trainerResponseDtoRedisSerializer)
     {
         RedisCacheConfiguration defaultConfig = RedisCacheConfiguration.defaultCacheConfig()
                 .serializeKeysWith(RedisSerializationContext.SerializationPair
@@ -49,10 +57,15 @@ public class RedisConfig {
 
         Map<String, RedisCacheConfiguration> cacheConfigs = new HashMap<>();
 
-        cacheConfigs.put("AllTrainerCache",defaultConfig
+        cacheConfigs.put("AllTrainerCache", defaultConfig
                 .serializeValuesWith(RedisSerializationContext.SerializationPair
                         .fromSerializer(allTrainerResponseDtoRedisSerializer))
                 .entryTtl(Duration.ofHours(6)));
+
+        cacheConfigs.put("trainerCache", defaultConfig
+                .serializeValuesWith(RedisSerializationContext.SerializationPair
+                        .fromSerializer(trainerResponseDtoRedisSerializer))
+                .entryTtl(Duration.ofHours(18)));
 
         return RedisCacheManager.builder(connectionFactory)
                 .cacheDefaults(defaultConfig)
