@@ -1,4 +1,4 @@
-package com.gym.trainerService.Services;
+package com.gym.trainerService.Services.TrainerServices;
 
 import com.gym.trainerService.Dto.TrainerMangementDto.Requests.SpecialityRequestDto;
 import com.gym.trainerService.Dto.TrainerMangementDto.Requests.TrainerCreateRequestDto;
