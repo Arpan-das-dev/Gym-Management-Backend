@@ -4,8 +4,10 @@ import com.fasterxml.jackson.databind.DeserializationFeature;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.fasterxml.jackson.databind.SerializationFeature;
 import com.fasterxml.jackson.datatype.jsr310.JavaTimeModule;
+import com.gym.trainerService.Dto.MemberDtos.Wrappers.AllMemberResponseWrapperDto;
 import com.gym.trainerService.Dto.TrainerMangementDto.Responses.TrainerResponseDto;
 import com.gym.trainerService.Dto.TrainerMangementDto.Wrappers.AllTrainerResponseDtoWrapper;
+import com.gym.trainerService.Dto.TrainerReviewDto.Wrapper.AllReviewResponseWrapperDto;
 import org.springframework.cache.CacheManager;
 import org.springframework.cache.annotation.EnableCaching;
 import org.springframework.context.annotation.Bean;
@@ -13,12 +15,12 @@ import org.springframework.context.annotation.Configuration;
 import org.springframework.data.redis.cache.RedisCacheConfiguration;
 import org.springframework.data.redis.cache.RedisCacheManager;
 import org.springframework.data.redis.connection.RedisConnectionFactory;
+import org.springframework.data.redis.serializer.GenericJackson2JsonRedisSerializer;
 import org.springframework.data.redis.serializer.RedisSerializationContext;
 import org.springframework.data.redis.serializer.StringRedisSerializer;
 
 import java.time.Duration;
 import java.util.HashMap;
-import java.util.List;
 import java.util.Map;
 
 @Configuration
@@ -46,9 +48,30 @@ public class RedisConfig {
     }
 
     @Bean
+    public TypedJsonRedisSerializer<AllReviewResponseWrapperDto> allReviewResponseWrapperDtoRedisSerializer
+            (ObjectMapper redisObjectMapper) {
+        return new TypedJsonRedisSerializer<>(redisObjectMapper, AllReviewResponseWrapperDto.class);
+    }
+
+    @Bean
+    public TypedJsonRedisSerializer<AllMemberResponseWrapperDto> allMemberResponseWrapperDtoRedisSerializer
+            (ObjectMapper redisObjectMapper) {
+        return new TypedJsonRedisSerializer<>(redisObjectMapper,AllMemberResponseWrapperDto.class);
+    }
+
+    @Bean
+    public GenericJackson2JsonRedisSerializer genericSerializer(ObjectMapper redisObjectMapper) {
+        return new GenericJackson2JsonRedisSerializer(redisObjectMapper);
+    }
+
+
+    @Bean
     public CacheManager cacheManager(RedisConnectionFactory connectionFactory,
                                      TypedJsonRedisSerializer<AllTrainerResponseDtoWrapper> allTrainerResponseDtoRedisSerializer,
-                                     TypedJsonRedisSerializer<TrainerResponseDto> trainerResponseDtoRedisSerializer)
+                                     TypedJsonRedisSerializer<TrainerResponseDto> trainerResponseDtoRedisSerializer,
+                                     TypedJsonRedisSerializer<AllReviewResponseWrapperDto> allReviewResponseWrapperDtoRedisSerializer,
+                                     TypedJsonRedisSerializer<AllMemberResponseWrapperDto> allMemberResponseWrapperDtoRedisSerializer,
+                                     GenericJackson2JsonRedisSerializer genericRedisSerializer)
     {
         RedisCacheConfiguration defaultConfig = RedisCacheConfiguration.defaultCacheConfig()
                 .serializeKeysWith(RedisSerializationContext.SerializationPair
@@ -66,6 +89,21 @@ public class RedisConfig {
                 .serializeValuesWith(RedisSerializationContext.SerializationPair
                         .fromSerializer(trainerResponseDtoRedisSerializer))
                 .entryTtl(Duration.ofHours(18)));
+
+        cacheConfigs.put("reviewCache",defaultConfig
+                .serializeValuesWith(RedisSerializationContext.SerializationPair
+                        .fromSerializer(allReviewResponseWrapperDtoRedisSerializer))
+                .entryTtl(Duration.ofHours(16)));
+
+        cacheConfigs.put("AllMemberListCache",defaultConfig
+                .serializeValuesWith(RedisSerializationContext.SerializationPair
+                        .fromSerializer(allMemberResponseWrapperDtoRedisSerializer))
+                .entryTtl(Duration.ofHours(6)));
+
+        cacheConfigs.put("profileImageCache",defaultConfig
+                .serializeValuesWith(RedisSerializationContext.SerializationPair
+                        .fromSerializer(genericRedisSerializer))
+                .entryTtl(Duration.ofDays(2)));
 
         return RedisCacheManager.builder(connectionFactory)
                 .cacheDefaults(defaultConfig)
