@@ -8,7 +8,7 @@ import com.gym.trainerService.Dto.TrainerMangementDto.Wrappers.AllTrainerRespons
 import com.gym.trainerService.Exception.DuplicateSpecialtyFoundException;
 import com.gym.trainerService.Exception.NoSpecialityFoundException;
 import com.gym.trainerService.Exception.NoTrainerFoundException;
-import com.gym.trainerService.Services.TrainerManagementService;
+import com.gym.trainerService.Services.TrainerServices.TrainerManagementService;
 import jakarta.validation.Valid;
 import jakarta.validation.constraints.NotBlank;
 import lombok.RequiredArgsConstructor;
