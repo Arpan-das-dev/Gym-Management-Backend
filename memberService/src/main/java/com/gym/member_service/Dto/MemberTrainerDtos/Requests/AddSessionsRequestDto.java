@@ -13,6 +13,9 @@ import java.time.LocalDateTime;
 @Builder
 public class AddSessionsRequestDto {
 
+    @NotBlank(message = "Session ID must not be blank")
+    private String sessionId;
+
     @NotBlank(message = "Session name must not be blank")
     private String sessionName;
 

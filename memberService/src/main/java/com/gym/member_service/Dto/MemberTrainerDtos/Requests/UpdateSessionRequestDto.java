@@ -11,7 +11,6 @@ import java.time.LocalDateTime;
 @AllArgsConstructor
 @NoArgsConstructor
 public class UpdateSessionRequestDto {
-    private String memberId;
     private String trainerId;
     private String sessionName;
     private LocalDateTime sessionStartTime;
