@@ -7,6 +7,7 @@ import org.springframework.data.jpa.repository.Modifying;
 import org.springframework.data.jpa.repository.Query;
 
 import java.util.List;
+import java.util.Optional;
 
 /**
  * Repository interface for managing {@link Member} entities.
@@ -48,4 +49,8 @@ public interface MemberRepository extends JpaRepository<Member, String> {
     @Query("DELETE FROM Member m WHERE m.trainerId = :trainerId AND m.memberId = :memberId")
     int deleteByTrainerAndMember(@Param("trainerId") String trainerId,
                                  @Param("memberId") String memberId);
+
+    @Query("SELECT m FROM Member m WHERE m.trainerId = :trainerId AND m.memberId = :memberId")
+    Optional<Member> findByTrainerIdMemberId(@Param("trainerId") String trainerId,
+                                     @Param("memberId") String memberId);
 }
