@@ -12,7 +12,7 @@ import java.time.LocalDateTime;
 @Builder
 @AllArgsConstructor
 @NoArgsConstructor
-public class ReviewRequestDto {
+public class ReviewAddRequestDto {
 
     @NotBlank(message = "User ID cannot be blank")
     private String userId;
