@@ -16,7 +16,6 @@ import com.gym.member_service.Repositories.MemberRepository;
 import com.gym.member_service.Repositories.SessionRepository;
 import com.gym.member_service.Repositories.TrainerRepository;
 import com.gym.member_service.Services.OtherService.WebClientServices;
-import com.gym.member_service.Util.SessionIdGenUtil;
 import jakarta.transaction.Transactional;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
@@ -80,10 +79,7 @@ public class MemberTrainerService {
      * Repository for training session data access operations.
      */
     private final SessionRepository sessionRepository;
-    /**
-     * Utility for generating unique session identifiers.
-     */
-    private final SessionIdGenUtil idGenUtil;
+    
     /**
      * Processes a trainer assignment request and forwards it to administrative services.
      *
@@ -303,7 +299,7 @@ public class MemberTrainerService {
         // 5. Build session entity
         String sessionName = requestDto.getSessionName() == null ? "" : requestDto.getSessionName();
         Session session = Session.builder()
-                .sessionId(idGenUtil.generateSessionId(member.getId(), trainer.getTrainerId(), startTime, endTime))
+                .sessionId(requestDto.getSessionId())
                 .sessionName(sessionName)
                 .sessionStartTime(startTime)
                 .sessionEndTime(endTime)
