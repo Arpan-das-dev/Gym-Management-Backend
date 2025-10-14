@@ -27,6 +27,7 @@ import org.springframework.stereotype.Service;
 import java.time.LocalDateTime;
 import java.time.format.DateTimeFormatter;
 import java.util.List;
+import java.util.Optional;
 
 @Service
 @Slf4j
@@ -92,7 +93,8 @@ public class SessionManagementService {
         }
         LocalDateTime startTime = requestDto.getSessionDate();
         LocalDateTime endTime = startTime.plusMinutes(Math.round(requestDto.getDuration() * 60));
-        if(sessionRepository.sessionSlotCheck(startTime,endTime).isPresent()) {
+        Session sessionCheck = sessionRepository.sessionSlotCheck(startTime,endTime).orElseThrow();
+        if(!sessionCheck.getSessionId().equals(session.getSessionId())) {
             log.warn("Wrong slot no empty slot found between {} and {} "
                     ,startTime.format(formatter),endTime.format(formatter));
             throw new InvalidSessionException("No empty slot is available between "+startTime.format(formatter) +
@@ -139,8 +141,8 @@ public class SessionManagementService {
     }
 
     @Caching(evict = {
-            @CacheEvict(value = "AllSessionCache", key = "trainerId"),
-            @CacheEvict(value = "AllSessionCache", key = "trainerId + '*'")
+            @CacheEvict(value = "AllSessionCache", key = "#trainerId"),
+            @CacheEvict(value = "AllSessionCache", key = "#trainerId + '*'")
     })
     public String deleteSession(String sessionId,String trainerId) {
         Session session = sessionRepository.findById(sessionId)
