@@ -1,5 +1,6 @@
 package com.gym.trainerService.Dto.MemberDtos.Requests;
 
+import jakarta.validation.constraints.FutureOrPresent;
 import jakarta.validation.constraints.NotBlank;
 import jakarta.validation.constraints.NotNull;
 import jakarta.validation.constraints.PastOrPresent;
@@ -28,6 +29,6 @@ public class AssignMemberRequestDto {
     private String trainerProfileImageUrl;
 
     @NotNull(message = "Request date must not be null")
-    @PastOrPresent(message = "Request date cannot be in the future")
+    @FutureOrPresent(message = "Request date cannot be in the future")
     private LocalDate requestDate;
 }
