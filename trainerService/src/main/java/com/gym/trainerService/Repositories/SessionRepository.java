@@ -12,7 +12,6 @@ import java.util.List;
 import java.util.Optional;
 
 public interface SessionRepository extends JpaRepository<Session,String > {
-
     @Query("""
        SELECT s FROM Session s
          WHERE s.trainerId = :trainerId
@@ -20,14 +19,14 @@ public interface SessionRepository extends JpaRepository<Session,String > {
          ORDER BY s.sessionStartTime ASC
        """)
     List<Session> findByTrainerId(@Param("trainerId") String trainerId,
-                                  @Param("now") LocalDateTime now);
+                                  @Param("currentTime") LocalDateTime currentTime);
 
     @Query("SELECT s FROM Session s WHERE s.trainerId = :trainerId AND s.sessionStartTime < :currentTime ORDER BY s.sessionStartTime DESC")
     Page<Session> findPaginatedDataByTrainerId(@Param("trainerId") String trainerId,
                                                @Param("currentTime") LocalDateTime currentTime,
                                                Pageable pageRequest);
 
-    @Query("SELECT s FROM Session s WHERE s.sessionStartTime >= :startTime AND s.sessionEndTime =< :endTime")
-    Optional<Session> sessionSlotCheck(@Param("startTIme") LocalDateTime startTime,
-                                       LocalDateTime endTime);
+    @Query("SELECT s FROM Session s WHERE s.sessionStartTime >= :startTime AND s.sessionEndTime <= :endTime")
+    Optional<Session> sessionSlotCheck(@Param("startTime") LocalDateTime startTime,
+                                       @Param("endTime") LocalDateTime endTime);
 }
