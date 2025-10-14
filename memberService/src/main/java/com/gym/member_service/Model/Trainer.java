@@ -27,7 +27,6 @@ public class Trainer {
     /**
      * Primary key for Trainer entity.
      */
-    @Id
     @Column(nullable = false)
     private String trainerId;
 
@@ -46,6 +45,7 @@ public class Trainer {
     /**
      * The ID of the member this trainer is assigned to.
      */
+    @Id
     @Column(nullable = false)
     private String memberId;
 
