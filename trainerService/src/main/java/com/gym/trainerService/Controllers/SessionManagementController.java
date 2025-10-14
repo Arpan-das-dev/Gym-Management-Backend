@@ -24,7 +24,8 @@ public class SessionManagementController {
 
     @PostMapping("/trainer/addSessions")
     public ResponseEntity<AllSessionsWrapperDto> addSession(@RequestParam String trainerId,
-                                                            @Valid AddSessionRequestDto requestDto){
+                                                            @Valid @RequestBody
+                                                            AddSessionRequestDto requestDto){
         log.info("Request received to add session for member {} with trainer {}"
                 ,requestDto.getMemberId(),trainerId);
         AllSessionsWrapperDto response = sessionManagementService.addSession(trainerId,requestDto);
@@ -33,7 +34,8 @@ public class SessionManagementController {
 
     @PutMapping("/trainer/updateSession")
     public ResponseEntity<AllSessionsWrapperDto> updateSession(@RequestParam String sessionId,
-                                                               @Valid UpdateSessionRequestDto requestDto) {
+                                                               @Valid @RequestBody
+                                                               UpdateSessionRequestDto requestDto) {
         log.info("Request received for update session of id: {}",sessionId);
         AllSessionsWrapperDto response = sessionManagementService.updateSession(sessionId,requestDto);
         return ResponseEntity.status(HttpStatus.ACCEPTED).body(response);
@@ -46,7 +48,7 @@ public class SessionManagementController {
         return ResponseEntity.status(HttpStatus.OK).body(response);
     }
 
-    @GetMapping("/trainer/getSession/${pageSize}")
+    @GetMapping("/trainer/getSession/{pageSize}")
     public ResponseEntity<AllSessionsWrapperDto> getPastSessions ( @PathVariable @Positive int pageSize,
                                                                    @RequestParam String trainerId,
                                                                    @RequestParam @Positive int pageNo) {
