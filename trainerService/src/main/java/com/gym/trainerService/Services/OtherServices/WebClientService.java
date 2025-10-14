@@ -27,14 +27,15 @@ public class WebClientService {
                 .sessionId(session.getSessionId()).sessionName(session.getSessionName())
                 .sessionDate(session.getSessionStartTime()).duration(duration)
                 .build();
-        webClient.build().post().uri(URL-> URL
-                .queryParam("memberId",session.getMemberId())
-                .queryParam("trainerId",session.getTrainerId())
-                .path(MemberService_BaseUrl_Session+"/addSession")
-                .build()).bodyValue(responseDto).retrieve().toBodilessEntity().subscribe(
+        String url = MemberService_BaseUrl_Session + "/addSession"
+                + "?memberId=" + session.getMemberId()
+                + "&trainerId=" + session.getTrainerId();
+        webClient.build().post()
+                .uri(url)
+                .bodyValue(responseDto).retrieve().toBodilessEntity().subscribe(
                         success-> log.info("{}:: Successfully send to {}"
                                 ,success.getStatusCode(),MemberService_BaseUrl_Session),
-                error-> log.error(error.getLocalizedMessage(),error.getMessage())
+                error-> log.error(error.getMessage())
         );
     }
 
@@ -45,14 +46,15 @@ public class WebClientService {
                 .sessionName(session.getSessionName())
                 .sessionStartTime(session.getSessionStartTime()).sessionEndTime(session.getSessionEndTime())
                 .build();
-        webClient.build().put().uri(URL->URL
-                .queryParam("sessionId",session.getSessionId())
-                .queryParam("memberId",session.getMemberId())
-                .path(MemberService_BaseUrl_Session+"/update-session")
-                .build()).bodyValue(responseDto).retrieve().toBodilessEntity().subscribe(
+        String url = MemberService_BaseUrl_Session + "/update-session"
+                + "?sessionId=" + session.getSessionId()
+                + "&memberId=" + session.getMemberId();
+        webClient.build().put()
+                .uri(url)
+                .bodyValue(responseDto).retrieve().toBodilessEntity().subscribe(
                         success-> log.info("{}:: Successfully send update request to {}"
                         ,success.getStatusCode(),MemberService_BaseUrl_Session+"/update-session"),
-                error-> log.error(error.getLocalizedMessage(),error.getMessage())
+                error-> log.error(error.getLocalizedMessage(),error.getCause())
         );
     }
 }
