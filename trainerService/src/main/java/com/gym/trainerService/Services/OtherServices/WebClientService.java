@@ -69,18 +69,18 @@ public class WebClientService {
     @Async
     public void sendSessionToMember(Session session, double duration) {
         log.info("Request received to webclient service to create session for member");
-        /** Building session response DTO */
+        // Building session response DTO
         SessionResponseDto responseDto = SessionResponseDto.builder()
                 .sessionId(session.getSessionId()).sessionName(session.getSessionName())
                 .sessionDate(session.getSessionStartTime()).duration(duration)
                 .build();
 
-        /** Building request URL and inserting query params */
+        // Building request URL and inserting query params
         String url = MemberService_BaseUrl_Session + "/addSession"
                 + "?memberId=" + session.getMemberId()
                 + "&trainerId=" + session.getTrainerId();
         
-        /** Making asynchronous POST request to Member Service */
+        // Making asynchronous POST request to Member Service
         webClient.build().post()
                 .uri(url)
                 .bodyValue(responseDto)
@@ -101,19 +101,19 @@ public class WebClientService {
     @Async
     public void updateSessionToMember(Session session) {
         log.info("Request received to webclient service for session update");
-        /** Building update session response DTO */
+        // Building update session response DTO
         UpdateSessionResponseDto responseDto = UpdateSessionResponseDto.builder()
                 .trainerId(session.getTrainerId())
                 .sessionName(session.getSessionName())
                 .sessionStartTime(session.getSessionStartTime()).sessionEndTime(session.getSessionEndTime())
                 .build();
 
-        /** Building request URL and inserting query params */
+        // Building request URL and inserting query params
         String url = MemberService_BaseUrl_Session + "/update-session"
                 + "?sessionId=" + session.getSessionId()
                 + "&memberId=" + session.getMemberId();
 
-        /** Making asynchronous PUT request to Member Service */
+        // Making asynchronous PUT request to Member Service
         webClient.build().put()
                 .uri(url)
                 .bodyValue(responseDto).retrieve()
@@ -134,11 +134,11 @@ public class WebClientService {
     @Async
     public void deleteSessionForMember(String sessionId, String memberId) {
         log.info("Request received to webclient service for session delete");
-        /** Building request URL and inserting query params */
+        // Building request URL and inserting query params
         String url = MemberService_BaseUrl_Session+"/session"+
                 "?sessionId=" + sessionId +
                 "&memberId=" + memberId;
-        /** Making asynchronous DELETE request to Member Service */
+        // Making asynchronous DELETE request to Member Service
         webClient.build().delete()
                 .uri(url)
                 .retrieve()
