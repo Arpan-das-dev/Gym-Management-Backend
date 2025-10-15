@@ -1,7 +1,7 @@
 package com.gym.trainerService.Services.TrainerServices;
 
-import com.gym.trainerService.Exception.InvalidImageUrlException;
-import com.gym.trainerService.Exception.NoTrainerFoundException;
+import com.gym.trainerService.Exception.Custom.InvalidImageUrlException;
+import com.gym.trainerService.Exception.Custom.NoTrainerFoundException;
 import com.gym.trainerService.Models.Trainer;
 import com.gym.trainerService.Repositories.TrainerRepository;
 import com.gym.trainerService.Services.OtherServices.AwsService;
