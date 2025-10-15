@@ -5,7 +5,7 @@ import com.gym.trainerService.Dto.SessionDtos.Requests.UpdateSessionRequestDto;
 import com.gym.trainerService.Dto.SessionDtos.Responses.AllSessionResponseDto;
 import com.gym.trainerService.Dto.SessionDtos.Wrappers.AllSessionsWrapperDto;
 
-import com.gym.trainerService.Exception.*;
+import com.gym.trainerService.Exception.Custom.*;
 import com.gym.trainerService.Models.Member;
 import com.gym.trainerService.Models.Session;
 import com.gym.trainerService.Repositories.MemberRepository;
