@@ -5,9 +5,9 @@ import com.gym.trainerService.Dto.TrainerMangementDto.Requests.TrainerCreateRequ
 import com.gym.trainerService.Dto.TrainerMangementDto.Responses.AllTrainerResponseDto;
 import com.gym.trainerService.Dto.TrainerMangementDto.Responses.TrainerResponseDto;
 import com.gym.trainerService.Dto.TrainerMangementDto.Wrappers.AllTrainerResponseDtoWrapper;
-import com.gym.trainerService.Exception.DuplicateSpecialtyFoundException;
-import com.gym.trainerService.Exception.NoSpecialityFoundException;
-import com.gym.trainerService.Exception.NoTrainerFoundException;
+import com.gym.trainerService.Exception.Custom.DuplicateSpecialtyFoundException;
+import com.gym.trainerService.Exception.Custom.NoSpecialityFoundException;
+import com.gym.trainerService.Exception.Custom.NoTrainerFoundException;
 import com.gym.trainerService.Services.TrainerServices.TrainerManagementService;
 import jakarta.validation.Valid;
 import jakarta.validation.constraints.NotBlank;
