@@ -50,11 +50,15 @@ import java.util.List;
 @Slf4j
 @RequiredArgsConstructor
 public class SessionManagementService {
-
+    // injecting MemberRepository by constructor injection using @RequiredArgsConstructor
     private final MemberRepository memberRepository;
+    // injecting TrainerRepository by constructor injection using @RequiredArgsConstructor
     private final TrainerRepository trainerRepository;
+    // injecting SessionRepository by constructor injection using @RequiredArgsConstructor
     private final SessionRepository sessionRepository;
+    // injecting WebClientService by constructor injection using @RequiredArgsConstructor
     private final WebClientService webClientService;
+    // injecting SessionIdGenUtil by constructor injection using @RequiredArgsConstructor
     private final SessionIdGenUtil sessionIdGenUtil;
 
     DateTimeFormatter formatter = DateTimeFormatter.ofPattern("yyyy-MM-dd HH:mm:ss");
@@ -303,7 +307,7 @@ public class SessionManagementService {
                 .sessionEndTime(session.getSessionEndTime())
                 .build()).toList();
         log.info("successfully build {} sessions as response", responseDto.size());
-        
+
         return AllSessionsWrapperDto.builder()
                 .responseDtoList(responseDto)
                 .build();
