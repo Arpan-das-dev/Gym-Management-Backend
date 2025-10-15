@@ -4,9 +4,9 @@ import com.gym.trainerService.Dto.TrainerReviewDto.Requests.ReviewAddRequestDto;
 import com.gym.trainerService.Dto.TrainerReviewDto.Requests.ReviewUpdateRequestDto;
 import com.gym.trainerService.Dto.TrainerReviewDto.Responses.ReviewResponseDto;
 import com.gym.trainerService.Dto.TrainerReviewDto.Wrapper.AllReviewResponseWrapperDto;
-import com.gym.trainerService.Exception.InvalidReviewException;
-import com.gym.trainerService.Exception.NoReviewFoundException;
-import com.gym.trainerService.Exception.NoTrainerFoundException;
+import com.gym.trainerService.Exception.Custom.InvalidReviewException;
+import com.gym.trainerService.Exception.Custom.NoReviewFoundException;
+import com.gym.trainerService.Exception.Custom.NoTrainerFoundException;
 import com.gym.trainerService.Models.Review;
 import com.gym.trainerService.Models.Trainer;
 import com.gym.trainerService.Repositories.ReviewRepository;
@@ -25,28 +25,51 @@ import org.springframework.transaction.annotation.Transactional;
 import java.time.LocalDateTime;
 import java.util.List;
 /**
- * service class for trainer 
- * {@code Author:}  Arpan Das
- * {@code Version :}  1.0
+ * Service class responsible for handling all business logic associated
+ * with trainer reviews, including adding, updating, deleting, and
+ * retrieving trainer reviews. It also ensures cache consistency and
+ * transactional data safety during operations.
+ *
+ * <p>This class interacts with the underlying data layer through
+ * {@link TrainerRepository} and {@link ReviewRepository} and manages
+ * {@link Review} persistence and trainer average rating updates.</p>
+ *
+ * <p>Primarily used inside controller classes or service-layer orchestration
+ * where review-related operations are required. Designed to encapsulate
+ * review-handling logic to maintain code separation from controller logic.</p>
+ *
+ * @author Arpan Das
+ * @since 1.0
  */
 @Slf4j
 @Service
 @RequiredArgsConstructor
 public class TrainerReviewService {
 
-    // injecting trainer & review repository dependencies by constructor (@RequestParam)
+    /**
+     * Repository interface for managing {@link Trainer} entities
+     * and related operations.
+     */
     private final TrainerRepository trainerRepository;
+
+    /**
+     * Repository interface for handling {@link Review} entity persistence
+     * and query operations.
+     */
     private final ReviewRepository reviewRepository;
 
     /**
-     * this method is responsible to add a new review for a trainer
-     * with trainer id from a request dto
-     * after saving the review it also sets the
-     * average rating of the trainer if not equals
-     * and at the same time evicting the cache to keep things
-     * updated and fresh
-     * transactional is used to make sure that
-     * if anything goes wrong data will be rolled back
+     * Adds a new review for a specific trainer. This method retrieves the
+     * trainer entity from the database, constructs a review instance using
+     * builder pattern, and persists it. Afterward, it updates the average
+     * trainer rating and evicts relevant caches to maintain data freshness.
+     *
+     * <p>The entire process is wrapped within a transaction to guarantee
+     * atomicity. If an exception occurs, changes are rolled back.</p>
+     *
+     * @param trainerId  the unique trainer identifier
+     * @param requestDto the DTO containing review request data
+     * @return a structured {@link ReviewResponseDto} representing the saved review
      */
     @Transactional
     @Caching(evict = {
@@ -62,7 +85,8 @@ public class TrainerReviewService {
         log.info("Successfully retrieved trainer from db with id {}", trainer.getTrainerId());
         // Building the review to save in the db by using builder pattern
         Review review = Review.builder()
-                .userId(requestDto.getUserId()).userName(requestDto.getUserName())
+                .userId(requestDto.getUserId())
+                .userName(requestDto.getUserName())
                 .userRole(requestDto.getUserRole())
                 .reviewDate(requestDto.getReviewDate())
                 .comment(requestDto.getComment())
@@ -80,12 +104,18 @@ public class TrainerReviewService {
     }
 
     /**
-     * this method is responsible to retrieve reviews
-     * for a particular trainer
-     * this method take trainerId , pageSize, pageNo, sortBy and sortDirection
-     * to return reviews in small chunks as a wrapper of list of ReviewResponseDto
-     * after successful retrieving data from database it saves the data
-     * in cache with a key value of combination of all parameters
+     * Retrieves all reviews for a particular trainer in a paginated and sorted manner.
+     * The result is cached to enhance subsequent read performance.
+     *
+     * <p>Useful for displaying batch review data in paginated UI components
+     * or analytics dashboards while maintaining consistent performance.</p>
+     *
+     * @param trainerId      the unique trainer identifier
+     * @param pageNo         the page number to fetch
+     * @param pageSize       the number of items per page
+     * @param sortBy         the field used for sorting
+     * @param sortDirection  the direction of sorting, either {@code ASC} or {@code DESC}
+     * @return an {@link AllReviewResponseWrapperDto} containing a list of review DTOs
      */
     @Cacheable(
             value = "reviewCache",
@@ -122,11 +152,16 @@ public class TrainerReviewService {
     }
 
     /**
-     * updating review id
-     * it takes review id and request dto as parameter
-     * Transactional is used to make sure that
-     * if anything goes wrong data wil be rolled back
-     * after successfully update it evict the cache
+     * Updates an existing trainer review based on its review ID and corresponding
+     * request data. Ensures that user identity and trainer integrity match before
+     * applying updates.
+     *
+     * <p>Cache eviction ensures that any outdated review data is purged, and
+     * transactional context guarantees data consistency if any exception occurs.</p>
+     *
+     * @param reviewId   the unique identifier of the review to update
+     * @param requestDto contains updated review data
+     * @return the updated {@link ReviewResponseDto}
      */
     @Transactional
     @Caching(evict = {
@@ -167,6 +202,17 @@ public class TrainerReviewService {
                 "or user id or trainer id ");
     }
 
+    /**
+     * Deletes a review identified by its ID for a given trainer.
+     * After a successful delete, the trainer’s average rating is recalculated.
+     *
+     * <p>Transactional context ensures proper rollback in case of failure,
+     * and associated caches are cleared upon completion.</p>
+     *
+     * @param reviewId  the identifier of the review to remove
+     * @param trainerId the trainer associated with the review
+     * @return confirmation message indicating successful deletion
+     */
     @Transactional
     @Caching(evict = {
             @CacheEvict(value = "trainerCache", key = "#trainerId"),
@@ -190,13 +236,23 @@ public class TrainerReviewService {
                 + trainerId;
     }
 
+    /**
+     * Helper method that constructs a {@link ReviewResponseDto} instance
+     * from a given {@link Review} entity.
+     *
+     * @param review the review entity from which response data is built
+     * @return a fully populated {@link ReviewResponseDto}
+     */
     private ReviewResponseDto reviewResponseBuilder(Review review) {
         return ReviewResponseDto.builder()
                 .reviewId(review.getReviewId())
-                .userId(review.getUserId()).userName(review.getUserName())
+                .userId(review.getUserId())
+                .userName(review.getUserName())
                 .userRole(review.getUserRole())
-                .reviewDate(review.getReviewDate()).review(review.getReview())
-                .helpFullVote(review.getHelpFullVote()).notHelpFullVote(review.getNotHelpFullVote())
+                .reviewDate(review.getReviewDate())
+                .review(review.getReview())
+                .helpFullVote(review.getHelpFullVote())
+                .notHelpFullVote(review.getNotHelpFullVote())
                 .comment(review.getComment())
                 .build();
     }
