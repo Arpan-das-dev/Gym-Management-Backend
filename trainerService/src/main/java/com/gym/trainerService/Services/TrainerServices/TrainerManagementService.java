@@ -5,10 +5,10 @@ import com.gym.trainerService.Dto.TrainerMangementDto.Requests.TrainerCreateRequ
 import com.gym.trainerService.Dto.TrainerMangementDto.Responses.AllTrainerResponseDto;
 import com.gym.trainerService.Dto.TrainerMangementDto.Responses.TrainerResponseDto;
 import com.gym.trainerService.Dto.TrainerMangementDto.Wrappers.AllTrainerResponseDtoWrapper;
-import com.gym.trainerService.Exception.DuplicateSpecialtyFoundException;
-import com.gym.trainerService.Exception.DuplicateTrainerFoundException;
-import com.gym.trainerService.Exception.NoSpecialityFoundException;
-import com.gym.trainerService.Exception.NoTrainerFoundException;
+import com.gym.trainerService.Exception.Custom.DuplicateSpecialtyFoundException;
+import com.gym.trainerService.Exception.Custom.DuplicateTrainerFoundException;
+import com.gym.trainerService.Exception.Custom.NoSpecialityFoundException;
+import com.gym.trainerService.Exception.Custom.NoTrainerFoundException;
 import com.gym.trainerService.Models.Specialities;
 import com.gym.trainerService.Models.Trainer;
 import com.gym.trainerService.Repositories.SpecialityRepository;
@@ -80,8 +80,10 @@ public class TrainerManagementService {
         log.info("Trainer saved with name {}", trainer.getFirstName() + " " + trainer.getLastName());
         return AllTrainerResponseDto.builder()
                 .id(trainer.getTrainerId())
-                .firstName(trainer.getFirstName()).lastName(trainer.getLastName())
-                .email(trainer.getEmail()).phone(trainer.getPhone())
+                .firstName(trainer.getFirstName())
+                .lastName(trainer.getLastName())
+                .email(trainer.getEmail())
+                .phone(trainer.getPhone())
                 .gender(trainer.getGender())
                 .averageRating(trainer.getAverageRating())
                 .lastLoginTime(trainer.getLastLogin())
@@ -111,7 +113,8 @@ public class TrainerManagementService {
                         .imageUrl(dto.getTrainerProfileImageUrl())
                         .firstName(dto.getFirstName())
                         .lastName(dto.getLastName())
-                        .email(dto.getEmail()).phone(dto.getPhone())
+                        .email(dto.getEmail())
+                        .phone(dto.getPhone())
                         .gender(dto.getGender())
                         .averageRating(dto.getAverageRating())
                         .lastLoginTime(dto.getLastLogin())
@@ -277,8 +280,10 @@ public class TrainerManagementService {
         return TrainerResponseDto.builder()
                 .trainerId(trainer.getTrainerId())
                 .trainerProfileImageUrl(trainer.getTrainerProfileImageUrl())
-                .firstName(trainer.getFirstName()).lastName(trainer.getLastName())
-                .emailId(trainer.getEmail()).phone(trainer.getPhone())
+                .firstName(trainer.getFirstName())
+                .lastName(trainer.getLastName())
+                .emailId(trainer.getEmail())
+                .phone(trainer.getPhone())
                 .gender(trainer.getGender())
                 .specialities(specialities)
                 .lastLoginTime(trainer.getLastLogin())
