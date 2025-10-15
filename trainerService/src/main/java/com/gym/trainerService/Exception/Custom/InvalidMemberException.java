@@ -1,4 +1,4 @@
-package com.gym.trainerService.Exception;
+package com.gym.trainerService.Exception.Custom;
 
 public class InvalidMemberException extends RuntimeException {
     public InvalidMemberException(String s) {
