@@ -2,8 +2,8 @@ package com.gym.trainerService.Services.MemberServices;
 import com.gym.trainerService.Dto.MemberDtos.Requests.AssignMemberRequestDto;
 import com.gym.trainerService.Dto.MemberDtos.Responses.MemberResponseDto;
 import com.gym.trainerService.Dto.MemberDtos.Wrappers.AllMemberResponseWrapperDto;
-import com.gym.trainerService.Exception.InvalidMemberException;
-import com.gym.trainerService.Exception.NoTrainerFoundException;
+import com.gym.trainerService.Exception.Custom.InvalidMemberException;
+import com.gym.trainerService.Exception.Custom.NoTrainerFoundException;
 import com.gym.trainerService.Models.Member;
 import com.gym.trainerService.Models.Trainer;
 import com.gym.trainerService.Repositories.MemberRepository;
@@ -32,7 +32,7 @@ import java.util.Optional;
  *   <li>{@code @CacheEvict} – Used to clear cache entries upon add/delete to maintain consistency.</li>
  * </ul>
  *
- * @author Arpan
+ * @author Arpan Das
  * @since 1.0
  */
 @Service
@@ -40,7 +40,9 @@ import java.util.Optional;
 @RequiredArgsConstructor
 public class MemberManagementService {
 
+    // injecting MemberRepository by constructor injection using @RequiredArgsConstructor
     private final MemberRepository memberRepository;
+    // injecting TrainerRepository by constructor injection using @RequiredArgsConstructor
     private final TrainerRepository trainerRepository;
 
     /**
@@ -176,8 +178,10 @@ public class MemberManagementService {
      */
     private MemberResponseDto memberResponseDtoBuilder(Member member) {
         return MemberResponseDto.builder()
-                .memberId(member.getMemberId()).trainerId(member.getTrainerId())
-                .memberName(member.getMemberName()).memberProfileImageUrl(member.getMemberProfileImageUrl())
+                .memberId(member.getMemberId())
+                .trainerId(member.getTrainerId())
+                .memberName(member.getMemberName())
+                .memberProfileImageUrl(member.getMemberProfileImageUrl())
                 .eligibilityEnd(member.getEligibilityEnd())
                 .build();
     }
