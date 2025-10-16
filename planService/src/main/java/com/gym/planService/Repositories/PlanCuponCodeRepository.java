@@ -1,4 +1,7 @@
 package com.gym.planService.Repositories;
 
-public interface PlanCuponCodeRepositoy {
+import com.gym.planService.Models.PlanCuponCode;
+import org.springframework.data.jpa.repository.JpaRepository;
+
+public interface PlanCuponCodeRepository extends JpaRepository<PlanCuponCode,String> {
 }
