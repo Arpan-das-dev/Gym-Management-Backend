@@ -28,7 +28,7 @@ public class MembershipPlanManagementService {
                 requestDto.getPlanName(), requestDto.getDuration(), requestDto.getPrice()
         );
         CreationResponseDto responseDto = CreationResponseDto.builder()
-                .id(customId)
+                .planId(customId)
                 .planName(requestDto.getPlanName())
                 .price(requestDto.getPrice())
                 .duration(requestDto.getDuration())
