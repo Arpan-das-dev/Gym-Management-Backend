@@ -35,14 +35,14 @@ public class WebClientPlanService {
 
     @Async
     public void sendCreationToPlanService(Object body) {
-        String url = planServiceAdmin_URL + "createPlan";
+        String url = planServiceAdmin_URL + "addPlan";
         postAsynchronously(url, body);
     }
 
 
     public List<CreationResponseDto> getAllPlansFromPlanService() {
         return webclient.build().get()
-                .uri(planServicePublic_URL + "getAll")
+                .uri(planServicePublic_URL + "getPlans")
                 .retrieve().bodyToFlux(CreationResponseDto.class)
                 .collectList().block();
     }
@@ -55,7 +55,7 @@ public class WebClientPlanService {
 
     @Async
     public void sendDeletionRequestById(String id) {
-        String URL = planServiceAdmin_URL + "delete";
+        String URL = planServiceAdmin_URL + "deletePlan";
         webclient.build().delete()
                 .uri(url -> url
                         .path(URL)
