@@ -4,6 +4,7 @@ import com.fasterxml.jackson.databind.DeserializationFeature;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.fasterxml.jackson.databind.SerializationFeature;
 import com.fasterxml.jackson.datatype.jsr310.JavaTimeModule;
+import com.gym.planService.Dtos.CuponDtos.Wrappers.AllCuponCodeWrapperResponseDto;
 import com.gym.planService.Dtos.PlanDtos.Wrappers.AllPlanResponseWrapperDto;
 import org.springframework.cache.CacheManager;
 import org.springframework.cache.annotation.EnableCaching;
@@ -12,6 +13,7 @@ import org.springframework.context.annotation.Configuration;
 import org.springframework.data.redis.cache.RedisCacheConfiguration;
 import org.springframework.data.redis.cache.RedisCacheManager;
 import org.springframework.data.redis.connection.RedisConnectionFactory;
+import org.springframework.data.redis.core.StringRedisTemplate;
 import org.springframework.data.redis.serializer.RedisSerializationContext;
 import org.springframework.data.redis.serializer.StringRedisSerializer;
 
@@ -39,9 +41,15 @@ public class RedisConfig {
     }
 
     @Bean
+    public TypedJsonRedisSerializer<AllCuponCodeWrapperResponseDto> allCuponCodeWrapperResponseDtoRedisSerializer
+            (ObjectMapper redisObjectMapper) {
+        return new TypedJsonRedisSerializer<>(redisObjectMapper,AllCuponCodeWrapperResponseDto.class);
+    }
+    @Bean
     public CacheManager cacheManager(
             RedisConnectionFactory connectionFactory,
-            TypedJsonRedisSerializer<AllPlanResponseWrapperDto> allPlanResponseWrapperDtoRedisSerializer
+            TypedJsonRedisSerializer<AllPlanResponseWrapperDto> allPlanResponseWrapperDtoRedisSerializer,
+            TypedJsonRedisSerializer<AllCuponCodeWrapperResponseDto> allCuponCodeWrapperResponseDtoRedisSerializer
     ) {
         RedisCacheConfiguration defaultConfig = RedisCacheConfiguration.defaultCacheConfig()
                 .serializeKeysWith(RedisSerializationContext.SerializationPair
@@ -55,9 +63,19 @@ public class RedisConfig {
                         .fromSerializer(allPlanResponseWrapperDtoRedisSerializer))
                 .entryTtl(Duration.ofDays(7)));
 
+        cacheConfigs.put("cuponCodes",defaultConfig
+                .serializeValuesWith(RedisSerializationContext.SerializationPair
+                        .fromSerializer(allCuponCodeWrapperResponseDtoRedisSerializer))
+                .entryTtl(Duration.ofDays(30)));
+
         return RedisCacheManager.builder(connectionFactory)
                 .cacheDefaults(defaultConfig)
                 .withInitialCacheConfigurations(cacheConfigs)
                 .build();
+    }
+
+    @Bean
+    public StringRedisTemplate redisTemplate(RedisConnectionFactory connectionFactory) {
+        return new StringRedisTemplate(connectionFactory);
     }
 }
