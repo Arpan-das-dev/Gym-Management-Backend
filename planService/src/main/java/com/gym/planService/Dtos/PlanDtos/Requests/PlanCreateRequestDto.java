@@ -36,7 +36,7 @@ import java.util.List;
 @Builder
 @AllArgsConstructor
 @NoArgsConstructor
-public class PlanRequestDto {
+public class PlanCreateRequestDto {
 
     // Unique identifier for the plan, must not be blank.
     @NotBlank(message = "Plan ID is required and cannot be blank.")
