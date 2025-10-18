@@ -12,7 +12,7 @@ import java.util.List;
 @Builder
 public class CreationResponseDto {
 
-    private String id;
+    private String planId;
     private String planName;
     private Double price;
     private Integer duration;
