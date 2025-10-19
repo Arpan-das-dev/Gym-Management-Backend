@@ -1,4 +1,4 @@
-package com.gym.planService.Services;
+package com.gym.planService.Services.PlanServices;
 
 import com.gym.planService.Dtos.PlanDtos.Requests.PlanCreateRequestDto;
 import com.gym.planService.Dtos.PlanDtos.Requests.PlanUpdateRequestDto;
