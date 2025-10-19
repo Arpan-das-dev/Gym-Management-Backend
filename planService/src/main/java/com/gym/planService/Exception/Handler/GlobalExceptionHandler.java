@@ -6,6 +6,7 @@ import com.gym.planService.Exception.Custom.DuplicatePlanFoundException;
 import com.gym.planService.Exception.Custom.PlanNotFoundException;
 import com.gym.planService.Exception.Model.ErrorResponse;
 import com.gym.planService.Exception.Utils.ExceptionUtil;
+import com.razorpay.RazorpayException;
 import jakarta.servlet.http.HttpServletRequest;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
@@ -29,6 +30,11 @@ public class GlobalExceptionHandler {
     })
     public ResponseEntity<ErrorResponse> handleConflict(Exception ex, HttpServletRequest request) {
         return ExceptionUtil.buildErrorResponse(HttpStatus.CONFLICT, ex.getMessage(), request);
+    }
+
+    @ExceptionHandler(RazorpayException.class)
+    public ResponseEntity<ErrorResponse> handleRazorpayExceptions(Exception ex, HttpServletRequest request) {
+        return ExceptionUtil.buildErrorResponse(HttpStatus.SERVICE_UNAVAILABLE,ex.getMessage(),request);
     }
 
     @ExceptionHandler(Exception.class)
