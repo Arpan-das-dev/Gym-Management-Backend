@@ -1,4 +1,4 @@
-package com.gym.planService.Services;
+package com.gym.planService.Services.PlanServices;
 
 import com.gym.planService.Dtos.CuponDtos.Requests.CreateCuponCodeRequestDto;
 import com.gym.planService.Dtos.CuponDtos.Requests.UpdateCuponRequestDto;
