@@ -1,4 +1,4 @@
-package com.gym.planService.Services.PaymentService;
+package com.gym.planService.Services.OtherServices;
 
 import com.razorpay.Order;
 import com.razorpay.RazorpayClient;
@@ -17,10 +17,11 @@ public class RazorPayService {
 
     public Order makePayment(Long amount, String currency,String receipt) throws RazorpayException {
         JSONObject orderRequest = new JSONObject();
-        orderRequest.put("amount", amount);
+        orderRequest.put("amount", amount*100);
         orderRequest.put("currency", currency);
         orderRequest.put("receipt", receipt);
 
         return razorpayClient.orders.create(orderRequest);
     }
+
 }
