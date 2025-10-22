@@ -19,7 +19,7 @@ import java.time.format.DateTimeFormatter;
 
 public class ReceiptGenerator {
 
-    public static byte[] generatePlanPaymentReceipt(PlanPayment payment) throws Exception {
+    public byte[] generatePlanPaymentReceipt(PlanPayment payment) {
         ByteArrayOutputStream outputStream = new ByteArrayOutputStream();
 
         PdfWriter writer = new PdfWriter(outputStream);
