@@ -10,7 +10,10 @@ import com.gym.planService.Models.PlanPayment;
 import com.gym.planService.Repositories.PlanCuponCodeRepository;
 import com.gym.planService.Repositories.PlanPaymentRepository;
 import com.gym.planService.Repositories.PlanRepository;
+import com.gym.planService.Services.OtherServices.AwsService;
 import com.gym.planService.Services.OtherServices.RazorPayService;
+import com.gym.planService.Services.OtherServices.ReceiptGenerator;
+import com.gym.planService.Services.OtherServices.WebClientService;
 import com.gym.planService.Utils.PaymentIdGenUtil;
 import com.razorpay.Order;
 import com.razorpay.RazorpayException;
@@ -30,7 +33,9 @@ public class PaymentService {
     private final PlanCuponCodeRepository cuponCodeRepository;
     private final PlanPaymentRepository paymentRepository;
     private final PaymentIdGenUtil paymentIdGenUtil;
-
+    private final ReceiptGenerator receiptGenerator;
+    private final AwsService awsService;
+    private final WebClientService webClientService;
 
     public String buyPlan( PlanPaymentRequestDto requestDto) {
         Plan plan = planRepository.findById(requestDto.getPlanId())
@@ -83,12 +88,20 @@ public class PaymentService {
 
         // Save payment info (initial state)
         paymentRepository.save(payment);
-
         log.info("Payment initiated for user: {} | Plan: {} | OrderID: {}",
                 requestDto.getUserId(), plan.getPlanName(), razorOrder.get("id"));
 
+        String response;
+        try{
+           byte[] pdfReceiptArray = receiptGenerator.generatePlanPaymentReceipt(payment);
+           response = awsService.uploadPaymentReceipt(pdfReceiptArray,payment.getPaymentId());
+           webClientService.sendUpdateBymMailWithAttachment(pdfReceiptArray,payment,plan.getDuration());
+        } catch (Exception e) {
+            log.warn("error caused due to {}",e.getCause().toString());
+            throw new RuntimeException(e);
+        }
         // Return order ID to frontend for Razorpay checkout
-        return razorOrder.get("id");
+        return response == null ? razorOrder.get("id") : response;
     }
     private Double calculateDiscountedAmount(PlanCuponCode cuponCode, Double amount) {
         if (cuponCode == null) return amount;
