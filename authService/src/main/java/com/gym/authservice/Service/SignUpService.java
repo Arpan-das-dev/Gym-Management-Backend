@@ -7,7 +7,6 @@ import com.gym.authservice.Exceptions.Custom.DuplicateUserException;
 import com.gym.authservice.Repository.SignedUpsRepository;
 import com.gym.authservice.Roles.RoleType;
 import com.gym.authservice.Utils.IdGenerationUtil;
-import lombok.RequiredArgsConstructor;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.stereotype.Service;
@@ -15,16 +14,28 @@ import org.springframework.transaction.annotation.Transactional;
 import org.springframework.web.reactive.function.client.WebClient;
 
 @Service
-@RequiredArgsConstructor
+
 public class SignUpService {
     private final SignedUpsRepository signedUpsRepository;
     private final PasswordEncoder encoder;
     private final IdGenerationUtil idGenerationUtil;
     private final WebClientService notificationService;
     private final WebClient.Builder webClient;
-
-    @Value("${admin.approval.url}")
     private final String approveUrl ;
+
+    public SignUpService(SignedUpsRepository signedUpsRepository,
+                         PasswordEncoder encoder,
+                         IdGenerationUtil idGenerationUtil,
+                         WebClientService notificationService,
+                         WebClient.Builder webClient,
+                         @Value("${admin.approval.url}") String approveUrl) {
+        this.signedUpsRepository = signedUpsRepository;
+        this.encoder = encoder;
+        this.idGenerationUtil = idGenerationUtil;
+        this.notificationService = notificationService;
+        this.webClient = webClient;
+        this.approveUrl = approveUrl;
+    }
 
     @Transactional
     public SignUpResponseDto signUp(SignupRequestDto requestDto) {
