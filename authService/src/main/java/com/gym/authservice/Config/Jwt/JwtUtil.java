@@ -12,12 +12,23 @@ import java.util.Date;
 
 @Component
 public class JwtUtil {
-    @Value("${spring.secret.key}")
-    private String secretKey;
-    @Value("${jwt.access.expiration}")
-    private long expiration;
-    @Value("${jwt.refresh.expiration}")
-    private long refreshExpiration;
+
+    private final String secretKey;
+
+    private final long expiration;
+
+    /**
+     * @Value("${jwt.refresh.expiration}") private final long refreshExpiration;
+     */
+
+    public JwtUtil(
+            @Value("${spring.secret.key}") String secretKey,
+            @Value("${jwt.access.expiration}") long expiration
+    ) {
+        this.secretKey = secretKey;
+        this.expiration = expiration;
+//        this.refreshExpiration = refreshExpiration; long refreshExpiration
+    }
 
     private SecretKey getKey() {
         byte[] bytes = secretKey.getBytes();
