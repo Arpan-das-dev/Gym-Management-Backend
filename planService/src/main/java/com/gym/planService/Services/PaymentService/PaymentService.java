@@ -78,7 +78,7 @@ public class PaymentService {
                 .paidPrice(finalAmount)
                 .currency(requestDto.getCurrency())
                 .paymentMethod("RAZORPAY")
-                .paymentStatus("PENDING") // updated after webhook success
+                .paymentStatus("PENDING(TEST)") // updated after webhook success
                 .orderId(razorOrder.get("id")) // from Razorpay order response
                 .paymentDate(requestDto.getPaymentDate().toLocalDate())
                 .paymentMonth(requestDto.getPaymentDate().getMonth().toString())
@@ -87,19 +87,21 @@ public class PaymentService {
                 .build();
 
         // Save payment info (initial state)
-        paymentRepository.save(payment);
-        log.info("Payment initiated for user: {} | Plan: {} | OrderID: {}",
-                requestDto.getUserId(), plan.getPlanName(), razorOrder.get("id"));
-
         String response;
         try{
-           byte[] pdfReceiptArray = receiptGenerator.generatePlanPaymentReceipt(payment);
-           response = awsService.uploadPaymentReceipt(pdfReceiptArray,payment.getPaymentId());
-           webClientService.sendUpdateBymMailWithAttachment(pdfReceiptArray,payment,plan.getDuration());
+            byte[] pdfReceiptArray = receiptGenerator.generatePlanPaymentReceipt(payment);
+            response = awsService.uploadPaymentReceipt(pdfReceiptArray,payment.getPaymentId());
+            webClientService.sendUpdateBymMailWithAttachment(pdfReceiptArray,payment,plan.getDuration());
+            payment.setReceiptUrl(response);
         } catch (Exception e) {
             log.warn("error caused due to {}",e.getCause().toString());
             throw new RuntimeException(e);
         }
+        paymentRepository.save(payment);
+        log.info("Payment initiated for user: {} | Plan: {} | OrderID: {}",
+                requestDto.getUserId(), plan.getPlanName(), razorOrder.get("id"));
+
+
         // Return order ID to frontend for Razorpay checkout
         return response == null ? razorOrder.get("id") : response;
     }
