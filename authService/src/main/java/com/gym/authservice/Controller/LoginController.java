@@ -2,17 +2,18 @@ package com.gym.authservice.Controller;
 
 import com.gym.authservice.Dto.Request.LogiInRequestDto;
 import com.gym.authservice.Dto.Response.LoginResponseDto;
+import com.gym.authservice.Dto.Response.SignupDetailsInfoDto;
 import com.gym.authservice.Service.LogiInService;
 import jakarta.validation.Valid;
+import jakarta.validation.constraints.NotBlank;
 import lombok.RequiredArgsConstructor;
+import lombok.extern.slf4j.Slf4j;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.validation.annotation.Validated;
-import org.springframework.web.bind.annotation.PostMapping;
-import org.springframework.web.bind.annotation.RequestBody;
-import org.springframework.web.bind.annotation.RequestMapping;
-import org.springframework.web.bind.annotation.RestController;
+import org.springframework.web.bind.annotation.*;
 
+@Slf4j
 @RestController
 @RequestMapping("${authService.base_url}")
 @RequiredArgsConstructor
@@ -47,6 +48,13 @@ public class LoginController {
     public ResponseEntity<Boolean> deleteAccountVerification (@Valid @RequestBody LogiInRequestDto requestDto){
         Boolean response = logiInService.verifyBeforeDelete(requestDto);
         return ResponseEntity.status(HttpStatus.OK).body(response);
+    }
+
+    @GetMapping("/userDetails")
+    public ResponseEntity<SignupDetailsInfoDto> getUserDetailsByIdentifier(@NotBlank @RequestParam String identifier) {
+        log.info("request received to get details for user {}",identifier);
+        SignupDetailsInfoDto response = logiInService.getUserDetails(identifier);
+        return ResponseEntity.status(HttpStatus.ACCEPTED).body(response);
     }
 }
 
