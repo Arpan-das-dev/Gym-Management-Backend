@@ -4,6 +4,8 @@ import com.gym.authservice.Config.Jwt.JwtAuthenticationFilter;
 import lombok.RequiredArgsConstructor;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
+import org.springframework.http.HttpMethod;
+import org.springframework.security.config.Customizer;
 import org.springframework.security.config.annotation.web.reactive.EnableWebFluxSecurity;
 import org.springframework.security.config.web.server.SecurityWebFiltersOrder;
 import org.springframework.security.config.web.server.ServerHttpSecurity;
@@ -33,7 +35,9 @@ public class SecurityConfig {
 
         return http
                 .csrf(ServerHttpSecurity.CsrfSpec::disable)
+                .cors(ServerHttpSecurity.CorsSpec::disable)
                 .authorizeExchange(exchange -> exchange
+                        .pathMatchers(HttpMethod.OPTIONS, "/**").permitAll()
                         // Public routes
                         .pathMatchers("/fitStudio/auth/**").permitAll()
 
@@ -41,6 +45,8 @@ public class SecurityConfig {
                         // Admin routes only
                         .pathMatchers("/fitStudio/plan-service/*/admin/**").hasRole("ADMIN")
                         .pathMatchers("/fitStudio/plan-service/*/all/**").permitAll()
+                        // admin service routes
+                        .pathMatchers("/fitStudio/admin/auth-management/**").hasRole("ADMIN")
                         // Everything else must be authenticated
                         .anyExchange().authenticated()
                 )
@@ -48,7 +54,5 @@ public class SecurityConfig {
                 .addFilterBefore(jwtAuthenticationFilter, SecurityWebFiltersOrder.AUTHENTICATION)
                 .build();
     }
-
-
 
 }
