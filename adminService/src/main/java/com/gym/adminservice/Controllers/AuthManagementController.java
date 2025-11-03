@@ -3,6 +3,7 @@ package com.gym.adminservice.Controllers;
 import com.gym.adminservice.Dto.Requests.CreateAdminRequestDto;
 import com.gym.adminservice.Dto.Requests.CreateMemberRequestDto;
 import com.gym.adminservice.Dto.Requests.CreateTrainerRequestDto;
+import com.gym.adminservice.Dto.Responses.UserCreationResponseDto;
 import com.gym.adminservice.Enums.RoleType;
 import com.gym.adminservice.Services.AuthService.AuthManagementService;
 import jakarta.validation.Valid;
@@ -31,8 +32,8 @@ public class AuthManagementController {
      */
 
     @PostMapping("addMember")
-    public ResponseEntity<String> createMember(@Valid @RequestBody CreateMemberRequestDto requestDto) {
-        String response = managementService.createMember(requestDto);
+    public ResponseEntity<UserCreationResponseDto> createMember(@Valid @RequestBody CreateMemberRequestDto requestDto) {
+        UserCreationResponseDto response = managementService.createMember(requestDto);
         return ResponseEntity.status(HttpStatus.CREATED).body(response);
     }
 
@@ -43,8 +44,8 @@ public class AuthManagementController {
      */
 
     @PostMapping("addTrainer")
-    public ResponseEntity<String> createTrainer(@Valid @RequestBody CreateTrainerRequestDto requestDto){
-        String response = managementService.createTrainer(requestDto);
+    public ResponseEntity<UserCreationResponseDto> createTrainer(@Valid @RequestBody CreateTrainerRequestDto requestDto){
+        UserCreationResponseDto response = managementService.createTrainer(requestDto);
         return ResponseEntity.status(HttpStatus.CREATED).body(response);
     }
 
@@ -55,8 +56,8 @@ public class AuthManagementController {
      */
 
     @PostMapping("addAdmin")
-    public ResponseEntity<String> createAdmin(@Valid @RequestBody CreateAdminRequestDto requestDto){
-        String response = managementService.createAdmin(requestDto);
+    public ResponseEntity<UserCreationResponseDto> createAdmin(@Valid @RequestBody CreateAdminRequestDto requestDto){
+        UserCreationResponseDto response = managementService.createAdmin(requestDto);
         return ResponseEntity.status(HttpStatus.CREATED).body(response);
     }
 
@@ -67,9 +68,9 @@ public class AuthManagementController {
      */
 
     @PostMapping("setId")
-    public ResponseEntity<String> setCustomId(@RequestParam String id,@RequestParam String role,
+    public ResponseEntity<UserCreationResponseDto> setCustomId(@RequestParam String id,@RequestParam String role,
                                               @RequestParam String email){
-        String response = managementService.setCustomIdToAdmin(id,role,email);
+        UserCreationResponseDto response = managementService.setCustomIdToAdmin(id,role,email);
         return ResponseEntity.status(HttpStatus.ACCEPTED).body(response);
     }
 
@@ -80,8 +81,8 @@ public class AuthManagementController {
      */
 
     @DeleteMapping("delete")
-    public ResponseEntity<?> deleteUser(@RequestParam String identifier,@RequestParam RoleType role){
-        String response = managementService.deleteUser(identifier,role);
+    public ResponseEntity<UserCreationResponseDto> deleteUser(@RequestParam String identifier,@RequestParam RoleType role){
+        UserCreationResponseDto response = managementService.deleteUser(identifier,role);
         return ResponseEntity.status(HttpStatus.OK).body(response);
     }
 
