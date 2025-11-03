@@ -1,7 +1,8 @@
 package com.gym.adminservice.Services.WebClientServices;
 
+import com.gym.adminservice.Dto.Responses.AdminCreationRequestDto;
 import com.gym.adminservice.Dto.Responses.MemberAssignmentToTrainerResponseDto;
-import com.gym.adminservice.Dto.Responses.SignupResponseDto;
+import com.gym.adminservice.Dto.Responses.SignupRequestDto;
 import com.gym.adminservice.Dto.Responses.TrainerAssignMentResponseDto;
 
 import lombok.extern.slf4j.Slf4j;
@@ -38,15 +39,15 @@ public class WebClientAuthService {
     // send the signup details to the auth service asynchronously via webclient for
     // admin role creation
     @Async
-    public void sendSignupDetailsAdmin(SignupResponseDto responseDto) {
-        String endpoint = authServiceAdmin_URL + "/CreateAdmin";
+    public void sendSignupDetailsAdmin(AdminCreationRequestDto responseDto) {
+        String endpoint = authServiceAdmin_URL + "/createAdmin";
         sendAsynchronously(endpoint, responseDto);
     }
 
     // send the signup details to the auth service asynchronously via webclient for
     // member role creation
     @Async
-    public void sendSignupDetailsMember(SignupResponseDto responseDto) {
+    public void sendSignupDetailsMember(SignupRequestDto responseDto) {
         String endpoint = authServiceAdmin_URL + "/CreateMember";
         sendAsynchronously(endpoint, responseDto);
     }
@@ -54,7 +55,7 @@ public class WebClientAuthService {
     // send the signup details to the auth service asynchronously via webclient for
     // trainer role creation
     @Async
-    public void sendSignupDetailsTrainer(SignupResponseDto responseDto) {
+    public void sendSignupDetailsTrainer(SignupRequestDto responseDto) {
         String endpoint = authServiceAdmin_URL + "/createTrainer";
         sendAsynchronously(endpoint, responseDto);
     }
