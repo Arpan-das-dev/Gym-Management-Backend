@@ -37,10 +37,5 @@ public class CreateMemberRequestDto {
 
     @NotNull(message = "joining date can not be empty")
     private LocalDate joinDate;
-    @NotBlank(message = "address is required")
-    private String address;
 
-    @NotNull(message = "age is required")
-    @NotBlank(message = "age is required")
-    private Byte age;
 }
