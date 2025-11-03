@@ -12,6 +12,7 @@ import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.validation.annotation.Validated;
 import org.springframework.web.bind.annotation.*;
+import reactor.core.publisher.Mono;
 
 @Slf4j
 @RestController
@@ -34,8 +35,8 @@ public class LoginController {
      * If authentication fails, an appropriate error response is returned.
      */
     @PostMapping("login")
-    public ResponseEntity<LoginResponseDto> login(@Valid @RequestBody LogiInRequestDto requestDto){
-        LoginResponseDto responseDto = logiInService.login(requestDto);
+    public ResponseEntity<Mono<LoginResponseDto>> login(@Valid @RequestBody LogiInRequestDto requestDto){
+        Mono<LoginResponseDto> responseDto = logiInService.login(requestDto);
         return ResponseEntity.status(HttpStatus.OK).body(responseDto);
     }
 
@@ -45,15 +46,15 @@ public class LoginController {
      * This verification step is crucial to ensure that only authorized users can delete their accounts.
      */
     @PostMapping("delete/verify")
-    public ResponseEntity<Boolean> deleteAccountVerification (@Valid @RequestBody LogiInRequestDto requestDto){
-        Boolean response = logiInService.verifyBeforeDelete(requestDto);
+    public ResponseEntity<Mono<Boolean>> deleteAccountVerification (@Valid @RequestBody LogiInRequestDto requestDto){
+        Mono<Boolean> response = logiInService.verifyBeforeDelete(requestDto);
         return ResponseEntity.status(HttpStatus.OK).body(response);
     }
 
     @GetMapping("/userDetails")
-    public ResponseEntity<SignupDetailsInfoDto> getUserDetailsByIdentifier(@NotBlank @RequestParam String identifier) {
+    public ResponseEntity<Mono<SignupDetailsInfoDto>> getUserDetailsByIdentifier(@NotBlank @RequestParam String identifier) {
         log.info("request received to get details for user {}",identifier);
-        SignupDetailsInfoDto response = logiInService.getUserDetails(identifier);
+        Mono<SignupDetailsInfoDto> response = logiInService.getUserDetails(identifier);
         return ResponseEntity.status(HttpStatus.ACCEPTED).body(response);
     }
 }

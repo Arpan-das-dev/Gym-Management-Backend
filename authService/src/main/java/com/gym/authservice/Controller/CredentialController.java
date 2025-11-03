@@ -15,6 +15,7 @@ import org.springframework.web.bind.annotation.PostMapping;
 import org.springframework.web.bind.annotation.RequestBody;
 import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RestController;
+import reactor.core.publisher.Mono;
 
 @RestController
 @RequestMapping("${authService.base_url}")
@@ -35,9 +36,9 @@ public class CredentialController {
      * Accepts a ForgotPasswordRequestDto containing user identification details and returns a ForgotPasswordResponseDto.
      */
     @PostMapping("forgotPassword")
-    public ResponseEntity<ForgotPasswordResponseDto> forgotPassword
+    public ResponseEntity<Mono<ForgotPasswordResponseDto>> forgotPassword
             (@Valid @RequestBody ForgotPasswordRequestDto requestDto){
-        ForgotPasswordResponseDto responseDto = credentialService.forgotPassword(requestDto);
+        Mono<ForgotPasswordResponseDto> responseDto = credentialService.forgotPassword(requestDto);
         return ResponseEntity.status(HttpStatus.OK).body(responseDto);
     }
 
@@ -46,9 +47,9 @@ public class CredentialController {
      * Accepts a ResetPasswordRequestDto containing the new password and verification details, and returns a ResetPasswordResponseDto.
      */
     @PostMapping("resetPassword")
-    public ResponseEntity<ResetPasswordResponseDto> resetPassword
+    public ResponseEntity<Mono<ResetPasswordResponseDto>> resetPassword
             (@Valid @RequestBody ResetPasswordRequestDto requestDto){
-        ResetPasswordResponseDto responseDto = credentialService.resetPassword(requestDto);
+        Mono<ResetPasswordResponseDto> responseDto = credentialService.resetPassword(requestDto);
         return ResponseEntity.status(HttpStatus.OK).body(responseDto);
     }
 
