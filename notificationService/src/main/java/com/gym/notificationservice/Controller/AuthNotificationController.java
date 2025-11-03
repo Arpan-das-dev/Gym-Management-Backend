@@ -4,7 +4,7 @@ import com.gym.notificationservice.Dto.AuthNotificationRequests.EmailOtpRequestD
 import com.gym.notificationservice.Dto.AuthNotificationRequests.PhoneOtpRequestDto;
 import com.gym.notificationservice.Dto.AuthNotificationRequests.SendCredentialRequestDto;
 import com.gym.notificationservice.Dto.AuthNotificationRequests.WelcomeRequestDto;
-import com.gym.notificationservice.Service.AuthNotificationService;
+import com.gym.notificationservice.Services.AuthNotificationService;
 import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
 import org.springframework.http.HttpStatus;
