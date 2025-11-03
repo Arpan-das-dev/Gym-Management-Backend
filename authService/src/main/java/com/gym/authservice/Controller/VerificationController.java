@@ -10,6 +10,7 @@ import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.validation.annotation.Validated;
 import org.springframework.web.bind.annotation.*;
+import reactor.core.publisher.Mono;
 
 @RestController
 @RequestMapping("${authService.base_url}")
@@ -43,11 +44,21 @@ public class VerificationController {
     }
 
     @PostMapping("verifyEmail")
-    public ResponseEntity<String> verifyEmail(@Valid @RequestBody EmailVerificationRequestDto requestDto) {
-        if (verificationService.verifyEmail(requestDto.getEmail(), requestDto.getOtp())) {
-            return ResponseEntity.status(HttpStatus.ACCEPTED).body("Email verified successfully");
-        }
-        return ResponseEntity.status(HttpStatus.BAD_REQUEST).body("Invalid OTP");
+    public Mono<ResponseEntity<String>> verifyEmail(@Valid @RequestBody EmailVerificationRequestDto requestDto) {
+        return verificationService.verifyEmail(requestDto.getEmail(), requestDto.getOtp())
+                .map(isVerified -> {
+                    if (isVerified) {
+                        return ResponseEntity.status(HttpStatus.ACCEPTED)
+                                .body("Email verified successfully");
+                    } else {
+                        return ResponseEntity.status(HttpStatus.BAD_REQUEST)
+                                .body("Invalid OTP");
+                    }
+                })
+                .onErrorResume(e ->
+                        Mono.just(ResponseEntity.status(HttpStatus.BAD_REQUEST)
+                                .body(e.getMessage()))
+                );
     }
 
     /* Endpoint to verify phone using OTP.
@@ -55,11 +66,18 @@ public class VerificationController {
      * Returns a success message if the OTP is valid, otherwise returns an error message.
      */
     @PostMapping("verifyPhone")
-    public ResponseEntity<String> verifyPhone(@Valid @RequestBody PhoneVerificationRequestDto requestDto) {
-        boolean verification = verificationService.verifyPhone(requestDto.getPhone(), requestDto.getOtp());
-        if (verification) {
-            return ResponseEntity.status(HttpStatus.ACCEPTED).body("Phone no verified successfully");
-        }
-        return ResponseEntity.status(HttpStatus.BAD_REQUEST).body("Invalid OTP");
+    public Mono<ResponseEntity<String>> verifyPhone(@Valid @RequestBody PhoneVerificationRequestDto requestDto) {
+        return verificationService.verifyPhone(requestDto.getPhone(), requestDto.getOtp())
+                .map(isVerified -> {
+                    if (isVerified) {
+                        return ResponseEntity
+                                .status(HttpStatus.ACCEPTED)
+                                .body("Phone number verified successfully");
+                    } else {
+                        return ResponseEntity
+                                .status(HttpStatus.BAD_REQUEST)
+                                .body("Invalid OTP");
+                    }
+                });
     }
 }

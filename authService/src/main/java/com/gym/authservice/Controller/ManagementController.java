@@ -1,5 +1,6 @@
 package com.gym.authservice.Controller;
 
+import com.gym.authservice.Dto.Request.AdminCreationRequestDto;
 import com.gym.authservice.Dto.Request.SignupRequestDto;
 import com.gym.authservice.Dto.Response.SignUpResponseDto;
 import com.gym.authservice.Dto.Response.SignupDetailsInfoDto;
@@ -9,6 +10,7 @@ import lombok.RequiredArgsConstructor;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
+import reactor.core.publisher.Mono;
 
 @RestController
 @RequestMapping("${authService.base_url}")
@@ -30,8 +32,8 @@ public class ManagementController {
      * Returns a SignUpResponseDto upon successful creation.
      */
     @PostMapping("admin/CreateMember")
-    public ResponseEntity<SignUpResponseDto> createMember(@Valid @RequestBody SignupRequestDto requestDto){
-        SignUpResponseDto responseDto = managementService.createMemberByAdmin(requestDto);
+    public ResponseEntity<Mono<SignUpResponseDto>> createMember(@Valid @RequestBody SignupRequestDto requestDto){
+        Mono<SignUpResponseDto> responseDto = managementService.createMemberByAdmin(requestDto);
         return ResponseEntity.status(HttpStatus.OK).body(responseDto);
     }
 
@@ -41,9 +43,14 @@ public class ManagementController {
      * Returns a SignUpResponseDto upon successful creation.
      */
     @PostMapping("admin/createTrainer")
-    public ResponseEntity<SignUpResponseDto> createTrainer(@Valid @RequestBody SignupRequestDto requestDto){
-        SignUpResponseDto responseDto = managementService.createTrainerByAdmin(requestDto);
-        return ResponseEntity.status(HttpStatus.OK).body(responseDto);
+    public ResponseEntity<Mono<SignUpResponseDto>> createTrainer(@Valid @RequestBody SignupRequestDto requestDto){
+        try{
+            Mono<SignUpResponseDto> responseDto = managementService.createTrainerByAdmin(requestDto);
+            return ResponseEntity.status(HttpStatus.OK).body(responseDto);
+        } catch (Exception e) {
+            e.printStackTrace();
+            return null;
+        }
     }
 
     /*
@@ -52,30 +59,35 @@ public class ManagementController {
      * Returns a SignUpResponseDto upon successful creation.
      */
     @PostMapping("admin/createAdmin")
-    public ResponseEntity<SignUpResponseDto> createAdmin(@Valid @RequestBody SignupRequestDto requestDto){
-        SignUpResponseDto responseDto = managementService.createAdminByAdmin(requestDto);
-        return ResponseEntity.status(HttpStatus.OK).body(responseDto);
+    public ResponseEntity<Mono<SignUpResponseDto>> createAdmin(@Valid @RequestBody AdminCreationRequestDto requestDto){
+        try{
+            Mono<SignUpResponseDto> responseDto = managementService.createAdminByAdmin(requestDto);
+            return ResponseEntity.status(HttpStatus.OK).body(responseDto);
+        } catch (Exception e) {
+            e.printStackTrace();
+            throw new RuntimeException(e);
+        }
     }
 
     /*
      * Endpoint to retrieve user details by user ID.
      * Accepts a user ID as a path variable and returns a SignupDetailsInfoDto containing user information.
      */
-    @GetMapping("admin/getUser-id/{id}")
+    /**@GetMapping("admin/getUser-id/{id}")
     public ResponseEntity<SignupDetailsInfoDto> getUserById(@PathVariable String id){
         SignupDetailsInfoDto responseDto = managementService.getUserById(id);
         return ResponseEntity.status(HttpStatus.OK).body(responseDto);
     }
-    
+*/
     /*
      * Endpoint to retrieve user details by email address.
      * Accepts an email address as a path variable and returns a SignupDetailsInfoDto containing user information.
      */
-    @GetMapping ("admin/getUser-email/{email}")
-    public ResponseEntity<SignupDetailsInfoDto> getUserByEmail(@PathVariable String email){
-        SignupDetailsInfoDto responseDto = managementService.getUserByEmail(email);
-        return ResponseEntity.status(HttpStatus.OK).body(responseDto);
-    }
+//    @GetMapping ("admin/getUser-email/{email}")
+//    public ResponseEntity<SignupDetailsInfoDto> getUserByEmail(@PathVariable String email){
+//        SignupDetailsInfoDto responseDto = managementService.getUserByEmail(email);
+//        return ResponseEntity.status(HttpStatus.OK).body(responseDto);
+//    }
 
     /*
      * Endpoint to approve or reject a user (e.g., trainer) by an admin.
@@ -83,8 +95,8 @@ public class ManagementController {
      * Returns a success message indicating the result of the operation.
      */
     @PostMapping("admin/approve")
-    public ResponseEntity<String> approveUser(@RequestParam String email,@RequestParam boolean approve){
-        String response = managementService.approve(email,approve);
+    public ResponseEntity<Mono<String>> approveUser(@RequestParam String email,@RequestParam boolean approve){
+       Mono<String> response = managementService.approve(email,approve);
         return ResponseEntity.status(HttpStatus.OK).body(response);
     }
 

@@ -11,6 +11,7 @@ import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.validation.annotation.Validated;
 import org.springframework.web.bind.annotation.*;
+import reactor.core.publisher.Mono;
 
 @RequiredArgsConstructor
 @RestController
@@ -30,7 +31,7 @@ public class SignUpController {
      * Accepts a SignupRequestDto containing user details and returns a SignUpResponseDto upon successful registration.
      */
     @PostMapping("signup")
-    public ResponseEntity<SignUpResponseDto> signUp(@Valid @RequestBody SignupRequestDto requestDto) {
+    public ResponseEntity<Mono<SignUpResponseDto>> signUp(@Valid @RequestBody SignupRequestDto requestDto) {
         return ResponseEntity.ok(signUpService.signUp(requestDto));
     }
 
