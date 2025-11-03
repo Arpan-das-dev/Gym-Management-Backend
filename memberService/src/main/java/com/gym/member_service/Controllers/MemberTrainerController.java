@@ -229,7 +229,7 @@ public class MemberTrainerController {
      * @see SessionsResponseDto
      */
     @PutMapping("/update-session")
-    public ResponseEntity<SessionsResponseDto> updateSessionById(@RequestParam @NotBlank String sessionId,
+    public ResponseEntity<SessionsResponseDto> updateSessionById(@RequestParam @NotBlank String  sessionId,
                                                                  @RequestParam @NotBlank String memberId,
                                                                  @Valid @RequestBody UpdateSessionRequestDto
                                                                          requestDto)

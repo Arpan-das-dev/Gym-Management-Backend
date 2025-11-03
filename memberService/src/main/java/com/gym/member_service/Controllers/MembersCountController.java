@@ -54,4 +54,6 @@ public class MembersCountController {
         return ResponseEntity.status(HttpStatus.OK).body(otherService.getActiveMembersCount());
         // returning member count as OK http status
     }
+
+
 }
