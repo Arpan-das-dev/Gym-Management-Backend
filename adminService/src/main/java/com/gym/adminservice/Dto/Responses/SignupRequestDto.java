@@ -10,7 +10,7 @@ import java.time.LocalDate;
 @Data
 @Builder
 @AllArgsConstructor
-public class SignupResponseDto {
+public class SignupRequestDto {
     
     private String  firstName;
    
