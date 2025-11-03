@@ -3,13 +3,12 @@ package com.gym.adminservice.Services.AuthService;
 import com.gym.adminservice.Dto.Requests.CreateAdminRequestDto;
 import com.gym.adminservice.Dto.Requests.CreateMemberRequestDto;
 import com.gym.adminservice.Dto.Requests.CreateTrainerRequestDto;
-import com.gym.adminservice.Dto.Responses.MemberResponseDto;
-import com.gym.adminservice.Dto.Responses.SignupResponseDto;
-import com.gym.adminservice.Dto.Responses.TrainerResponseDto;
+import com.gym.adminservice.Dto.Responses.*;
 import com.gym.adminservice.Enums.RoleType;
 import com.gym.adminservice.Models.AdminEntity;
 import com.gym.adminservice.Repository.AdminRepository;
 import com.gym.adminservice.Services.WebClientServices.WebClientAuthService;
+import com.gym.adminservice.Utils.IdGenUtil;
 import lombok.AllArgsConstructor;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
@@ -21,16 +20,16 @@ import java.util.UUID;
 public class AuthManagementService {
     private final WebClientAuthService webClientService;
     private final AdminRepository adminRepository;
-
+    private final IdGenUtil idGenUtil;
     /**
      * this service will create a user in the auth service via admin and sent
      * requests via webclient
      * also it will create the user in their respective service like member in
      * member service and trainer
      */
-    public String createMember(CreateMemberRequestDto memberRequestDto) {
+    public UserCreationResponseDto createMember(CreateMemberRequestDto memberRequestDto) {
         // create the signup dto to send to the auth service
-        SignupResponseDto responseDto = SignupResponseDto.builder()
+        SignupRequestDto responseDto = SignupRequestDto.builder()
                 .email(memberRequestDto.getEmail()).phone(memberRequestDto.getPhone())
                 .role(memberRequestDto.getRole())
                 .firstName(memberRequestDto.getFirstName()).lastName(memberRequestDto.getLastName())
@@ -42,8 +41,8 @@ public class AuthManagementService {
         // as we don't have member service yet so we will comment it out
         MemberResponseDto memberResponseDto = MemberResponseDto.builder()
                 .firstName(memberRequestDto.getFirstName()).lastName(memberRequestDto.getLastName())
-                .age(memberRequestDto.getAge()).gender(memberRequestDto.getGender())
-                .joinDate(memberRequestDto.getJoinDate()).address(memberRequestDto.getAddress())
+                .gender(memberRequestDto.getGender())
+                .joinDate(memberRequestDto.getJoinDate())
                 .email(memberRequestDto.getEmail()).phone(memberRequestDto.getPhone())
                 .build();
         // send the request to the auth service via webclient
@@ -51,16 +50,16 @@ public class AuthManagementService {
         // as we don't have member service yet so we will comment it out
         // webClientMemberService.sendMemberDetails(memberResponseDto)
 
-        return "Member created successfully";
+        return new UserCreationResponseDto("Member created successfully");
     }
 
     // this service will create a trainer in the auth service via admin and sent
     // requests via webclient
     // also it will create the trainer in their respective service like trainer in
     // trainer service
-    public String createTrainer(CreateTrainerRequestDto trainerRequestDto) {
+    public UserCreationResponseDto createTrainer(CreateTrainerRequestDto trainerRequestDto) {
         // create the signup dto to send to the auth service
-        SignupResponseDto responseDto = SignupResponseDto.builder()
+        SignupRequestDto responseDto = SignupRequestDto.builder()
                 .email(trainerRequestDto.getEmail()).phone(trainerRequestDto.getPhone())
                 .role(RoleType.TRAINER_ADMIN)
                 .firstName(trainerRequestDto.getFirstName()).lastName(trainerRequestDto.getLastName())
@@ -72,19 +71,17 @@ public class AuthManagementService {
         // as we dont have member service yet so we will comment it out
         TrainerResponseDto trainerResponseDto = TrainerResponseDto.builder()
                 .firstName(trainerRequestDto.getFirstName()).lastName(trainerRequestDto.getLastName())
-                .age(trainerRequestDto.getAge()).gender(trainerRequestDto.getGender())
-                .joinDate(trainerRequestDto.getJoinDate()).address(trainerRequestDto.getAddress())
+                .gender(trainerRequestDto.getGender())
+                .joinDate(trainerRequestDto.getJoinDate())
                 .email(trainerRequestDto.getEmail()).phone(trainerRequestDto.getPhone())
                 .password(trainerRequestDto.getPassword())
-                .experience(trainerRequestDto.getExperience())
-                .specialties(trainerRequestDto.getSpecialties())
                 .build();
         // send the request to the auth service via webclient
         webClientService.sendSignupDetailsTrainer(responseDto);
         // as we don't have member service yet so we will comment it out
         // webClientTrainerService.sendTrainerDetails(trainerResponseDto)
 
-        return "Trainer created successfully";
+        return new UserCreationResponseDto("Trainer created successfully");
     }
 
     /*
@@ -96,19 +93,12 @@ public class AuthManagementService {
      * denied and throw an exception
      */
     @Transactional
-    public String createAdmin(CreateAdminRequestDto requestDto) {
-        // create the signup dto to send to the auth service
-        SignupResponseDto responseDto = SignupResponseDto.builder()
-                .email(requestDto.getEmail())
-                .role(RoleType.ADMIN_ADMIN)
-                .firstName(requestDto.getFirstName()).lastName(requestDto.getLastName())
-                .gender(requestDto.getGender())
-                .joinDate(requestDto.getJoinDate())
-                .password(requestDto.getPassword())
-                .build();
+    public UserCreationResponseDto createAdmin(CreateAdminRequestDto requestDto) {
         // create the admin entity to save in the admin service database
         AdminEntity model = AdminEntity.builder()
-                .id(String.valueOf(UUID.randomUUID()))
+                .id(idGenUtil.idGeneration(requestDto.getRole().name(),
+                        requestDto.getGender(),
+                        requestDto.getJoinDate()))
                 .firstName(requestDto.getFirstName())
                 .lastName(requestDto.getLastName())
                 .email(requestDto.getEmail())
@@ -119,10 +109,22 @@ public class AuthManagementService {
                 .build();
         // save the admin entity in the admin service database`
         adminRepository.save(model);
+        // create the signup dto to send to the auth service
+        AdminCreationRequestDto responseDto = AdminCreationRequestDto.builder()
+                .id(model.getId())
+                .firstName(model.getFirstName()).lastName(model.getLastName())
+                .email(model.getEmail()).phone(model.getPhone())
+                .password(requestDto.getPassword())
+                .isEmailVerified(false).isPhoneVerified(false)
+                .isApproved(true)
+                .joinDate(model.getJoinDate())
+                .gender(model.getGender())
+                .role(model.getRole())
+                .build();
         // send the request to the auth service via webclient
         webClientService.sendSignupDetailsAdmin(responseDto);
 
-        return "Admin created successfully";
+        return new UserCreationResponseDto("Admin created successfully");
     }
 
     /*
@@ -131,11 +133,11 @@ public class AuthManagementService {
      * only super admin can set the custom id to another admin and in other roles no
      * one can set the id
      */
-    public String setCustomIdToAdmin(String id, String role, String email) {
+    public UserCreationResponseDto setCustomIdToAdmin(String id, String role, String email) {
 
         AdminEntity entity = adminRepository.findByEmail(email).orElseThrow(); // userNotFoundException
         entity.setId(id);
-        return "Id set successfully";
+        return new UserCreationResponseDto("Id set successfully");
     }
 
     /*
@@ -146,7 +148,7 @@ public class AuthManagementService {
      * and as this service is called by admin so only admin can delete a user
      * without any authentication
      */
-    public String deleteUser(String identifier, RoleType role) {
+    public UserCreationResponseDto deleteUser(String identifier, RoleType role) {
         /*
          * this service will delete a user from the auth service via admin and sent
          * requests via webclient
@@ -158,26 +160,26 @@ public class AuthManagementService {
         if (role.isTrainerRole()) {
             webClientService.deleteUser(identifier);
             // webClientTrainerService.deleteTrainer(identifier);
-            return "trainer request deleted successfully";
+            return new UserCreationResponseDto("trainer request deleted successfully");
         } else if (role.equals(RoleType.ADMIN)) {
             adminRepository.deleteByEmail(identifier);
-            return "admin deleted successfully";
+            return new UserCreationResponseDto("admin deleted successfully");
         } else {
             webClientService.deleteUser(identifier);
             // webClientMemberService.deleteMember(identifier);
-            return "member request deleted successfully";
+            return new UserCreationResponseDto("member request deleted successfully");
         }
     }
 
-    public String freezeAccount(String email, RoleType role) {
+    public UserCreationResponseDto freezeAccount(String email, RoleType role) {
         if (role.isTrainerRole()) {
             // webClientTrainerService.freezeAccount(email,role)
-            return "Trainer Account frozen Successfully";
+            return new UserCreationResponseDto("Trainer Account frozen Successfully");
         } else if (role.equals(RoleType.MEMBER)) {
             // webClientMemberService.freezeAccount(identifier);
-            return "Member Account frozen Successfully";
+            return new UserCreationResponseDto("Member Account frozen Successfully");
         } else {
-            return "account frozen successfully";
+            return new UserCreationResponseDto("account frozen successfully");
         }
     }
 
