@@ -1,9 +1,9 @@
 package com.gym.authservice.Exceptions.Util;
 
 import com.gym.authservice.Exceptions.Model.ErrorResponse;
-import jakarta.servlet.http.HttpServletRequest;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
+import org.springframework.web.server.ServerWebExchange;
 
 import java.time.LocalDateTime;
 
@@ -11,7 +11,7 @@ public class ExceptionUtil {
     private ExceptionUtil() {
     }
     public static ResponseEntity<ErrorResponse> buildErrorResponse(
-            HttpStatus status, String message, HttpServletRequest request) {
+            HttpStatus status, String message, ServerWebExchange exchange) {
 
         return ResponseEntity.status(status)
                 .body(new ErrorResponse(
@@ -19,7 +19,7 @@ public class ExceptionUtil {
                         status.value(),
                         status.getReasonPhrase(),
                         message,
-                        request.getRequestURI()
+                        exchange.getRequest().getPath().toString()
                 ));
     }
 }
