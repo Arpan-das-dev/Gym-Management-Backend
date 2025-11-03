@@ -10,6 +10,7 @@ import lombok.RequiredArgsConstructor;
 import org.springframework.data.redis.core.StringRedisTemplate;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
+import reactor.core.publisher.Mono;
 
 import java.util.concurrent.TimeUnit;
 
@@ -42,38 +43,44 @@ public class VerificationService {
         notificationService.sendPhoneOtp(new PhoneOtpNotificationDto(phone, otpPhone,name));
     }
 
-    @Transactional
-    public boolean verifyEmail(String key, String otp) {
-        SignedUps user = signedUpsRepository.findByEmail(key)
-                .orElseThrow(() -> new UserNotFoundException("User not found"));
-
-            String value = redisTemplate.opsForValue().get("OTP:EMAIL:" + key);
-            if (otp != null && otp.equals(value)) {
-                deleteEmailOtp(key);
-                user.setEmailVerified(true);
-                return true;
-            }
-
-        return false;
+    public Mono<Boolean> verifyEmail(String key, String otp) {
+        return signedUpsRepository.findByEmail(key)
+                .switchIfEmpty(Mono.error(new UserNotFoundException("User not found")))
+                .flatMap(user -> {
+                    String value = redisTemplate.opsForValue().get("OTP:EMAIL:" + key);
+                    if (otp != null && otp.equals(value)) {
+                        deleteEmailOtp(key);
+                        user.setEmailVerified(true);
+                        return signedUpsRepository.save(user)
+                                .thenReturn(true);
+                    }
+                    return Mono.just(false);
+                });
     }
 
     @Transactional
-    public boolean verifyPhone(String key, String otp) {
-        SignedUps user = signedUpsRepository.findByPhone(key)
-                .orElseThrow(() -> new UserNotFoundException("User not found"));
+    public Mono<Boolean> verifyPhone(String key, String otp) {
+        return signedUpsRepository.findByPhone(key)
+                .switchIfEmpty(Mono.error(new UserNotFoundException("User not found")))
+                .flatMap(user -> {
+                    if (!user.isEmailVerified()) {
+                        return Mono.error(new RuntimeException("Please verify email before verifying email"));
+                    }
 
-        if (!user.isEmailVerified()) {
-            throw new RuntimeException("Please verify email before verifying phone");
-        }
+                    String redisKey = "OTP:PHONE:" + key;
+                    String value = redisTemplate.opsForValue().get(redisKey); // ⚠️ blocking
 
-        String value = redisTemplate.opsForValue().get("OTP:PHONE:" + key);
-        if (otp != null && otp.equals(value)) {
-            deletePhoneOtp(key);
-            user.setPhoneVerified(true);
-            return true;
-        }
-        return false;
+                    if (otp != null && otp.equals(value)) {
+                        deletePhoneOtp(key);
+                        user.setPhoneVerified(true);
+                        return signedUpsRepository.save(user)
+                                .thenReturn(true);
+                    } else {
+                        return Mono.just(false);
+                    }
+                });
     }
+
 
     public void deleteEmailOtp(String key) {
         redisTemplate.delete("OTP:EMAIL:" + key);
