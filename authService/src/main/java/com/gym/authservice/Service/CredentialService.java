@@ -15,6 +15,7 @@ import lombok.RequiredArgsConstructor;
 import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
+import reactor.core.publisher.Mono;
 
 @Service
 @RequiredArgsConstructor
@@ -26,42 +27,62 @@ public class CredentialService {
     private final WebClientService notificationService;
     private final PasswordEncoder encoder;
 
-    @Transactional
-    public ForgotPasswordResponseDto forgotPassword(ForgotPasswordRequestDto requestDto) {
-        SignedUps user = signedUpsRepository.findByEmail(requestDto.getEmail())
-                .orElseThrow(() -> new UserNotFoundException("user with this email doesn't exists"));
-        String otp = otpGenerationUtil.generateOtp(6);
-        verificationService.StoreEmailOtp(user.getEmail(),otp,900);
-        notificationService.sendPasswordReset(new EmailOtpNotificationDto(user.getEmail(), otp, user.getFirstName()));
-
-        signedUpsRepository.save(user);
-        return new ForgotPasswordResponseDto("OTP sent to registered email");
+    /**
+     * ✅ Common helper method to fetch user reactively by email.
+     */
+    private Mono<SignedUps> findUserByEmail(String email) {
+        return signedUpsRepository.findByEmail(email)
+                .switchIfEmpty(Mono.error(
+                        new UserNotFoundException("User with email '" + email + "' doesn't exist")
+                ));
     }
 
-    @Transactional
-    public ResetPasswordResponseDto resetPassword(ResetPasswordRequestDto requestDto) {
+    /**
+     * ✅ Sends OTP for password reset via email.
+     */
+    public Mono<ForgotPasswordResponseDto> forgotPassword(ForgotPasswordRequestDto requestDto) {
+        return findUserByEmail(requestDto.getEmail())
+                .flatMap(user -> {
+                    String otp = otpGenerationUtil.generateOtp(6);
+                    verificationService.StoreEmailOtp(user.getEmail(), otp, 900);
+                    notificationService.sendPasswordReset(
+                            new EmailOtpNotificationDto(user.getEmail(), otp, user.getFirstName())
+                    );
+                    return signedUpsRepository.save(user)
+                            .thenReturn(new ForgotPasswordResponseDto("OTP sent to registered email"));
+                });
+    }
+
+    /**
+     * ✅ Resets user password after OTP verification.
+     */
+    public Mono<ResetPasswordResponseDto> resetPassword(ResetPasswordRequestDto requestDto) {
         if (requestDto.getOldPassword().equals(requestDto.getNewPassword())) {
-            throw new RuntimeException("old password and new password can not be same");
+            return Mono.error(new RuntimeException("Old password and new password cannot be the same"));
         }
-        SignedUps user = signedUpsRepository.findByEmail(requestDto.getEmail())
-                .orElseThrow(() -> new UserNotFoundException("user with this email doesn't exists"));
 
-        if (!encoder.matches(requestDto.getOldPassword(), user.getPassword())) {
-            throw new UnauthorizedAccessException("Password doesn't matches");
-        }
-        user.setPassword(encoder.encode(requestDto.getNewPassword()));
-        signedUpsRepository.save(user);
-        return new ResetPasswordResponseDto("password reset successfully");
+        return findUserByEmail(requestDto.getEmail())
+                .flatMap(user -> {
+                    if (!encoder.matches(requestDto.getOldPassword(), user.getPassword())) {
+                        return Mono.error(new UnauthorizedAccessException("Incorrect old password"));
+                    }
+                    user.setPassword(encoder.encode(requestDto.getNewPassword()));
+                    return signedUpsRepository.save(user)
+                            .thenReturn(new ResetPasswordResponseDto("Password reset successfully"));
+                });
     }
 
-    @Transactional
-    public void changePassword(ChangePasswordRequestDto requestDto ){
-        SignedUps user = signedUpsRepository.findByEmail(requestDto.getEmail())
-                .orElseThrow(() -> new UserNotFoundException("user with this email doesn't exists"));
-        if(!user.isEmailVerified()){
-            throw new RuntimeException("email is not verified");
-        }
-        user.setPassword(encoder.encode(requestDto.getPassword()));
-        signedUpsRepository.save(user);
+    /**
+     * ✅ Changes password if email is verified.
+     */
+    public Mono<Void> changePassword(ChangePasswordRequestDto requestDto) {
+        return findUserByEmail(requestDto.getEmail())
+                .flatMap(user -> {
+                    if (!user.isEmailVerified()) {
+                        return Mono.error(new RuntimeException("Email is not verified"));
+                    }
+                    user.setPassword(encoder.encode(requestDto.getPassword()));
+                    return signedUpsRepository.save(user).then();
+                });
     }
 }

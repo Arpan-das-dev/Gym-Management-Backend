@@ -1,5 +1,6 @@
 package com.gym.authservice.Service;
 
+import com.gym.authservice.Dto.Request.AdminCreationRequestDto;
 import com.gym.authservice.Dto.Request.SignupRequestDto;
 import com.gym.authservice.Dto.Response.*;
 import com.gym.authservice.Entity.SignedUps;
@@ -12,6 +13,7 @@ import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 import org.springframework.web.reactive.function.client.WebClient;
+import reactor.core.publisher.Mono;
 
 @Service
 
@@ -38,53 +40,102 @@ public class SignUpService {
     }
 
     @Transactional
-    public SignUpResponseDto signUp(SignupRequestDto requestDto) {
-        boolean emailExists = signedUpsRepository.existsByEmail(requestDto.getEmail());
-        boolean phoneExists = signedUpsRepository.existsByPhone(requestDto.getPhone());
-        if (emailExists || phoneExists) {
-            throw new DuplicateUserException("User with this email or phone number already exists");
-        }
+    public Mono<SignUpResponseDto> signUp(SignupRequestDto requestDto) {
+        return validateUserUniqueness(requestDto.getEmail(), requestDto.getPhone())
+                .then(Mono.defer(() -> {
 
-        SignedUps signedUps = SignedUps.builder()
-                .id(idGenerationUtil.idGeneration(
-                        requestDto.getRole().name(),
-                        requestDto.getGender(),
-                        requestDto.getJoinDate()
-                ))
-                .firstName(requestDto.getFirstName())
-                .lastName(requestDto.getLastName())
-                .email(requestDto.getEmail())
-                .phone(requestDto.getPhone())
-                .joinDate(requestDto.getJoinDate())
-                .password(encoder.encode(requestDto.getPassword()))
-                .gender(requestDto.getGender())
-                .role(requestDto.getRole())
-                .build();
+                    // ✅ Step 1: Build the SignedUps entity
+                    SignedUps signedUps = SignedUps.builder()
+                            .id(idGenerationUtil.idGeneration(
+                                    requestDto.getRole().name(),
+                                    requestDto.getGender(),
+                                    requestDto.getJoinDate()
+                            ))
+                            .firstName(requestDto.getFirstName())
+                            .lastName(requestDto.getLastName())
+                            .email(requestDto.getEmail())
+                            .phone(requestDto.getPhone())
+                            .joinDate(requestDto.getJoinDate())
+                            .password(encoder.encode(requestDto.getPassword()))
+                            .gender(requestDto.getGender())
+                            .role(requestDto.getRole())
+                            .approved(false)
+                            .build();
 
-        ApproveResponseDto responseDto = new ApproveResponseDto(requestDto.getEmail(), requestDto.getPhone(),
-                requestDto.getFirstName() + " " + requestDto.getLastName(),
-                requestDto.getRole(), requestDto.getJoinDate()
-        );
+                    // ✅ Step 2: Prepare approval DTO
+                    ApproveResponseDto approvalDto = new ApproveResponseDto(
+                            requestDto.getEmail(),
+                            requestDto.getPhone(),
+                            requestDto.getFirstName() + " " + requestDto.getLastName(),
+                            requestDto.getRole(),
+                            requestDto.getJoinDate()
+                    );
 
-        if (requestDto.getRole() == RoleType.TRAINER) {
-            signedUps.setRole(RoleType.TRAINER_PENDING);
-            sendApprovalRequest(approveUrl,responseDto);
-        } else if (requestDto.getRole().equals(RoleType.TRAINER_ADMIN)) {
-            signedUps.setRole(RoleType.TRAINER);
-            signedUps.setApproved(true);
-        } else {
-            signedUps.setRole(RoleType.MEMBER);
-            sendApprovalRequest(approveUrl,responseDto);
-        }
-        signedUpsRepository.save(signedUps);
-        SignupNotificationDto notificationDto = new SignupNotificationDto(signedUps.getId(),
-                signedUps.getEmail(),signedUps.getPhone(),signedUps.getFirstName()+" "+
-                signedUps.getLastName());
+                    // ✅ Step 3: Role-specific setup
+                    switch (requestDto.getRole()) {
+                        case TRAINER -> {
+                            signedUps.setRole(RoleType.TRAINER_PENDING);
+                            sendApprovalRequest(approveUrl, approvalDto);
+                        }
+                        case TRAINER_ADMIN -> {
+                            signedUps.setRole(RoleType.TRAINER);
+                            signedUps.setApproved(true);
+                        }
+                        default -> {
+                            signedUps.setRole(RoleType.MEMBER);
+                            sendApprovalRequest(approveUrl, approvalDto);
+                        }
+                    }
 
-        notificationService.sendWelcome(notificationDto);
+                    // ✅ Step 4: Save user
+                    return signedUpsRepository.insertSignedUp(
+                                    signedUps.getId(),
+                                    signedUps.getFirstName(),
+                                    signedUps.getLastName(),
+                                    signedUps.getGender(),
+                                    signedUps.getEmail(),
+                                    signedUps.getPhone(),
+                                    signedUps.getPassword(),
+                                    signedUps.getRole(),
+                                    signedUps.getJoinDate(),
+                                    signedUps.isEmailVerified(),
+                                    signedUps.isPhoneVerified(),
+                                    signedUps.isApproved()
+                            )
 
-        return new SignUpResponseDto("user created successfully \n please verify your mobile no and email id");
+                            // ✅ Step 5: Continue after successful insert
+                            .then(Mono.defer(() -> {
+                                SignupNotificationDto notificationDto = new SignupNotificationDto(
+                                        signedUps.getId(),
+                                        signedUps.getEmail(),
+                                        signedUps.getPhone(),
+                                        signedUps.getFirstName() + " " + signedUps.getLastName()
+                                );
+
+                                notificationService.sendWelcome(notificationDto);
+
+                                return Mono.just(new SignUpResponseDto(
+                                        "User created successfully.\nPlease verify your mobile number and email ID."
+                                ));
+                            }));
+                }));
     }
+
+    private Mono<Void> validateUserUniqueness(String email, String phone) {
+        return Mono.zip(
+                signedUpsRepository.existsByEmail(email),
+                signedUpsRepository.existsByPhone(phone)
+        ).flatMap(tuple -> {
+            boolean emailExists = tuple.getT1();
+            boolean phoneExists = tuple.getT2();
+
+            if (emailExists || phoneExists) {
+                return Mono.error(new DuplicateUserException("User with this email or phone number already exists"));
+            }
+            return Mono.empty();
+        });
+    }
+
 
     public void sendApprovalRequest(String url,ApproveResponseDto responseDto){
         webClient.build().post()
@@ -93,5 +144,54 @@ public class SignUpService {
                 .retrieve().toBodilessEntity().subscribe();
     }
 
+    public Mono<SignUpResponseDto> createAdmin(AdminCreationRequestDto requestDto) {
+        return validateUserUniqueness(requestDto.getEmail(), requestDto.getPhone())
+                .then(Mono.defer(() -> {
 
+                    // ✅ Step 1: Build the SignedUps entity
+                    SignedUps signedUps = SignedUps.builder()
+                            .id(requestDto.getId())
+                            .firstName(requestDto.getFirstName())
+                            .lastName(requestDto.getLastName())
+                            .email(requestDto.getEmail())
+                            .phone(requestDto.getPhone())
+                            .joinDate(requestDto.getJoinDate())
+                            .password(encoder.encode(requestDto.getPassword()))
+                            .gender(requestDto.getGender())
+                            .role(requestDto.getRole())
+                            .approved(false)
+                            .build();
+                    signedUps.setRole(RoleType.ADMIN);
+                    return signedUpsRepository.insertSignedUp(
+                                    signedUps.getId(),
+                                    signedUps.getFirstName(),
+                                    signedUps.getLastName(),
+                                    signedUps.getGender(),
+                                    signedUps.getEmail(),
+                                    signedUps.getPhone(),
+                                    signedUps.getPassword(),
+                                    signedUps.getRole(),
+                                    signedUps.getJoinDate(),
+                                    signedUps.isEmailVerified(),
+                                    signedUps.isPhoneVerified(),
+                                    signedUps.isApproved()
+                            )
+
+                            // ✅ Step 5: Continue after successful insert
+                            .then(Mono.defer(() -> {
+                                SignupNotificationDto notificationDto = new SignupNotificationDto(
+                                        signedUps.getId(),
+                                        signedUps.getEmail(),
+                                        signedUps.getPhone(),
+                                        signedUps.getFirstName() + " " + signedUps.getLastName()
+                                );
+
+                                notificationService.sendWelcome(notificationDto);
+
+                                return Mono.just(new SignUpResponseDto(
+                                        "User created successfully.\nPlease verify your mobile number and email ID."
+                                ));
+                            }));
+                }));
+    }
 }
