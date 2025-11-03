@@ -13,10 +13,11 @@ import com.itextpdf.layout.element.LineSeparator;
 import com.itextpdf.layout.element.Paragraph;
 import com.itextpdf.layout.properties.TextAlignment;
 import com.itextpdf.layout.element.*;
+import org.springframework.stereotype.Service;
 
 import java.io.ByteArrayOutputStream;
 import java.time.format.DateTimeFormatter;
-
+@Service
 public class ReceiptGenerator {
 
     public byte[] generatePlanPaymentReceipt(PlanPayment payment) {
