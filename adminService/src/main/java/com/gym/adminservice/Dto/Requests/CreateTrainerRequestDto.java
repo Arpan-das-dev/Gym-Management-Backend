@@ -6,7 +6,6 @@ import lombok.AllArgsConstructor;
 import lombok.Data;
 
 import java.time.LocalDate;
-import java.util.List;
 
 @Data
 @AllArgsConstructor
@@ -39,17 +38,4 @@ public class CreateTrainerRequestDto {
 
     @NotNull(message = "joining date can not be empty")
     private LocalDate joinDate;
-
-    @NotBlank(message = "address is required")
-    private String address;
-
-    @NotNull(message = "age is required")
-    @NotBlank(message = "age is required")
-    private Byte age;
-
-    @NotBlank(message = " at least one specialties required")
-    private List<String> specialties;
-
-    @Min(value = 0,message = "experience can not be negative")
-    private Byte experience;
 }
