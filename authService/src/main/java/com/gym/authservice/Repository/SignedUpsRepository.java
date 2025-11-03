@@ -1,19 +1,69 @@
 package com.gym.authservice.Repository;
 
 import com.gym.authservice.Entity.SignedUps;
-import org.springframework.data.jpa.repository.JpaRepository;
+import com.gym.authservice.Roles.RoleType;
+import org.springframework.data.r2dbc.repository.Query;
+import org.springframework.data.repository.reactive.ReactiveCrudRepository;
 import org.springframework.stereotype.Repository;
+import reactor.core.publisher.Mono;
 
-import java.util.Optional;
+import java.time.LocalDate;
+
 @Repository
-public interface SignedUpsRepository extends JpaRepository<SignedUps,String > {
-    boolean existsByPhone(String phone);
+public interface SignedUpsRepository extends ReactiveCrudRepository<SignedUps, String> {
 
-    Optional<SignedUps> findByEmail(String username);
+    Mono<Boolean> existsByPhone(String phone);
 
-    Optional<SignedUps> findByPhone(String key);
+    Mono<SignedUps> findByEmail(String email);
 
-    void deleteByEmail(String email);
+    Mono<SignedUps> findByPhone(String phone);
 
-    boolean existsByEmail( String email);
+    Mono<Void> deleteByEmail(String email);
+
+    Mono<Boolean> existsByEmail(String email);
+
+    @Query("""
+    INSERT INTO signed_up (
+        gym_id,
+        first_name,
+        last_name,
+        gender,
+        user_mail,
+        phone_no,
+        password,
+        role,
+        joined_on,
+        is_verified_email,
+        is_verified_phone,
+        approved
+    ) VALUES (
+        :id,
+        :firstName,
+        :lastName,
+        :gender,
+        :email,
+        :phone,
+        :password,
+        :role,
+        :joinDate,
+        :isEmailVerified,
+        :isPhoneVerified,
+        :approved
+    )
+""")
+    Mono<Void> insertSignedUp(String id,
+                              String firstName,
+                              String lastName,
+                              String gender,
+                              String email,
+                              String phone,
+                              String password,
+                              RoleType role,
+                              LocalDate joinDate,
+                              boolean isEmailVerified,
+                              boolean isPhoneVerified,
+                              boolean approved);
+
+
+
 }

@@ -1,58 +1,56 @@
 package com.gym.authservice.Entity;
 
 import com.gym.authservice.Roles.RoleType;
-import jakarta.persistence.*;
+import lombok.*;
+import org.springframework.data.annotation.Id;
+import org.springframework.data.relational.core.mapping.Table;
+import org.springframework.data.relational.core.mapping.Column;
 import jakarta.validation.constraints.Email;
-import lombok.AllArgsConstructor;
-import lombok.Builder;
-import lombok.Data;
-import lombok.NoArgsConstructor;
 
 import java.time.LocalDate;
 
 @Data
 @AllArgsConstructor
 @NoArgsConstructor
-@Entity
 @Builder
-@Table(name = "signedUp")
+@Table("signed_up")
 public class SignedUps {
+
     @Id
-    @Column(name = "gymId")
+    @Column("gym_id")
     private String id;
 
-    @Column(name = "firstName", nullable = false)
+    @Column("first_name")
     private String firstName;
 
-    @Column(name = "lastName", nullable = false)
+    @Column("last_name")
     private String lastName;
 
-    @Column(name = "gender", nullable = false)
+    @Column("gender")
     private String gender;
 
     @Email
-    @Column(name = "UserMail", nullable = false, unique = true)
+    @Column("user_mail")
     private String email;
 
-    @Column(name = "phoneNo", length = 12, nullable = false, unique = true)
+    @Column("phone_no")
     private String phone;
 
-    @Column(name = "password", nullable = false)
+    @Column("password")
     private String password;
 
-    @Enumerated(EnumType.STRING)
-    @Column(name = "role", nullable = false)
+    @Column("role")
     private RoleType role;
 
-    @Column(name = "joined_on", nullable = false)
+    @Column("joined_on")
     private LocalDate joinDate;
 
-    @Column(name = "isVerifiedEmail", nullable = false)
-    private boolean emailVerified = false;
+    @Column("is_verified_email")
+    private boolean emailVerified;
 
-    @Column(name = "isVerifiedPhone", nullable = false)
-    private boolean phoneVerified = false;
+    @Column("is_verified_phone")
+    private boolean phoneVerified;
 
-    @Column(name = "approved", nullable = false)
-    private boolean isApproved = false;
+    @Column("approved")
+    private boolean approved;
 }
