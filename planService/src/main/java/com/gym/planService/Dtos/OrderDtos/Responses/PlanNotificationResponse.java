@@ -12,6 +12,7 @@ import lombok.NoArgsConstructor;
 public class PlanNotificationResponse {
 
     private String userName;
+    private String userMail;
     private String planName;
     private Integer planDuration;
     private Double planPrice;
