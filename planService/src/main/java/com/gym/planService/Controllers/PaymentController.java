@@ -2,6 +2,7 @@ package com.gym.planService.Controllers;
 
 import com.gym.planService.Dtos.OrderDtos.Requests.PlanPaymentRequestDto;
 
+import com.gym.planService.Dtos.PlanDtos.Responses.GenericResponse;
 import com.gym.planService.Services.PaymentService.PaymentService;
 import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
@@ -23,10 +24,11 @@ public class PaymentController {
 
     private final PaymentService paymentService;
 
-    @PostMapping("/buyPlan")
-    public ResponseEntity<String> makePayment(@Valid @RequestBody PlanPaymentRequestDto requestDto) {
+    @PostMapping("/all/buyPlan")
+    public ResponseEntity<GenericResponse> makePayment(@Valid @RequestBody PlanPaymentRequestDto requestDto) {
         log.info("");
         String response = paymentService.buyPlan(requestDto);
-        return ResponseEntity.status(HttpStatus.ACCEPTED).body(response);
+        log.info("Serving the response {}",response);
+        return ResponseEntity.status(HttpStatus.ACCEPTED).body( new GenericResponse(response));
     }
 }

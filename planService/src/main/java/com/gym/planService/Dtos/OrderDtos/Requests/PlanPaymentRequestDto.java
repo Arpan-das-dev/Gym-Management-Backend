@@ -15,6 +15,7 @@ public class PlanPaymentRequestDto {
 
     private String userName;
     private String userId;
+    private String userMail;
     private String planId;
     private String currency;
     private Double amount;
