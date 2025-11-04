@@ -5,10 +5,8 @@ import com.itextpdf.kernel.colors.ColorConstants;
 import com.itextpdf.kernel.geom.PageSize;
 import com.itextpdf.kernel.pdf.PdfDocument;
 import com.itextpdf.kernel.pdf.PdfWriter;
-import com.itextpdf.kernel.pdf.canvas.draw.ILineDrawer;
+import com.itextpdf.kernel.pdf.canvas.draw.SolidLine;
 import com.itextpdf.layout.Document;
-import com.itextpdf.layout.borders.SolidBorder;
-
 import com.itextpdf.layout.element.LineSeparator;
 import com.itextpdf.layout.element.Paragraph;
 import com.itextpdf.layout.properties.TextAlignment;
@@ -28,7 +26,6 @@ public class ReceiptGenerator {
         Document document = new Document(pdf, PageSize.A4);
         document.setMargins(30, 30, 30, 30);
 
-
         // Header
         document.add(new Paragraph("FITNESS STUDIO")
                 .setBold()
@@ -41,17 +38,15 @@ public class ReceiptGenerator {
                 .setTextAlignment(TextAlignment.CENTER)
                 .setMarginBottom(15));
 
-        // Divider line (this replaces your SolidBorder add)
-        LineSeparator line = new LineSeparator((ILineDrawer) new SolidBorder(1));
+        // ✅ Proper line separator
+        LineSeparator line = new LineSeparator(new SolidLine());
+        line.setMarginTop(5);
+        line.setMarginBottom(10);
         document.add(line);
 
-        // ======================
-        // Payment Information Section
-        // ======================
+        // Payment Information
         DateTimeFormatter formatter = DateTimeFormatter.ofPattern("dd MMM yyyy");
-
-        Table table = new Table(2);
-        table.setWidth(100);
+        Table table = new Table(2).useAllAvailableWidth();
 
         addRow(table, "Receipt ID:", payment.getPaymentId());
         addRow(table, "Order ID:", payment.getOrderId());
@@ -66,9 +61,7 @@ public class ReceiptGenerator {
         table.setMarginTop(15);
         document.add(table);
 
-        // ======================
         // Footer
-        // ======================
         document.add(new Paragraph("\nThank you for choosing Fitness Studio!")
                 .setItalic()
                 .setTextAlignment(TextAlignment.CENTER)
@@ -79,9 +72,10 @@ public class ReceiptGenerator {
         return outputStream.toByteArray();
     }
 
-    // Helper method for clean rows
+    // Helper method
     private static void addRow(Table table, String label, String value) {
         table.addCell(new Cell().add(new Paragraph(label).setBold()));
         table.addCell(new Cell().add(new Paragraph(value != null ? value : "-")));
     }
+
 }

@@ -1,7 +1,6 @@
 package com.gym.planService.Services.PaymentService;
 
 import com.gym.planService.Dtos.OrderDtos.Requests.PlanPaymentRequestDto;
-import com.gym.planService.Exception.Custom.InvalidPlanPriceException;
 import com.gym.planService.Exception.Custom.PaymentGatewayException;
 import com.gym.planService.Exception.Custom.PlanNotFoundException;
 import com.gym.planService.Models.Plan;
@@ -38,16 +37,14 @@ public class PaymentService {
     private final WebClientService webClientService;
 
     public String buyPlan( PlanPaymentRequestDto requestDto) {
+        log.info("request received for payment of Rs. {}",requestDto.getAmount());
+        log.info("cupon code is {}",requestDto.getCuponCode());
+
         Plan plan = planRepository.findById(requestDto.getPlanId())
                 .orElseThrow(() -> new PlanNotFoundException("No plan found with ID: " + requestDto.getPlanId()));
 
         // Fetch coupon (optional)
         PlanCuponCode cuponCode = cuponCodeRepository.findById(requestDto.getCuponCode()).orElse(null);
-
-        // Validate amount
-        if (!requestDto.getAmount().equals(plan.getPlanPrice())) {
-            throw new InvalidPlanPriceException("Invalid plan price for plan: " + plan.getPlanName());
-        }
 
         // Generate payment ID
         String paymentId = paymentIdGenUtil.generatePaymentId(
@@ -62,6 +59,7 @@ public class PaymentService {
         // Create Razorpay order
         Order razorOrder;
         try {
+            log.info("final amount to be paid ====> {}",finalAmount.toString());
             razorOrder = razorPayService.makePayment(finalAmount.longValue(), requestDto.getCurrency(), paymentId);
         } catch (RazorpayException e) {
             log.error("Razorpay order creation failed for user {}: {}", requestDto.getUserId(), e.getMessage());
@@ -91,10 +89,14 @@ public class PaymentService {
         try{
             byte[] pdfReceiptArray = receiptGenerator.generatePlanPaymentReceipt(payment);
             response = awsService.uploadPaymentReceipt(pdfReceiptArray,payment.getPaymentId());
-            webClientService.sendUpdateBymMailWithAttachment(pdfReceiptArray,payment,plan.getDuration());
+            webClientService.sendUpdateBymMailWithAttachment(
+                    pdfReceiptArray,payment,plan.getDuration(),requestDto.getUserMail());
             payment.setReceiptUrl(response);
+            plan.setMembersCount(plan.getMembersCount()+1);
+            planRepository.save(plan);
         } catch (Exception e) {
-            log.warn("error caused due to {}",e.getCause().toString());
+            log.warn("error caused due to {}",e.getMessage());
+            e.getCause();
             throw new RuntimeException(e);
         }
         paymentRepository.save(payment);

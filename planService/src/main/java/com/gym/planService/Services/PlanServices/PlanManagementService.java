@@ -65,6 +65,7 @@ public class PlanManagementService {
                 .planPrice(requestDto.getPrice())
                 .duration(requestDto.getDuration())
                 .features(requestDto.getFeatures())
+                .membersCount(0)
                 .build();
         planRepository.save(plan);
 

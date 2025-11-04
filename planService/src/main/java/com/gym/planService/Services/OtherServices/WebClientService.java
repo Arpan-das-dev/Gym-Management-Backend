@@ -4,8 +4,10 @@ import com.gym.planService.Dtos.OrderDtos.Responses.PlanNotificationResponse;
 import com.gym.planService.Models.PlanPayment;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.beans.factory.annotation.Value;
+import org.springframework.core.io.FileSystemResource;
 import org.springframework.scheduling.annotation.Async;
 import org.springframework.stereotype.Service;
+import org.springframework.web.reactive.function.BodyInserters;
 import org.springframework.web.reactive.function.client.WebClient;
 
 import java.io.File;
@@ -25,13 +27,14 @@ public class WebClientService {
         this.notification_service_Base_URL = notification_service_Base_URL;
     }
 
-    public void sendUpdateBymMailWithAttachment(byte[] pdfReceiptArray, PlanPayment payment,Integer duration)
+    public void sendUpdateBymMailWithAttachment(byte[] pdfReceiptArray, PlanPayment payment,Integer duration, String userMail)
             throws IOException {
         String fileName = "Plan bought "+payment.getUserName()+" "+ payment.getPaymentDate();
         File attachment = convertFileFromByteArray(pdfReceiptArray,fileName);
         String endpoint = notification_service_Base_URL+"/buyPlan";
         PlanNotificationResponse response = PlanNotificationResponse.builder()
                 .userName(payment.getUserName())
+                .userMail(userMail)
                 .planName(payment.getPlanName())
                 .planPrice(payment.getPaidPrice())
                 .planDuration(duration)
@@ -49,17 +52,23 @@ public class WebClientService {
 
     @Async
     private void sendAsyncPaymentMail(File attachment, String endpoint, PlanNotificationResponse response) {
-        webclient.build().post()
-                .uri(uriBuilder -> uriBuilder
-                        .path(endpoint)
-                        .queryParam("attachment",attachment)
-                        .build())
-                .bodyValue(response)
-                .retrieve().toBodilessEntity()
-                .subscribe(success-> log.info("{}::dto send successfully to {}",
-                        success.getStatusCode(),endpoint),
-                        error-> log.error("dto sending failed due to :: {}",
-                                String.valueOf(error.getCause())));
+        try {
+            webclient.build()
+                    .post()
+                    .uri(endpoint)
+                    .body(
+                            BodyInserters.fromMultipartData("attachment", new FileSystemResource(attachment))
+                                    .with("response", response)
+                    )
+                    .retrieve()
+                    .toBodilessEntity()
+                    .subscribe(
+                            success -> log.info("{} :: dto sent successfully to {}", success.getStatusCode(), endpoint),
+                            error -> log.error("dto sending failed due to :: {}", error.getMessage())
+                    );
+        } catch (Exception e) {
+            log.error("Failed to send multipart request: {}", e.getMessage());
+        }
     }
 
 }
