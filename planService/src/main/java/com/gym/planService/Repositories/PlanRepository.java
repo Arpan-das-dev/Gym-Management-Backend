@@ -6,6 +6,8 @@ import org.springframework.data.jpa.repository.JpaRepository;
 import org.springframework.data.jpa.repository.Modifying;
 import org.springframework.data.jpa.repository.Query;
 
+import java.util.List;
+
 /**
  * Repository interface for Plan entity CRUD operations and custom queries.
  * <p>
@@ -44,5 +46,8 @@ public interface PlanRepository extends JpaRepository< Plan, String > {
     @Modifying
     @Query("DELETE FROM Plan p WHERE p.id = :id")
     int deletedById(@Param("id") String id);
+
+    @Query("SELECT p FROM Plan p WHERE p.membersCount = (SELECT MAX(p2.membersCount) FROM Plan p2)")
+    List<Plan> findMostPopularPlans();
 
 }
