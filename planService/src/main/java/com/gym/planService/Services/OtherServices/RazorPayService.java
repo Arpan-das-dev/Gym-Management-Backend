@@ -20,7 +20,7 @@ public class RazorPayService {
         orderRequest.put("amount", amount*100);
         orderRequest.put("currency", currency);
         orderRequest.put("receipt", receipt);
-
+        log.info("price::===> {}",orderRequest.get("amount"));
         return razorpayClient.orders.create(orderRequest);
     }
 
