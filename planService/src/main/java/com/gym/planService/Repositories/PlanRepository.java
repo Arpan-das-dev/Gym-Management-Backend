@@ -50,4 +50,7 @@ public interface PlanRepository extends JpaRepository< Plan, String > {
     @Query("SELECT p FROM Plan p WHERE p.membersCount = (SELECT MAX(p2.membersCount) FROM Plan p2)")
     List<Plan> findMostPopularPlans();
 
+    @Query("SELECT SUM(p.membersCount) FROM Plan p")
+    Integer findTotalUsers();
+
 }
