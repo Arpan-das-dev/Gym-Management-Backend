@@ -2,6 +2,7 @@ package com.gym.planService.Controllers;
 
 import com.gym.planService.Dtos.OrderDtos.Requests.PlanPaymentRequestDto;
 
+import com.gym.planService.Dtos.OrderDtos.Requests.ConfirmPaymentDto;
 import com.gym.planService.Dtos.PlanDtos.Responses.GenericResponse;
 import com.gym.planService.Services.PaymentService.PaymentService;
 import jakarta.validation.Valid;
@@ -24,11 +25,19 @@ public class PaymentController {
 
     private final PaymentService paymentService;
 
-    @PostMapping("/all/buyPlan")
-    public ResponseEntity<GenericResponse> makePayment(@Valid @RequestBody PlanPaymentRequestDto requestDto) {
-        log.info("");
-        String response = paymentService.buyPlan(requestDto);
-        log.info("Serving the response {}",response);
-        return ResponseEntity.status(HttpStatus.ACCEPTED).body( new GenericResponse(response));
+    @PostMapping("/all/createOrder")
+    public ResponseEntity<GenericResponse> createOrder(@Valid @RequestBody PlanPaymentRequestDto requestDto) {
+        log.info("Request received to create order for Rs. {}", requestDto.getAmount());
+        String orderId = paymentService.createOrder(requestDto);
+        return ResponseEntity.status(HttpStatus.CREATED)
+                .body(new GenericResponse(orderId));
+    }
+
+    // Step 2: Confirm payment after success
+    @PostMapping("/all/confirmPayment")
+    public ResponseEntity<GenericResponse> confirmPayment(@RequestBody ConfirmPaymentDto confirmDto) {
+        log.info("Confirming payment for orderId: {}", confirmDto.getOrderId());
+        String receiptUrl = paymentService.confirmPayment(confirmDto);
+        return ResponseEntity.ok(new GenericResponse(receiptUrl));
     }
 }
