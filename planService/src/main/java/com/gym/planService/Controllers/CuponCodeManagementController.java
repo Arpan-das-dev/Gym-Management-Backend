@@ -3,6 +3,7 @@ package com.gym.planService.Controllers;
 import com.gym.planService.Dtos.CuponDtos.Requests.CreateCuponCodeRequestDto;
 import com.gym.planService.Dtos.CuponDtos.Requests.UpdateCuponRequestDto;
 import com.gym.planService.Dtos.CuponDtos.Responses.CuponCodeResponseDto;
+import com.gym.planService.Dtos.CuponDtos.Responses.CuponValidationResponseDto;
 import com.gym.planService.Dtos.CuponDtos.Wrappers.AllCuponCodeWrapperResponseDto;
 import com.gym.planService.Services.PlanServices.CuponCodeManagementService;
 import jakarta.validation.Valid;
@@ -115,14 +116,11 @@ public class CuponCodeManagementController {
      *         returns HTTP 302 Found if valid, 404 Not Found if invalid.
      */
     @PostMapping("/all/validateCuponCode")
-    public ResponseEntity<Boolean> validateCuponCode(
+    public ResponseEntity<CuponValidationResponseDto> validateCuponCode(
             @RequestParam @Valid @NotBlank(message = "Coupon code must be provided.") String cuponCode) {
 
         log.info("API :: [POST] /all/validateCuponCode | Validating coupon '{}'", cuponCode);
-        boolean valid = cuponService.validateCupon(cuponCode);
-
-        return valid
-                ? ResponseEntity.status(HttpStatus.FOUND).body(true)
-                : ResponseEntity.status(HttpStatus.NOT_FOUND).body(false);
+        CuponValidationResponseDto response = cuponService.validateCupon(cuponCode);
+        return ResponseEntity.status(HttpStatus.OK).body(response);
     }
 }
