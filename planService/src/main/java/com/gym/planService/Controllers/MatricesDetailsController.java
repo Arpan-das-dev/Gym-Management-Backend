@@ -2,7 +2,7 @@ package com.gym.planService.Controllers;
 
 import com.gym.planService.Dtos.OrderDtos.Responses.MonthlyRevenueResponseDto;
 import com.gym.planService.Dtos.PlanDtos.Responses.GenericResponse;
-import com.gym.planService.Dtos.PlanDtos.Wrappers.AllMonthlyRevenueWrapper;
+import com.gym.planService.Dtos.PlanDtos.Wrappers.AllMonthlyRevenueWrapperResponseDto;
 import com.gym.planService.Services.PlanServices.PlanMatrixService;
 import jakarta.validation.Valid;
 import jakarta.validation.constraints.Positive;
@@ -83,13 +83,13 @@ public class MatricesDetailsController {
      * Fetch paginated revenue per month details.
      */
     @GetMapping("/admin/revenuePerMonth")
-    public ResponseEntity<AllMonthlyRevenueWrapper> getRevenuePerMonth(
+    public ResponseEntity<AllMonthlyRevenueWrapperResponseDto> getRevenuePerMonth(
             @Positive @Valid @RequestParam int pageSize,
             @Positive @Valid @RequestParam int pageNo) {
 
         log.info("API :: [GET] /admin/revenuePerMonth | Request received with pagination params | pageNo={} | pageSize={}", pageNo, pageSize);
 
-        AllMonthlyRevenueWrapper response = matrixService.getAllReviewPerPerMonth(pageSize, pageNo);
+        AllMonthlyRevenueWrapperResponseDto response = matrixService.getAllReviewPerPerMonth(pageSize, pageNo);
 
         log.info("SERVICE :: Paginated monthly revenue report generated successfully with {} entries",
                 response.getReviewResponseDtoList().size());
