@@ -3,7 +3,7 @@ package com.gym.planService.Services.PlanServices;
 import com.gym.planService.Dtos.PlanDtos.Requests.PlanCreateRequestDto;
 import com.gym.planService.Dtos.PlanDtos.Requests.PlanUpdateRequestDto;
 import com.gym.planService.Dtos.PlanDtos.Responses.PlanResponseDto;
-import com.gym.planService.Dtos.PlanDtos.Wrappers.AllPlanResponseWrapperDto;
+import com.gym.planService.Dtos.PlanDtos.Wrappers.AllPlanResponseWrapperResponseDto;
 import com.gym.planService.Exception.Custom.DuplicatePlanFoundException;
 import com.gym.planService.Exception.Custom.PlanNotFoundException;
 import com.gym.planService.Models.Plan;
@@ -50,7 +50,7 @@ public class PlanManagementService {
      */
     @Transactional
     @CachePut(value = "allPlansCache", key = "'all'")
-    public AllPlanResponseWrapperDto createPlan(PlanCreateRequestDto requestDto) {
+    public AllPlanResponseWrapperResponseDto createPlan(PlanCreateRequestDto requestDto) {
         if (planRepository.existsById(requestDto.getPlanId())) {
             log.warn("Plan ::{} with id ::{} already exists", requestDto.getPlanName(), requestDto.getPlanId());
             throw new DuplicatePlanFoundException("Plan with id:: " + requestDto.getPlanId() + " already exists");
@@ -135,7 +135,7 @@ public class PlanManagementService {
      * @return wrapper DTO containing list of all plans
      */
     @Cacheable(value = "allPlansCache", key = "'all'")
-    public AllPlanResponseWrapperDto getAllPlans() {
+    public AllPlanResponseWrapperResponseDto getAllPlans() {
         return responseWrapperDtoBuilder();
     }
 
@@ -144,7 +144,7 @@ public class PlanManagementService {
      *
      * @return wrapper containing all plan response DTOs
      */
-    private AllPlanResponseWrapperDto responseWrapperDtoBuilder() {
+    private AllPlanResponseWrapperResponseDto responseWrapperDtoBuilder() {
         List<Plan> plans = planRepository.findAll();
         log.info("Successfully retrieved {} plans from database", plans.size());
 
@@ -160,7 +160,7 @@ public class PlanManagementService {
 
         log.info("Successfully built {} plan response objects", responseDtoList.size());
 
-        return AllPlanResponseWrapperDto.builder()
+        return AllPlanResponseWrapperResponseDto.builder()
                 .responseDtoList(responseDtoList)
                 .build();
     }
