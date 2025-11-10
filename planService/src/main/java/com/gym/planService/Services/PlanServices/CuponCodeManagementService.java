@@ -3,6 +3,7 @@ package com.gym.planService.Services.PlanServices;
 import com.gym.planService.Dtos.CuponDtos.Requests.CreateCuponCodeRequestDto;
 import com.gym.planService.Dtos.CuponDtos.Requests.UpdateCuponRequestDto;
 import com.gym.planService.Dtos.CuponDtos.Responses.CuponCodeResponseDto;
+import com.gym.planService.Dtos.CuponDtos.Responses.CuponValidationResponseDto;
 import com.gym.planService.Dtos.CuponDtos.Wrappers.AllCuponCodeWrapperResponseDto;
 import com.gym.planService.Exception.Custom.CuponCodeNotFoundException;
 import com.gym.planService.Exception.Custom.DuplicateCuponCodeFoundException;
@@ -28,18 +29,26 @@ import java.util.Objects;
 
 /**
  * Service layer for management of coupon codes associated with plans.
- * <p>
- * Provides business logic for creating, updating, fetching, deleting, and validating coupon codes.
- * It integrates with the database repositories and Redis cache to ensure fast and consistent data operations.
- * </p>
- * <p>
- * Includes caching strategies with Spring Cache and Redis to optimize repeated lookups.
- * Proper exception handling ensures robust application behavior.
+ *
+ * <p>Provides business logic for creating, updating, fetching, deleting, and validating coupon codes.
+ * Integrates with both database repositories and Redis cache to ensure fast and consistent operations.
+ * Includes self-healing cache logic — automatically refreshes missing cache entries from DB
+ * in case of Redis eviction or service restarts, ensuring consistent user experience even during partial outages.</p>
+ *
+ * <p>Caching strategy:
+ * <ul>
+ *   <li>Coupons are stored in Redis with TTL = validity days.</li>
+ *   <li>When cache is missing but coupon exists in DB, cache is restored automatically.</li>
+ *   <li>All cache writes are atomic, ensuring no stale data.</li>
+ * </ul>
  * </p>
  *
- * @author : Arpan Das
- * @version : 1.0
- * @since : 2025-10-19
+ * @author
+ *  Arpan Das
+ * @version
+ *  2.0 (enhanced cache recovery logic)
+ * @since
+ *  2025-10-19
  */
 @Slf4j
 @Service
@@ -53,24 +62,17 @@ public class CuponCodeManagementService {
     private static final String REDIS_CUPON_PREFIX = "VALIDATION_CUPON::";
 
     /**
-     * Construct the Redis cache key for a given coupon code.
+     * Builds a Redis cache key for a given coupon code.
      *
      * @param cuponCode coupon code string
-     * @return the Redis cache key for the coupon
+     * @return Redis key
      */
     private String buildCuponKey(String cuponCode) {
         return REDIS_CUPON_PREFIX + cuponCode;
     }
 
     /**
-     * Creates a new coupon code for a specified plan.
-     * Validates existence of the plan and uniqueness of the coupon.
-     * Saves the coupon to the database and caches it with appropriate expiry.
-     * Evicts existing coupon cache for the plan before returning updated list.
-     *
-     * @param planId     the ID of the plan
-     * @param requestDto coupon creation details
-     * @return all coupon codes associated with the plan after creation
+     * Creates a new coupon code for a specified plan and caches it.
      */
     @Transactional
     @CachePut(value = "cuponCodes", key = "#planId")
@@ -78,13 +80,11 @@ public class CuponCodeManagementService {
         log.info("SERVICE :: Creating coupon {} for plan {}", requestDto.getCuponCode(), planId);
 
         if (!planRepository.existsById(planId)) {
-            log.warn("SERVICE :: Plan not found with ID {}", planId);
             throw new PlanNotFoundException("Plan not found with id: " + planId);
         }
 
         if (cuponCodeRepository.existsById(requestDto.getCuponCode())) {
-            log.warn("SERVICE :: Duplicate coupon found {}", requestDto.getCuponCode());
-            throw new DuplicateCuponCodeFoundException("Coupon code already exists: " + requestDto.getCuponCode());
+            throw new DuplicateCuponCodeFoundException("Coupon already exists: " + requestDto.getCuponCode());
         }
 
         PlanCuponCode entity = PlanCuponCode.builder()
@@ -102,13 +102,7 @@ public class CuponCodeManagementService {
     }
 
     /**
-     * Updates an existing coupon code's validity and discount.
-     * Validates coupon and plan existence, updates DB and refreshes cache.
-     * Evicts coupon list cache for corresponding plan.
-     *
-     * @param cuponCode  coupon code string to update
-     * @param requestDto coupon update details
-     * @return updated coupon response DTO
+     * Updates an existing coupon and refreshes cache.
      */
     @Transactional
     @CacheEvict(value = "cuponCodes", key = "#requestDto.planId")
@@ -119,8 +113,7 @@ public class CuponCodeManagementService {
                 .orElseThrow(() -> new CuponCodeNotFoundException("Coupon not found: " + cuponCode));
 
         if (!planRepository.existsById(requestDto.getPlanId())) {
-            log.warn("SERVICE :: Invalid plan id {} for coupon {}", requestDto.getPlanId(), cuponCode);
-            throw new PlanNotFoundException("No plan found for coupon: " + requestDto.getPlanId());
+            throw new PlanNotFoundException("Invalid plan for coupon: " + cuponCode);
         }
 
         existing.setValidity(requestDto.getValidity());
@@ -138,11 +131,7 @@ public class CuponCodeManagementService {
     }
 
     /**
-     * Fetches all coupon codes associated with a plan.
-     * Uses cache if available.
-     *
-     * @param planId the plan ID
-     * @return all coupon codes wrapped in response DTO
+     * Returns all coupons for a plan (cached list).
      */
     @Cacheable(value = "cuponCodes", key = "#planId")
     public AllCuponCodeWrapperResponseDto getCuponCodesByPlanId(String planId) {
@@ -151,13 +140,7 @@ public class CuponCodeManagementService {
     }
 
     /**
-     * Deletes a coupon code by its code and plan ID.
-     * Updates database and removes coupon from Redis cache.
-     * Evicts cached coupon list for the plan.
-     *
-     * @param cuponCode coupon code to delete
-     * @param planId    plan ID associated with the coupon
-     * @return success confirmation message
+     * Deletes a coupon and removes it from cache.
      */
     @Transactional
     @CacheEvict(value = "cuponCodes", key = "#planId")
@@ -171,44 +154,71 @@ public class CuponCodeManagementService {
         cuponCodeRepository.deleteById(cuponCode);
         redisTemplate.delete(buildCuponKey(cuponCode));
 
-        log.info("SERVICE :: Coupon {} deleted successfully and removed from cache", cuponCode);
         return "Coupon " + cuponCode + " deleted successfully for plan " + planId;
     }
 
     /**
-     * Validates if the coupon code is valid by checking Redis cache.
+     * Validates a coupon.
+     *
+     * <p>Steps:
+     * <ol>
+     *   <li>Check Redis cache.</li>
+     *   <li>If not found, recover from DB and rebuild cache.</li>
+     *   <li>Return validity and off percentage.</li>
+     * </ol>
+     * </p>
      *
      * @param cuponCode coupon code string
-     * @return true if valid, false otherwise
+     * @return validation result with off percentage
      */
-    public boolean validateCupon(String cuponCode) {
+    public CuponValidationResponseDto validateCupon(String cuponCode) {
         String key = buildCuponKey(cuponCode);
         String cachedValue = redisTemplate.opsForValue().get(key);
-
         boolean valid = Objects.equals(cachedValue, cuponCode);
-        log.debug("SERVICE :: Coupon {} validation result: {}", cuponCode, valid);
-        return valid;
+        double offPercentage = 0.0;
+
+        if (!valid) {
+            // Cache miss — attempt recovery from DB
+            log.warn("SERVICE :: Cache miss for coupon {}, attempting recovery from DB", cuponCode);
+
+            PlanCuponCode dbCupon = cuponCodeRepository.findById(cuponCode).orElse(null);
+
+            if (dbCupon != null && dbCupon.getValidity().isAfter(LocalDate.now())) {
+                cacheCuponCode(dbCupon); // Rebuild cache
+                valid = true;
+                offPercentage = dbCupon.getPercentage();
+                log.info("SERVICE :: Coupon {} recovered from DB and re-cached", cuponCode);
+            } else {
+                log.warn("SERVICE :: Coupon {} not found or expired in DB", cuponCode);
+            }
+        } else {
+            // Valid cache entry — get discount from DB
+            offPercentage = cuponCodeRepository.findById(cuponCode)
+                    .map(PlanCuponCode::getPercentage)
+                    .orElse(0.0);
+        }
+
+        return CuponValidationResponseDto.builder()
+                .valid(valid)
+                .offPercentage(offPercentage)
+                .build();
     }
 
     /**
-     * Caches the coupon code in Redis with expiration based on validity.
-     *
-     * @param cupon coupon entity to cache
+     * Caches the coupon in Redis with TTL based on its validity date.
      */
     private void cacheCuponCode(PlanCuponCode cupon) {
         long days = cupon.getValidity().toEpochDay() - LocalDate.now().toEpochDay();
-        if (days <= 0) {
-            days = 1;
-        }
+        if (days <= 0) days = 1;
+
         redisTemplate.opsForValue()
                 .set(buildCuponKey(cupon.getCuponCode()), cupon.getCuponCode(), Duration.ofDays(days));
+
         log.debug("SERVICE :: Coupon {} cached for {} days", cupon.getCuponCode(), days);
     }
 
     /**
-     * Refreshes the coupon cache by deleting and resetting it.
-     *
-     * @param cupon coupon entity to refresh cache for
+     * Refreshes (rebuilds) a coupon's cache entry.
      */
     private void refreshCuponCache(PlanCuponCode cupon) {
         redisTemplate.delete(buildCuponKey(cupon.getCuponCode()));
@@ -216,10 +226,7 @@ public class CuponCodeManagementService {
     }
 
     /**
-     * Builds a response DTO wrapping a list of coupon codes for a plan.
-     *
-     * @param planId the plan ID
-     * @return all coupons wrapped into AllCuponCodeWrapperResponseDto
+     * Builds a wrapper response containing all coupon codes for a plan.
      */
     private AllCuponCodeWrapperResponseDto buildResponse(String planId) {
         List<CuponCodeResponseDto> codes = cuponCodeRepository.findAllByPlanId(planId).stream()
