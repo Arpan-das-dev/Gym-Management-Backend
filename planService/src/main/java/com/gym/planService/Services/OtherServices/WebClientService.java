@@ -13,6 +13,7 @@ import org.springframework.web.reactive.function.client.WebClient;
 import java.io.File;
 import java.io.FileOutputStream;
 import java.io.IOException;
+import java.time.LocalDate;
 
 @Slf4j
 @Service
@@ -20,14 +21,14 @@ public class WebClientService {
 
     private final WebClient.Builder webclient;
     private final String notification_service_Base_URL;
-
     public WebClientService(WebClient.Builder webclient,
                             @Value("${app.notification-service.Base_Url}") String notification_service_Base_URL) {
         this.webclient = webclient;
         this.notification_service_Base_URL = notification_service_Base_URL;
     }
 
-    public void sendUpdateBymMailWithAttachment(byte[] pdfReceiptArray, PlanPayment payment,Integer duration, String userMail)
+    public void sendUpdateBymMailWithAttachment
+            (byte[] pdfReceiptArray, PlanPayment payment,Integer duration, String userMail)
             throws IOException {
         String fileName = "Plan bought "+payment.getUserName()+" "+ payment.getPaymentDate();
         File attachment = convertFileFromByteArray(pdfReceiptArray,fileName);
@@ -71,4 +72,17 @@ public class WebClientService {
         }
     }
 
+    @Async
+    public void sendReviewAttachment(byte[] pdfArray) {
+        try {
+            File file = convertFileFromByteArray(pdfArray,"INVOICE FOR YEAR:"+ LocalDate.now().getYear());
+            webclient.build().post()
+                    .uri(notification_service_Base_URL)
+                    .body(BodyInserters.fromMultipartData("attachment",new FileSystemResource(file)))
+                    .retrieve().toBodilessEntity()
+                    .subscribe();
+        } catch (IOException e) {
+            throw new RuntimeException(e);
+        }
+    }
 }
