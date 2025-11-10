@@ -1,9 +1,6 @@
 package com.gym.planService.Exception.Handler;
 
-import com.gym.planService.Exception.Custom.CuponCodeNotFoundException;
-import com.gym.planService.Exception.Custom.DuplicateCuponCodeFoundException;
-import com.gym.planService.Exception.Custom.DuplicatePlanFoundException;
-import com.gym.planService.Exception.Custom.PlanNotFoundException;
+import com.gym.planService.Exception.Custom.*;
 import com.gym.planService.Exception.Model.ErrorResponse;
 import com.gym.planService.Exception.Utils.ExceptionUtil;
 import com.razorpay.RazorpayException;
@@ -18,7 +15,8 @@ public class GlobalExceptionHandler {
 
     @ExceptionHandler({
             PlanNotFoundException.class,
-            CuponCodeNotFoundException.class
+            CuponCodeNotFoundException.class,
+            PaymentNotFoundException.class
     })
     public ResponseEntity<ErrorResponse> handleNotFound(Exception ex, HttpServletRequest request) {
         return ExceptionUtil.buildErrorResponse(HttpStatus.NOT_FOUND, ex.getMessage(), request);
@@ -37,7 +35,7 @@ public class GlobalExceptionHandler {
         return ExceptionUtil.buildErrorResponse(HttpStatus.SERVICE_UNAVAILABLE,ex.getMessage(),request);
     }
 
-    @ExceptionHandler(Exception.class)
+    @ExceptionHandler({Exception.class, EmailSendFailedException.class})
     public ResponseEntity<ErrorResponse> handleGlobal(Exception ex, HttpServletRequest request) {
         return ExceptionUtil.buildErrorResponse(HttpStatus.INTERNAL_SERVER_ERROR, ex.getMessage(), request);
     }
