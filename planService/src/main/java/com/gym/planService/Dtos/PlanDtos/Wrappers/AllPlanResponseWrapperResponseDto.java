@@ -47,7 +47,7 @@ import java.util.List;
 @Builder
 @AllArgsConstructor
 @NoArgsConstructor
-public class AllPlanResponseWrapperDto {
+public class AllPlanResponseWrapperResponseDto {
 
     /**
      * List of plan response DTOs.
