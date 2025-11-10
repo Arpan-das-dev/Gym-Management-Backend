@@ -1,7 +1,10 @@
 package com.gym.planService.Services.PaymentService;
 
+import com.gym.planService.Dtos.OrderDtos.Requests.ConfirmPaymentDto;
 import com.gym.planService.Dtos.OrderDtos.Requests.PlanPaymentRequestDto;
+import com.gym.planService.Exception.Custom.EmailSendFailedException;
 import com.gym.planService.Exception.Custom.PaymentGatewayException;
+import com.gym.planService.Exception.Custom.PaymentNotFoundException;
 import com.gym.planService.Exception.Custom.PlanNotFoundException;
 import com.gym.planService.Models.Plan;
 import com.gym.planService.Models.PlanCuponCode;
@@ -16,10 +19,12 @@ import com.gym.planService.Services.OtherServices.WebClientService;
 import com.gym.planService.Utils.PaymentIdGenUtil;
 import com.razorpay.Order;
 import com.razorpay.RazorpayException;
+import jakarta.transaction.Transactional;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.stereotype.Service;
 
+import java.io.IOException;
 import java.time.LocalDateTime;
 
 @Slf4j
@@ -36,37 +41,33 @@ public class PaymentService {
     private final AwsService awsService;
     private final WebClientService webClientService;
 
-    public String buyPlan( PlanPaymentRequestDto requestDto) {
-        log.info("request received for payment of Rs. {}",requestDto.getAmount());
-        log.info("cupon code is {}",requestDto.getCuponCode());
+    @Transactional
+    public String createOrder(PlanPaymentRequestDto requestDto) {
+        log.info("request received for payment of Rs. {}", requestDto.getAmount());
+        log.info("cupon code is {}", requestDto.getCuponCode());
 
         Plan plan = planRepository.findById(requestDto.getPlanId())
                 .orElseThrow(() -> new PlanNotFoundException("No plan found with ID: " + requestDto.getPlanId()));
 
-        // Fetch coupon (optional)
         PlanCuponCode cuponCode = cuponCodeRepository.findById(requestDto.getCuponCode()).orElse(null);
 
-        // Generate payment ID
         String paymentId = paymentIdGenUtil.generatePaymentId(
                 requestDto.getUserId(),
                 requestDto.getPlanId(),
                 requestDto.getPaymentDate()
         );
 
-        // Calculate payable amount after discount (if any)
         Double finalAmount = calculateDiscountedAmount(cuponCode, requestDto.getAmount());
 
-        // Create Razorpay order
         Order razorOrder;
         try {
-            log.info("final amount to be paid ====> {}",finalAmount.toString());
+            log.info("final amount to be paid ====> {}", finalAmount);
             razorOrder = razorPayService.makePayment(finalAmount.longValue(), requestDto.getCurrency(), paymentId);
         } catch (RazorpayException e) {
             log.error("Razorpay order creation failed for user {}: {}", requestDto.getUserId(), e.getMessage());
             throw new PaymentGatewayException("Unable to initiate payment. Please try again later.");
         }
 
-        // Build payment entity
         PlanPayment payment = PlanPayment.builder()
                 .paymentId(paymentId)
                 .userName(requestDto.getUserName())
@@ -76,37 +77,61 @@ public class PaymentService {
                 .paidPrice(finalAmount)
                 .currency(requestDto.getCurrency())
                 .paymentMethod("RAZORPAY")
-                .paymentStatus("PENDING(TEST)") // updated after webhook success
-                .orderId(razorOrder.get("id")) // from Razorpay order response
+                .paymentStatus("PENDING")
+                .orderId(razorOrder.get("id"))
                 .paymentDate(requestDto.getPaymentDate().toLocalDate())
                 .paymentMonth(requestDto.getPaymentDate().getMonth().toString())
                 .paymentYear(requestDto.getPaymentDate().getYear())
                 .transactionTime(LocalDateTime.now())
                 .build();
 
-        // Save payment info (initial state)
-        String response;
-        try{
-            byte[] pdfReceiptArray = receiptGenerator.generatePlanPaymentReceipt(payment);
-            response = awsService.uploadPaymentReceipt(pdfReceiptArray,payment.getPaymentId());
-            webClientService.sendUpdateBymMailWithAttachment(
-                    pdfReceiptArray,payment,plan.getDuration(),requestDto.getUserMail());
-            payment.setReceiptUrl(response);
-            plan.setMembersCount(plan.getMembersCount()+1);
-            planRepository.save(plan);
-        } catch (Exception e) {
-            log.warn("error caused due to {}",e.getMessage());
-            e.getCause();
-            throw new RuntimeException(e);
-        }
         paymentRepository.save(payment);
-        log.info("Payment initiated for user: {} | Plan: {} | OrderID: {}",
+        log.info("Order created for user: {} | Plan: {} | OrderID: {}",
                 requestDto.getUserId(), plan.getPlanName(), razorOrder.get("id"));
 
-
-        // Return order ID to frontend for Razorpay checkout
-        return response == null ? razorOrder.get("id") : response;
+        // ✅ Return only the Razorpay orderId
+        return razorOrder.get("id");
     }
+
+    @Transactional
+    public String confirmPayment(ConfirmPaymentDto dto)  {
+        log.info("Confirming payment for order ID: {}", dto.getOrderId());
+
+        PlanPayment payment = paymentRepository.findByOrderId(dto.getOrderId())
+                .orElseThrow(() -> new PaymentNotFoundException("No payment found for this order ID"));
+
+        payment.setPaymentStatus("SUCCESS");
+        payment.setTransactionTime(LocalDateTime.now());
+
+        Plan plan = planRepository.findById(payment.getPlanId())
+                .orElseThrow(() -> new PlanNotFoundException("No plan found with ID: " + payment.getPlanId()));
+
+        // ✅ Generate PDF only after payment confirmation
+        byte[] pdfReceiptArray = receiptGenerator.generatePlanPaymentReceipt(payment);
+        String receiptUrl = awsService.uploadPaymentReceipt(pdfReceiptArray, payment.getPaymentId());
+
+        // ✅ Send mail asynchronously
+        try {
+            webClientService
+                    .sendUpdateBymMailWithAttachment(pdfReceiptArray, payment, plan.getDuration(), dto.getUserMail());
+        } catch (IOException e) {
+            log.warn("Dto failed to send to the user {} due to {}",dto.getUserMail(),e.getMessage());
+            throw new EmailSendFailedException
+                    ("Unable to send email due to internal servicer error please check your UI to download receipt");
+        }
+
+        // ✅ Update plan members count
+        plan.setMembersCount(plan.getMembersCount() + 1);
+        planRepository.save(plan);
+
+        // ✅ Save payment updates
+        payment.setReceiptUrl(receiptUrl);
+        paymentRepository.save(payment);
+
+        log.info("Payment confirmed and receipt generated: {}", receiptUrl);
+        return receiptUrl;
+    }
+
     private Double calculateDiscountedAmount(PlanCuponCode cuponCode, Double amount) {
         if (cuponCode == null) return amount;
         double discount = (cuponCode.getPercentage() / 100) * amount;
