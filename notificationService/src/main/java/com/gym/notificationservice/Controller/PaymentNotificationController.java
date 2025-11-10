@@ -1,14 +1,13 @@
 package com.gym.notificationservice.Controller;
 
-import com.gym.notificationservice.Dto.PaymentNotificationDtos.Requests.PlanReceiptRequestDto;
+import com.gym.notificationservice.Dto.PaymentNotificationDtos.Requests.PlanPaymentRequestDto;
+import com.gym.notificationservice.Dto.PaymentNotificationDtos.Responses.GenericResponseDto;
+import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
-import org.springframework.http.MediaType;
-import org.springframework.web.bind.annotation.PostMapping;
-import org.springframework.web.bind.annotation.RequestMapping;
-import org.springframework.web.bind.annotation.RequestPart;
-import org.springframework.web.bind.annotation.RestController;
-import org.springframework.web.multipart.MultipartFile;
+import org.springframework.http.HttpStatus;
+import org.springframework.http.ResponseEntity;
+import org.springframework.web.bind.annotation.*;
 
 @Slf4j
 @RestController
@@ -16,11 +15,15 @@ import org.springframework.web.multipart.MultipartFile;
 @RequiredArgsConstructor
 public class PaymentNotificationController {
 
-    @PostMapping(value = "/buyPlan", consumes = MediaType.MULTIPART_FORM_DATA_VALUE)
-    public void sendPaymentReceipt(
-            @RequestPart("attachment") MultipartFile attachment,
-            @RequestPart("response") PlanReceiptRequestDto requestDto) {
+    @PostMapping("/all/createOrder")
+    public ResponseEntity<GenericResponseDto> createOrder(@Valid @RequestBody PlanPaymentRequestDto requestDto) {
+        log.info("");
+        return ResponseEntity.status(200).body(new GenericResponseDto("created"));
+    }
 
-        log.info("Received PDF receipt ({} bytes) for user {}", attachment.getSize(), requestDto.getUserName());
+    @PostMapping("/all/yearlyRevenue")
+    public ResponseEntity<GenericResponseDto> sendInvoiceToAdmin(){
+        log.info("");
+        return ResponseEntity.status(HttpStatus.OK).body(new GenericResponseDto("sent"));
     }
 }
