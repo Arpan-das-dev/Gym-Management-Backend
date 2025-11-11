@@ -164,4 +164,21 @@ public class PlanManagementService {
                 .responseDtoList(responseDtoList)
                 .build();
     }
+
+    @Transactional
+    public String decrementMemberCount( String planId) {
+        Plan plan = planRepository.findById(planId)
+                .orElseThrow(() -> new PlanNotFoundException("No plan found with the id::" + planId));
+
+        log.info("Successfully retrieved plan for member's count of  -->{}", plan.getPlanName());
+        if(plan.getMembersCount()!= 0 && plan.getMembersCount()> 0){
+            plan.setMembersCount(plan.getMembersCount()-1);
+        } else {
+           plan.setMembersCount(0);
+        }
+        planRepository.save(plan);
+        log.info("Successfully saved plan with member's count {}",plan.getMembersCount());
+        return "Successfully saved plan "+plan.getPlanName();
+    }
+
 }
