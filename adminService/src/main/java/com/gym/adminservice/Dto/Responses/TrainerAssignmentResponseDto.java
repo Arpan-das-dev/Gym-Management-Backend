@@ -8,7 +8,7 @@ import lombok.*;
 @AllArgsConstructor
 @NoArgsConstructor
 @Builder
-public class TrainerAssignMentResponseDto {
+public class TrainerAssignmentResponseDto {
     private String trainerId;
     private String trainerName;
     private String trainerProfileImageUrl;
