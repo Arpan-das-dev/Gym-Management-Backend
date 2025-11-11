@@ -4,7 +4,8 @@ import com.gym.adminservice.Dto.Requests.ApprovalRequestDto;
 import com.gym.adminservice.Dto.Requests.TrainerAssignRequestDto;
 import com.gym.adminservice.Dto.Responses.AllMemberRequestDtoList;
 import com.gym.adminservice.Dto.Responses.ApprovalResponseDto;
-import com.gym.adminservice.Dto.Responses.TrainerAssignMentResponseDto;
+import com.gym.adminservice.Dto.Responses.TrainerAssignmentResponseDto;
+import com.gym.adminservice.Dto.Wrappers.AllPendingRequestResponseWrapperDto;
 import com.gym.adminservice.Models.PendingRequest;
 import com.gym.adminservice.Services.AuthService.ApprovalService;
 import lombok.RequiredArgsConstructor;
@@ -42,8 +43,8 @@ public class ApprovalController {
      * admin can take action on them (approve/decline)
      */
     @GetMapping("/getList")
-    public ResponseEntity<List<PendingRequest>> getAll() {
-        List<PendingRequest> response = approvalService.getAll();
+    public ResponseEntity<AllPendingRequestResponseWrapperDto> getAll() {
+        AllPendingRequestResponseWrapperDto response = approvalService.getAll();
         return ResponseEntity.status(HttpStatus.OK).body(response);
     }
 
@@ -83,14 +84,14 @@ public class ApprovalController {
     }
 
     @PostMapping("/approve-memberRequest")
-    public ResponseEntity<TrainerAssignMentResponseDto> assignTrainerToMember(@RequestParam String requestId,
+    public ResponseEntity<TrainerAssignmentResponseDto> assignTrainerToMember(@RequestParam String requestId,
                                                                               @RequestParam
                                                                               @DateTimeFormat(
                                                                                       iso = DateTimeFormat.ISO.DATE)
                                                                               LocalDate eligibleDate)
     {
         log.info("Received requestId={} eligibleDate={}", requestId, eligibleDate);
-        TrainerAssignMentResponseDto response = approvalService.assignTrainerToMember(requestId, eligibleDate);
+        TrainerAssignmentResponseDto response = approvalService.assignTrainerToMember(requestId, eligibleDate);
         return ResponseEntity.status(HttpStatus.OK).body(response);
     }
 
