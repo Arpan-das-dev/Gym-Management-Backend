@@ -1,5 +1,10 @@
 package com.gym.adminservice.Configs;
 
+import com.fasterxml.jackson.databind.DeserializationFeature;
+import com.fasterxml.jackson.databind.ObjectMapper;
+import com.fasterxml.jackson.databind.SerializationFeature;
+import com.fasterxml.jackson.datatype.jsr310.JavaTimeModule;
+import com.gym.adminservice.Dto.Wrappers.AllPendingRequestResponseWrapperDto;
 import org.springframework.cache.CacheManager;
 import org.springframework.cache.annotation.EnableCaching;
 import org.springframework.context.annotation.Bean;
@@ -20,11 +25,36 @@ import java.util.Map;
 public class RedisConfig {
 
     @Bean
-    public CacheManager cacheManager(RedisConnectionFactory factory) {
+    public ObjectMapper redisObjectMapper() {
+        ObjectMapper om = new ObjectMapper();
+        om.registerModule(new JavaTimeModule());
+        om.disable(SerializationFeature.WRITE_DATES_AS_TIMESTAMPS);
+        om.configure(DeserializationFeature.FAIL_ON_UNKNOWN_PROPERTIES, false);
+        return om;
+    }
+
+    @Bean
+    public TypedJsonRedisSerializer<AllPendingRequestResponseWrapperDto> allPendingRequestResponseWrapperRedisSerializer
+            (ObjectMapper redisObjectMapper) {
+        return new TypedJsonRedisSerializer<>(redisObjectMapper, AllPendingRequestResponseWrapperDto.class);
+    }
+    @Bean
+    public CacheManager cacheManager
+            (RedisConnectionFactory factory,
+             TypedJsonRedisSerializer<AllPendingRequestResponseWrapperDto> allPendingRequestResponseWrapperDtoRedisSerializer) {
         Map<String, RedisCacheConfiguration> cacheConfigs = new HashMap<>();
+
+        RedisCacheConfiguration defaultConfig = RedisCacheConfiguration.defaultCacheConfig()
+                .serializeKeysWith(RedisSerializationContext.SerializationPair.fromSerializer(new StringRedisSerializer()))
+                .disableCachingNullValues();
 
         cacheConfigs.put("PlaneCache", RedisCacheConfiguration.defaultCacheConfig()
                 .entryTtl(Duration.ofHours(3)));
+
+        cacheConfigs.put("pendingRequest",defaultConfig
+                .serializeValuesWith(RedisSerializationContext
+                        .SerializationPair.fromSerializer(allPendingRequestResponseWrapperDtoRedisSerializer))
+                .entryTtl(Duration.ofHours(2)));
 
         return RedisCacheManager.builder(factory)
                 .cacheDefaults(RedisCacheConfiguration.defaultCacheConfig()
