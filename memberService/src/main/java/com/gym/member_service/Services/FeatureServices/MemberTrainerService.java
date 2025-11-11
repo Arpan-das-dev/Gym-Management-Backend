@@ -269,14 +269,8 @@ public class MemberTrainerService {
         Member member = memberRepository.findById(memberId)
                 .orElseThrow(() -> new UserNotFoundException("No member found with this id: " + memberId));
         log.info("Fetched member successfully from db: {} ", member.getId());
-        // 2. Validate that the member has an active subscription
-        if (member.getPlanExpiration() == null || member.getPlanExpiration().isBefore(LocalDateTime.now())) {
-            log.info("Plan has expired for this member {} on {}", member.getFirstName() + " " + member.getLastName(),
-                    member.getPlanExpiration());
-            throw new PlanExpiredException(
-                    "Unable to assign session because your plan is ended on: " + member.getPlanExpiration());
-        }
-        // 3. Validate trainer assigned to the member
+
+        // 2. Validate trainer assigned to the member
         Trainer trainer = trainerRepository.findTrainerByMemberId(member.getId())
                 .orElseThrow(() -> new UserNotFoundException(
                         "No member found with this id: " + member.getId()));
@@ -293,10 +287,10 @@ public class MemberTrainerService {
                     "\ndoes not matches with the id --> " + trainer.getTrainerId());
         }
 
-        // 4. Compute session timings
+        // 3. Compute session timings
         LocalDateTime startTime = requestDto.getSessionDate();
         LocalDateTime endTime = startTime.plusMinutes(Math.round(requestDto.getDuration() * 60));
-        // 5. Build session entity
+        // 4. Build session entity
         String sessionName = requestDto.getSessionName() == null ? "" : requestDto.getSessionName();
         Session session = Session.builder()
                 .sessionId(requestDto.getSessionId())
@@ -306,11 +300,11 @@ public class MemberTrainerService {
                 .memberId(member.getId()).
                 trainerId(trainer.getTrainerId())
                 .build();
-        // 6. Save session in DB
+        // 5. Save session in DB
         sessionRepository.save(session);
         log.info("Successfully saved session with this id {} and for the date on {}"
                 , session.getSessionId(), session.getSessionStartTime());
-        // 7. Return response DTO
+        // 6. Return response DTO
         SessionsResponseDto responseDto = SessionsResponseDto.builder()
                 .sessionId(session.getSessionId())
                 .sessionName(session.getSessionName())
@@ -341,6 +335,7 @@ public class MemberTrainerService {
      * @see AllSessionInfoResponseDto
      * @see SessionsResponseDto
      */
+    @Cacheable(value = "member'sSessionCache", key = "#memberId':'#pageSize':'pageNo")
     public AllSessionInfoResponseDto getPastSessions(String memberId, int pageSize, int pageNo) {
         Pageable page = PageRequest.of(pageNo, pageSize);
         Page<Session> sessions = sessionRepository.findPastSessionsByMemberId(memberId, page);
