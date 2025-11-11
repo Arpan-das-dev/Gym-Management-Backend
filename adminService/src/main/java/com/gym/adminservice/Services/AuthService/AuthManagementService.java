@@ -13,8 +13,6 @@ import lombok.AllArgsConstructor;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
-import java.util.UUID;
-
 @Service
 @AllArgsConstructor
 public class AuthManagementService {
@@ -31,7 +29,7 @@ public class AuthManagementService {
         // create the signup dto to send to the auth service
         SignupRequestDto responseDto = SignupRequestDto.builder()
                 .email(memberRequestDto.getEmail()).phone(memberRequestDto.getPhone())
-                .role(memberRequestDto.getRole())
+                .role(RoleType.MEMBER_ADMIN)
                 .firstName(memberRequestDto.getFirstName()).lastName(memberRequestDto.getLastName())
                 .gender(memberRequestDto.getGender())
                 .joinDate(memberRequestDto.getJoinDate())
@@ -48,7 +46,7 @@ public class AuthManagementService {
         // send the request to the auth service via webclient
         webClientService.sendSignupDetailsMember(responseDto);
         // as we don't have member service yet so we will comment it out
-        // webClientMemberService.sendMemberDetails(memberResponseDto)
+        //webClientMemberService.sendMemberDetails(memberResponseDto)
 
         return new UserCreationResponseDto("Member created successfully");
     }
@@ -68,7 +66,7 @@ public class AuthManagementService {
                 .password(trainerRequestDto.getPassword())
                 .build();
         // create the member dto to send to the member service but
-        // as we dont have member service yet so we will comment it out
+        // as we don't have member service yet so we will comment it out
         TrainerResponseDto trainerResponseDto = TrainerResponseDto.builder()
                 .firstName(trainerRequestDto.getFirstName()).lastName(trainerRequestDto.getLastName())
                 .gender(trainerRequestDto.getGender())
@@ -173,7 +171,7 @@ public class AuthManagementService {
 
     public UserCreationResponseDto freezeAccount(String email, RoleType role) {
         if (role.isTrainerRole()) {
-            // webClientTrainerService.freezeAccount(email,role)
+            //webClientTrainerService.freezeAccount(email,role)
             return new UserCreationResponseDto("Trainer Account frozen Successfully");
         } else if (role.equals(RoleType.MEMBER)) {
             // webClientMemberService.freezeAccount(identifier);
