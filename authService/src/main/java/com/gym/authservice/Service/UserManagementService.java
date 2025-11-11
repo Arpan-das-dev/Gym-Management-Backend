@@ -1,6 +1,7 @@
 package com.gym.authservice.Service;
 
 import com.gym.authservice.Dto.Request.AdminCreationRequestDto;
+import com.gym.authservice.Dto.Request.ApprovalRequestDto;
 import com.gym.authservice.Dto.Request.SignupRequestDto;
 import com.gym.authservice.Dto.Response.CredentialNotificationDto;
 import com.gym.authservice.Dto.Response.SignUpResponseDto;
@@ -112,11 +113,11 @@ public class UserManagementService {
     }
 
     @Transactional
-    public Mono<String> approve(String email, boolean approve) {
-        return signedUpsRepository.findByEmail(email)
-                .switchIfEmpty(Mono.error(new UserNotFoundException("No user found with this email id: " + email)))
+    public Mono<String> approve(ApprovalRequestDto requestDto) {
+        return signedUpsRepository.findByEmail(requestDto.getEmail())
+                .switchIfEmpty(Mono.error(new UserNotFoundException("No user found with this email id: " + requestDto.getEmail())))
                 .flatMap(user -> {
-                    if (approve) {
+                    if (requestDto.isApproval()) {
                         user.setApproved(true);
 
                         if (user.getRole().name().startsWith("TRAINER")) {
