@@ -2,12 +2,8 @@ package com.gym.adminservice.Services.AuthService;
 
 import com.gym.adminservice.Dto.Requests.ApprovalRequestDto;
 import com.gym.adminservice.Dto.Requests.TrainerAssignRequestDto;
-import com.gym.adminservice.Dto.Responses.AllMemberRequestDtoList;
-import com.gym.adminservice.Dto.Responses.ApprovalResponseDto;
-import com.gym.adminservice.Dto.Responses.ApproveEmailNotificationDto;
-import com.gym.adminservice.Dto.Responses.MemberAssignmentToTrainerResponseDto;
-import com.gym.adminservice.Dto.Responses.MemberRequestResponse;
-import com.gym.adminservice.Dto.Responses.TrainerAssignMentResponseDto;
+import com.gym.adminservice.Dto.Responses.*;
+import com.gym.adminservice.Dto.Wrappers.AllPendingRequestResponseWrapperDto;
 import com.gym.adminservice.Enums.RoleType;
 import com.gym.adminservice.Exceptions.RequestNotFoundException;
 import com.gym.adminservice.Models.MemberRequest;
@@ -18,6 +14,8 @@ import com.gym.adminservice.Services.WebClientServices.WebClientAuthService;
 import com.gym.adminservice.Services.WebClientServices.WebClientNotificationService;
 import lombok.RequiredArgsConstructor;
 
+import org.springframework.cache.annotation.CacheEvict;
+import org.springframework.cache.annotation.Cacheable;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
@@ -52,6 +50,7 @@ public class ApprovalService {
      * and also if the request is already present it will throw an exception
      */
 
+    @Cacheable(value = "pendingRequest", key = "'allRequest'")
     public String insertRequest(ApprovalRequestDto requestDto) {
         if (pendingRequestRepository.existsByEmail(requestDto.getEmail())) {
             throw new RuntimeException("request already present please wait until verified");
@@ -74,8 +73,20 @@ public class ApprovalService {
      * which we will show in the frontend for the admin to approve or decline
      */
 
-    public List<PendingRequest> getAll() {
-        return pendingRequestRepository.findAll();
+    @Cacheable(value = "pendingRequest", key = "'allRequest'")
+    public AllPendingRequestResponseWrapperDto getAll() {
+        List<PendingRequest> requestList = pendingRequestRepository.findAll();
+        List<PendingRequestResponseDto> responseDtoList = requestList.stream()
+                .map(req->PendingRequestResponseDto.builder()
+                        .requestId(req.getId())
+                        .email(req.getEmail()).phone(req.getPhone())
+                        .name(req.getName())
+                        .role(req.getRole())
+                        .joinDate(req.getJoinDate())
+                        .build()).toList();
+        return AllPendingRequestResponseWrapperDto.builder()
+                .responseDtoList(responseDtoList)
+                .build();
     }
 
     /*
@@ -85,18 +96,24 @@ public class ApprovalService {
      */
 
     @Transactional
+    @CacheEvict(value = "pendingRequest", key = "'allRequest'")
     public ApprovalResponseDto sendApproval(ApprovalRequestDto requestDto) {
-        pendingRequestRepository.deleteByEmail(requestDto.getEmail());
+
         ApprovalResponseDto responseDto = ApprovalResponseDto.builder()
                 .email(requestDto.getEmail())
                 .approval(true)
                 .build();
-        // send the approval status to the auth service
-        webAuthClientService.sendApproval(responseDto.getEmail(), responseDto.isApproval());
-        // send email notification to the user regarding the approval of the request
-        webClientNotificationService.sendApproveMail(new ApproveEmailNotificationDto(
-                requestDto.getEmail(), requestDto.getName(), requestDto.getRole()));
-        return responseDto;
+        try {
+            // send the approval status to the auth service
+            webAuthClientService.sendApproval(responseDto.getEmail(), responseDto.isApproval());
+            // send email notification to the user regarding the approval of the request
+            webClientNotificationService.sendApproveMail(new ApproveEmailNotificationDto(
+                    requestDto.getEmail(), requestDto.getName(), requestDto.getRole()));
+            pendingRequestRepository.deleteByEmail(requestDto.getEmail());
+            return responseDto;
+        } catch (Exception e) {
+            throw new RuntimeException(e);
+        }
     }
 
     /*
@@ -106,6 +123,7 @@ public class ApprovalService {
      */
 
     @Transactional
+    @CacheEvict(value = "pendingRequest", key = "'allRequest'")
     public ApprovalResponseDto declineApproval(ApprovalRequestDto requestDto) {
         PendingRequest request = pendingRequestRepository.findByEmail(requestDto.getEmail())
                 .orElseThrow(); // user not found exception
@@ -176,21 +194,21 @@ public class ApprovalService {
                 .build();
     }
 
-    public TrainerAssignMentResponseDto assignTrainerToMember(String requestId, LocalDate elidgiblitlyDate) {
+    public TrainerAssignmentResponseDto assignTrainerToMember(String requestId, LocalDate eligiblyDate) {
         MemberRequest request = memberRequestRepository.findById(requestId)
                 .orElseThrow(() -> new RequestNotFoundException("No request found with this id :" + requestId));
-        TrainerAssignMentResponseDto responseDto = TrainerAssignMentResponseDto.builder()
+        TrainerAssignmentResponseDto responseDto = TrainerAssignmentResponseDto.builder()
                 .memberId(request.getMemberId())
                 .trainerId(request.getTrainerId())
                 .trainerName(request.getTrainerName())
                 .trainerProfileImageUrl(request.getTrainerProfileImageUrl())
-                .eligibilityEnd(elidgiblitlyDate)
+                .eligibilityEnd(eligiblyDate)
                 .build();
         MemberAssignmentToTrainerResponseDto memberResponseDto = MemberAssignmentToTrainerResponseDto.builder()
                 .memberId(request.getMemberId())
                 .memberName(request.getMemberName())
                 .memberProfileImageUrl(request.getMemberProfileImageUrl())
-                .elidgibilityDate(elidgiblitlyDate)
+                .elidgibilityDate(eligiblyDate)
                 .build();
 
         webAuthClientService.sendDtoForAssignTrainerToMember(responseDto);
