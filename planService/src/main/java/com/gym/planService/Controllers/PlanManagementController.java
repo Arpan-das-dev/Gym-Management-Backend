@@ -104,4 +104,13 @@ public class PlanManagementController {
         AllPlanResponseWrapperResponseDto response = planManagementService.getAllPlans();
         return ResponseEntity.status(HttpStatus.OK).body(response);
     }
+
+    @PostMapping("all/memberCount")
+    public ResponseEntity<?> decreaseMembersCount(@Valid @RequestParam String planId){
+        LocalDate date = LocalDate.now();
+        log.info("{}::{}::{}Request received to decrement members count for plan:: {}"
+               ,date.getYear(),date.getMonthValue(),date.getDayOfMonth() ,planId);
+        String response = planManagementService.decrementMemberCount(planId);
+        return ResponseEntity.status(HttpStatus.CREATED).body(response);
+    }
 }

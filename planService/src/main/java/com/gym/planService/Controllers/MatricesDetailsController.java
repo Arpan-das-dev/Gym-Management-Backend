@@ -2,6 +2,7 @@ package com.gym.planService.Controllers;
 
 import com.gym.planService.Dtos.OrderDtos.Responses.MonthlyRevenueResponseDto;
 import com.gym.planService.Dtos.PlanDtos.Responses.GenericResponse;
+import com.gym.planService.Dtos.PlanDtos.Responses.TotalUserResponseDto;
 import com.gym.planService.Dtos.PlanDtos.Wrappers.AllMonthlyRevenueWrapperResponseDto;
 import com.gym.planService.Services.PlanServices.PlanMatrixService;
 import jakarta.validation.Valid;
@@ -56,10 +57,10 @@ public class MatricesDetailsController {
      * Fetch total number of users across all plans.
      */
     @GetMapping("/admin/totalUsers")
-    public ResponseEntity<Integer> getTotalUsersForAllPlans() {
+    public ResponseEntity<TotalUserResponseDto> getTotalUsersForAllPlans() {
         log.info("API :: [GET] /admin/totalUsers | Request received to fetch total plan user count");
 
-        Integer response = matrixService.getTotalPlanUsers();
+        TotalUserResponseDto response = matrixService.getTotalPlanUsers();
 
         log.info("SERVICE :: Total active users across all plans: {}", response);
         return ResponseEntity.status(HttpStatus.OK).body(response);
