@@ -1,9 +1,6 @@
 package com.gym.adminservice.Services.WebClientServices;
 
-import com.gym.adminservice.Dto.Responses.AdminCreationRequestDto;
-import com.gym.adminservice.Dto.Responses.MemberAssignmentToTrainerResponseDto;
-import com.gym.adminservice.Dto.Responses.SignupRequestDto;
-import com.gym.adminservice.Dto.Responses.TrainerAssignMentResponseDto;
+import com.gym.adminservice.Dto.Responses.*;
 
 import lombok.extern.slf4j.Slf4j;
 
@@ -115,17 +112,20 @@ public class WebClientAuthService {
     // send the approval status to the auth service asynchronously via webclient so
     // that the auth service can update the user status accordingly
     public void sendApproval(String email, boolean approval) {
-        String url = authServiceAdmin_URL + "/approve";
-        webClient.build().post() // define the method as post
-                .uri(uri -> uri
-                        .path(url) // setting the path to the url passed
-                        .queryParam("email", email)// setting the query param to the email passed
-                        .queryParam("approve", approval)// setting the query param to the approval status passed
-                        .build())
-                .retrieve().toBodilessEntity().subscribe( // retrieve the response as a bodiless entity
-                        success -> System.out.println("API request  sent successfully to " + url),
-                        error -> System.out
-                                .println("Failed to send API request to " + url + ": " + error.getMessage()));
+        String url  = "http://localhost:8080/fitStudio/auth/approve";
+        ApprovalRequestDto requestDto = ApprovalRequestDto.builder()
+                .email(email)
+                .approval(approval)
+                .build();
+        webClient.build()
+                .post()
+                .uri(url).bodyValue(requestDto)
+                .retrieve()
+                .toBodilessEntity()
+                .subscribe(
+                        success -> System.out.println("✅ Approval sent successfully to " + url),
+                        error -> System.err.println("❌ Failed to send approval to " + url + ": " + error.getMessage())
+                );
     }
 
     // send delete request to the respective service(trainer/member) to delete the
@@ -146,7 +146,7 @@ public class WebClientAuthService {
     }
 
     @Async
-    public void sendDtoForAssignTrainerToMember(TrainerAssignMentResponseDto responseDto) {
+    public void sendDtoForAssignTrainerToMember(TrainerAssignmentResponseDto responseDto) {
         webClient.build().post()
                 .uri(memberServiceAssignTrainer_URL)
                 .bodyValue(responseDto)
