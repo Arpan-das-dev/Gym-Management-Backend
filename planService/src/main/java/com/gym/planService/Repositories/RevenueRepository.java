@@ -17,4 +17,14 @@ public interface RevenueRepository extends JpaRepository<MonthlyRevenue, LocalDa
 
     @Query("SELECT m FROM MonthlyRevenue m ORDER BY m.currentYear DESC, m.month ASC")
     List<MonthlyRevenue> findPaginatedData(Pageable pageable);
+
+    @Query("""
+        SELECT mr.currentMonth, COUNT(mr)
+        FROM MonthlyRevenue mr
+        WHERE mr.currentMonth IN :months
+        GROUP BY mr.currentMonth
+    """)
+    List<Object[]> findUserCountsByMonths(@Param("months") List<String> months);
+
+
 }
