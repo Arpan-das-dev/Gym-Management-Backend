@@ -1,6 +1,7 @@
 package com.gym.authservice.Controller;
 
 import com.gym.authservice.Dto.Request.AdminCreationRequestDto;
+import com.gym.authservice.Dto.Request.ApprovalRequestDto;
 import com.gym.authservice.Dto.Request.SignupRequestDto;
 import com.gym.authservice.Dto.Response.SignUpResponseDto;
 import com.gym.authservice.Dto.Response.SignupDetailsInfoDto;
@@ -94,9 +95,9 @@ public class ManagementController {
      * Accepts an email address and an approval boolean as request parameters.
      * Returns a success message indicating the result of the operation.
      */
-    @PostMapping("admin/approve")
-    public ResponseEntity<Mono<String>> approveUser(@RequestParam String email,@RequestParam boolean approve){
-       Mono<String> response = managementService.approve(email,approve);
+    @PostMapping("approve")
+    public ResponseEntity<Mono<String>> approveUser(@Valid @RequestBody ApprovalRequestDto requestDto){
+       Mono<String> response = managementService.approve(requestDto);
         return ResponseEntity.status(HttpStatus.OK).body(response);
     }
 
