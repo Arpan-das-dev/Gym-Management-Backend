@@ -5,6 +5,7 @@ import com.fasterxml.jackson.databind.ObjectMapper;
 import com.fasterxml.jackson.databind.SerializationFeature;
 import com.fasterxml.jackson.datatype.jsr310.JavaTimeModule;
 import com.gym.planService.Dtos.CuponDtos.Wrappers.AllCuponCodeWrapperResponseDto;
+import com.gym.planService.Dtos.PlanDtos.Responses.TotalUserResponseDto;
 import com.gym.planService.Dtos.PlanDtos.Wrappers.AllMonthlyRevenueWrapperResponseDto;
 import com.gym.planService.Dtos.PlanDtos.Wrappers.AllPlanResponseWrapperResponseDto;
 import org.springframework.cache.CacheManager;
@@ -51,12 +52,19 @@ public class RedisConfig {
             (ObjectMapper redisObjectMapper) {
         return new TypedJsonRedisSerializer<>(redisObjectMapper, AllMonthlyRevenueWrapperResponseDto.class);
     }
+
+    @Bean TypedJsonRedisSerializer<TotalUserResponseDto> totalUserResponseDtoRedisSerializer
+            (ObjectMapper redisObjectMapper){
+        return new TypedJsonRedisSerializer<>(redisObjectMapper,TotalUserResponseDto.class);
+    }
+
     @Bean
     public CacheManager cacheManager(
             RedisConnectionFactory connectionFactory,
             TypedJsonRedisSerializer<AllPlanResponseWrapperResponseDto> allPlanResponseWrapperDtoRedisSerializer,
             TypedJsonRedisSerializer<AllCuponCodeWrapperResponseDto> allCuponCodeWrapperResponseDtoRedisSerializer,
-            TypedJsonRedisSerializer<AllMonthlyRevenueWrapperResponseDto> allMonthlyRevenueWrapperResponseDtoRedisSerializer
+            TypedJsonRedisSerializer<AllMonthlyRevenueWrapperResponseDto> allMonthlyRevenueWrapperResponseDtoRedisSerializer,
+            TypedJsonRedisSerializer<TotalUserResponseDto> totalUserResponseDtoSerializer
     ) {
         RedisCacheConfiguration defaultConfig = RedisCacheConfiguration.defaultCacheConfig()
                 .serializeKeysWith(RedisSerializationContext.SerializationPair
@@ -79,6 +87,11 @@ public class RedisConfig {
                 .serializeValuesWith(RedisSerializationContext.SerializationPair
                         .fromSerializer(allMonthlyRevenueWrapperResponseDtoRedisSerializer))
                 .entryTtl(Duration.ofHours(8)));
+
+        cacheConfigs.put("totalUsers",defaultConfig
+                .serializeValuesWith(RedisSerializationContext.SerializationPair
+                        .fromSerializer(totalUserResponseDtoSerializer))
+                .entryTtl(Duration.ofHours(16)));
 
         return RedisCacheManager.builder(connectionFactory)
                 .cacheDefaults(defaultConfig)
