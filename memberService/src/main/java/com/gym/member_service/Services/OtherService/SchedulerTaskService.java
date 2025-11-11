@@ -11,6 +11,7 @@ import org.springframework.stereotype.Service;
 import org.springframework.transaction.TransactionSystemException;
 import org.springframework.web.reactive.function.client.WebClientRequestException;
 
+import java.net.http.WebSocket;
 import java.time.LocalDate;
 import java.time.LocalDateTime;
 import java.util.List;
@@ -273,8 +274,9 @@ public class SchedulerTaskService {
                     session.getMemberId(),
                     session.getTrainerId(),
                     session.getSessionStartTime());
-
-            // TODO: send SMS/email/notification here
+            if(session.getSessionStartTime().minusMinutes(30).equals(threshold)) {
+                // TODO: send SMS/email/notification here
+            }
         }
     }
 }
