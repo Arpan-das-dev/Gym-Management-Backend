@@ -2,6 +2,7 @@ package com.gym.planService.Services.PlanServices;
 
 import com.gym.planService.Dtos.OrderDtos.Responses.MonthlyRevenueResponseDto;
 import com.gym.planService.Dtos.PlanDtos.Responses.MonthlyReviewResponseDto;
+import com.gym.planService.Dtos.PlanDtos.Responses.TotalUserResponseDto;
 import com.gym.planService.Dtos.PlanDtos.Wrappers.AllMonthlyRevenueWrapperResponseDto;
 import com.gym.planService.Exception.Custom.PlanNotFoundException;
 import com.gym.planService.Models.MonthlyRevenue;
@@ -16,10 +17,13 @@ import org.springframework.data.domain.PageRequest;
 import org.springframework.data.domain.Pageable;
 import org.springframework.stereotype.Service;
 
+import java.time.LocalDate;
 import java.time.YearMonth;
 import java.util.ArrayList;
 import java.util.Collections;
 import java.util.List;
+import java.util.Map;
+import java.util.stream.Collectors;
 
 @Slf4j
 @Service
@@ -43,18 +47,43 @@ public class PlanMatrixService {
         return plans.stream().map(Plan::getPlanId).toList();
     }
 
-    public Integer getTotalPlanUsers(){
+    @Cacheable(value = "totalUsers", key = "'totalUsersList'")
+    public TotalUserResponseDto getTotalPlanUsers() {
         log.info("SERVICE :: Fetching total plan users across all plans");
 
-        Integer totalUsers = planRepository.findTotalUsers();
+        Integer totalUsers = planRepository.findTotalUsers(); 
+
+        String currentMonth = LocalDate.now().getMonth().toString();
+        String previousMonth = LocalDate.now().minusMonths(1).getMonth().toString();
+
+        List<String> months = List.of(currentMonth, previousMonth);
+        List<Object[]> results = revenueRepository.findUserCountsByMonths(months);
+
+        Map<String, Integer> monthToUserCount = results.stream()
+                .collect(Collectors.toMap(
+                        r -> (String) r[0],
+                        r -> ((Long) r[1]).intValue() // COUNT returns Long, convert to Integer
+                ));
+
+        Integer thisMonthUsers = monthToUserCount.getOrDefault(currentMonth, 0);
+        Integer lastMonthUsers = monthToUserCount.getOrDefault(previousMonth, 0);
 
         if (totalUsers == null) {
             log.warn("No plans found or no users enrolled yet");
-            return 0;
+            return new TotalUserResponseDto(0, 0.00);
         }
 
         log.info("Total users enrolled in all plans: {}", totalUsers);
-        return totalUsers;
+
+        return new TotalUserResponseDto(thisMonthUsers, changeDetection(thisMonthUsers, lastMonthUsers));
+    }
+
+    private Double changeDetection(Integer thisMonthUsers, Integer lastMonthUsers) {
+        if (thisMonthUsers == null || thisMonthUsers == 0) {
+            return 0.0;
+        }
+        int change = thisMonthUsers - (lastMonthUsers != null ? lastMonthUsers : 0);
+        return ((double) change / thisMonthUsers) * 100;
     }
 
     public MonthlyRevenueResponseDto getRevenue(){
