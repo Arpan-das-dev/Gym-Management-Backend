@@ -8,7 +8,7 @@ public enum RoleType {
     MEMBER,
     TRAINER,
     TRAINER_PENDING,
-    TRAINER_ADMIN, ADMIN_ADMIN;
+    TRAINER_ADMIN, ADMIN_ADMIN, MEMBER_ADMIN;
     public boolean isTrainerRole() {
         return this == TRAINER || this == TRAINER_PENDING || this == TRAINER_ADMIN;
     }
