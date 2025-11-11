@@ -81,6 +81,14 @@ public class SignUpService {
                             signedUps.setRole(RoleType.TRAINER);
                             signedUps.setApproved(true);
                         }
+                        case ADMIN_ADMIN -> {
+                            signedUps.setRole(RoleType.ADMIN);
+                            signedUps.setApproved(true);
+                        }
+                        case MEMBER_ADMIN -> {
+                            signedUps.setRole(RoleType.MEMBER);
+                            signedUps.setApproved(true);
+                        }
                         default -> {
                             signedUps.setRole(RoleType.MEMBER);
                             sendApprovalRequest(approveUrl, approvalDto);
