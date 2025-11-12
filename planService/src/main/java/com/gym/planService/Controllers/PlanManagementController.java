@@ -54,12 +54,14 @@ public class PlanManagementController {
      * @return a wrapper DTO containing all plans including the newly created one, with status 201 Created
      */
     @PostMapping("/admin/addPlan")
-    public ResponseEntity<AllPlanResponseWrapperResponseDto> createPlanBYAdmin(
+    public ResponseEntity<String> createPlanBYAdmin(
             @Valid @RequestBody PlanCreateRequestDto requestDto) {
         log.info("Request received to create plan of name::{} with id::{}",
                 requestDto.getPlanName(), requestDto.getPlanId());
-        AllPlanResponseWrapperResponseDto response = planManagementService.createPlan(requestDto);
-        return ResponseEntity.status(HttpStatus.CREATED).body(response);
+        AllPlanResponseWrapperResponseDto responseDto =  planManagementService.createPlan(requestDto);
+        log.info("Successfully created a new plan and all {} loaded to cache again",
+                responseDto.getResponseDtoList().size());
+        return ResponseEntity.status(HttpStatus.CREATED).body("New Plan Created Successfully");
     }
 
     /**
@@ -70,13 +72,13 @@ public class PlanManagementController {
      * @return the updated plan DTO with status 201 Created
      */
     @PutMapping("/admin/updatePlan")
-    public ResponseEntity<PlanResponseDto> updatePlanByAdmin(
+    public ResponseEntity<String> updatePlanByAdmin(
             @NotBlank(message = "Plan ID must be provided") @RequestParam String id,
             @Valid @RequestBody PlanUpdateRequestDto requestDto) {
         log.info("Request received to update plan of name::{} with id::{}",
                 requestDto.getPlanName(), id);
-        PlanResponseDto response = planManagementService.updatePlan(id, requestDto);
-        return ResponseEntity.status(HttpStatus.CREATED).body(response);
+        PlanResponseDto responseDto =  planManagementService.updatePlan(id, requestDto);
+        return ResponseEntity.status(HttpStatus.CREATED).body("Successfully updated "+responseDto.getPlanName());
     }
 
     /**
@@ -89,8 +91,11 @@ public class PlanManagementController {
     public ResponseEntity<String> deletePlanById(
             @Valid @NotBlank(message = "Plan ID must be provided") @RequestParam String id) {
         log.info("Request received to delete plan of id::{}", id);
-        String response = planManagementService.deletePlan(id);
-        return ResponseEntity.status(HttpStatus.ACCEPTED).body(response);
+        AllPlanResponseWrapperResponseDto response = planManagementService.deletePlan(id);
+        log.info("Plan deleted successfully and cache is updated of new {} no of plans",
+                response.getResponseDtoList().size());
+        return ResponseEntity.status(HttpStatus.ACCEPTED).body("Successfully deleted plan ");
+
     }
 
     /**

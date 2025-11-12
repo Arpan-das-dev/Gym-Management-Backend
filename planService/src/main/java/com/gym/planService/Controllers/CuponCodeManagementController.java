@@ -123,4 +123,18 @@ public class CuponCodeManagementController {
         CuponValidationResponseDto response = cuponService.validateCupon(cuponCode);
         return ResponseEntity.status(HttpStatus.OK).body(response);
     }
+
+    @GetMapping("/admin/getAll")
+    public ResponseEntity<AllCuponCodeWrapperResponseDto> getAllCuponCodes(){
+        log.info("API :: [GET] /admin/getAll | get all cupon codes ");
+        AllCuponCodeWrapperResponseDto response = cuponService.getAllCuponCodesForAdmin();
+        return ResponseEntity.status(HttpStatus.ACCEPTED).body(response);
+    }
+
+    @GetMapping("all/getAll")
+    public ResponseEntity<AllCuponCodeWrapperResponseDto> getAllCuponCodesForAll(){
+        log.info("API :: [GET] /admin/getAll | get all cupon codes for all users");
+        AllCuponCodeWrapperResponseDto response = cuponService.getAllPublicCuponCodes();
+        return ResponseEntity.status(HttpStatus.ACCEPTED).body(response);
+    }
 }
