@@ -34,4 +34,6 @@ public interface PlanCuponCodeRepository extends JpaRepository<PlanCuponCode,Str
     @Query("SELECT c FROM PlanCuponCode c WHERE c.planId = :planId")
     List<PlanCuponCode> findAllByPlanId(@Param("planId") String planId);
 
+    @Query("SELECT c FROM PlanCuponCode c WHERE c.accessibility = 'PUBLIC'")
+    List<PlanCuponCode> findPublicCodes();
 }
