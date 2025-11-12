@@ -42,6 +42,9 @@ public class UpdateCuponRequestDto {
     @Pattern(regexp = "^[A-Z0-9_\\-]+$", message = "Plan ID must contain only uppercase letters, numbers, underscores, or hyphens.")
     private String planId;
 
+    @NotNull(message = "Coupon validity From is required.")
+    @Future(message = "Coupon validity date must be a future date.")
+    private LocalDate validFrom;
     /**
      * The new expiration date for the coupon.
      * <p>Must be a valid future date to remain active for users.</p>
@@ -58,4 +61,10 @@ public class UpdateCuponRequestDto {
     @DecimalMin(value = "1.0", message = "Discount must be at least 1%.")
     @DecimalMax(value = "100.0", message = "Discount cannot exceed 100%.")
     private Double offPercentage;
+
+    @NotNull(message = "Can not create a cupon code without setting it's access")
+    @NotBlank(message = "Can not create a cupon code without setting it's access eg: Private, Public")
+    private String access;
+
+    private String description;
 }

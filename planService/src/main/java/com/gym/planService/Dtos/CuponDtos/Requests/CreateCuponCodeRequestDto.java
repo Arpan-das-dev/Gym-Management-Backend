@@ -44,6 +44,9 @@ public class CreateCuponCodeRequestDto {
     @Pattern(regexp = "^[A-Z0-9_]+$", message = "Coupon code must contain only uppercase letters, digits, or underscores.")
     private String cuponCode;
 
+    @NotNull(message = "Coupon validity From is required.")
+    @Future(message = "Coupon validity date must be a future date.")
+    private LocalDate validFrom;
     /**
      * Expiration date of the coupon code.
      * <p>Must be a future date to ensure the coupon is still valid when created.</p>
@@ -60,4 +63,10 @@ public class CreateCuponCodeRequestDto {
     @DecimalMin(value = "1.0", message = "Discount must be at least 1%.")
     @DecimalMax(value = "100.0", message = "Discount cannot exceed 100%.")
     private Double offPercentage;
+
+    @NotNull(message = "Can not create a cupon code without setting it's access")
+    @NotBlank(message = "Can not create a cupon code without setting it's access eg: Private, Public")
+    private String access;
+
+    private String description;
 }
