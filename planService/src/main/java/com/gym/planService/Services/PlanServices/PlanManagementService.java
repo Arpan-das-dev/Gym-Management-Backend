@@ -116,15 +116,15 @@ public class PlanManagementService {
      * @return success or failure message based on deletion outcome
      */
     @Transactional
-    @CacheEvict(value = "allPlansCache", key = "'all'")
-    public String deletePlan(String id) {
+    @CachePut(value = "allPlansCache", key = "'all'")
+    public AllPlanResponseWrapperResponseDto deletePlan(String id) {
         int rowsEffected = planRepository.deletedById(id);
         if (rowsEffected > 0) {
             log.info("Successfully deleted plan with id::{}", id);
-            return "Successfully deleted plan";
+            return responseWrapperDtoBuilder();
         } else {
             log.warn("No plan found with the id::{}", id);
-            return "No plan found with the id::" + id;
+            throw new PlanNotFoundException("No plan found with the id::" + id);
         }
     }
 
@@ -180,5 +180,6 @@ public class PlanManagementService {
         log.info("Successfully saved plan with member's count {}",plan.getMembersCount());
         return "Successfully saved plan "+plan.getPlanName();
     }
+
 
 }
