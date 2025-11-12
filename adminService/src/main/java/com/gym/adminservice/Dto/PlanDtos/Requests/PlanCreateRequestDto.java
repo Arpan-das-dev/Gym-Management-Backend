@@ -3,11 +3,13 @@ package com.gym.adminservice.Dto.PlanDtos.Requests;
 import jakarta.validation.constraints.*;
 import lombok.AllArgsConstructor;
 import lombok.Data;
+import lombok.NoArgsConstructor;
 
 import java.util.List;
 
 @Data
 @AllArgsConstructor
+@NoArgsConstructor
 public class PlanCreateRequestDto {
     @NotBlank(message = "Plan name is required")
     private String planName;
