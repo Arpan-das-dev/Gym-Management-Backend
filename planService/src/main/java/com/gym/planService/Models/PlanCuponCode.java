@@ -32,7 +32,8 @@ import java.time.LocalDate;
 @NoArgsConstructor
 @Entity
 @Table(name = "cupon",indexes = {
-        @Index(name = "idx_cupon_plan_id", columnList = "plan_id")
+        @Index(name = "idx_cupon_plan_id", columnList = "plan_id"),
+        @Index(name = "idx_access", columnList = "Access")
 })
 public class PlanCuponCode {
 
@@ -43,9 +44,15 @@ public class PlanCuponCode {
     @Column(name = "cupon_code", nullable = false, unique = true)
     private String cuponCode;
 
-    /**
-     * Validity date of the coupon after which it is no longer redeemable.
-     */
+    @Column(name = "Access", nullable = false)
+    private String accessibility;
+
+    @Column(name = "description")
+    private String description;
+
+    @Column(name = "valid", nullable = false)
+    private LocalDate validFrom;
+
     @Column(name = "validity", nullable = false)
     private LocalDate validity;
 
@@ -58,4 +65,9 @@ public class PlanCuponCode {
 
     @Column(name = "plan_id", nullable = false)
     private String planId;
+
+    @Column(name = "users")
+    private Integer cuponCodeUser;
+
+
 }
