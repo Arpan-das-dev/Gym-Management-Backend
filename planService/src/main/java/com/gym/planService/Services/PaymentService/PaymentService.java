@@ -64,6 +64,10 @@ public class PaymentService {
         try {
             log.info("final amount to be paid ====> {}", finalAmount);
             razorOrder = razorPayService.makePayment(finalAmount.longValue(), requestDto.getCurrency(), paymentId);
+            if (cuponCode != null) {
+                cuponCode.setCuponCodeUser(cuponCode.getCuponCodeUser()+1);
+                cuponCodeRepository.save(cuponCode);
+            }
         } catch (RazorpayException e) {
             log.error("Razorpay order creation failed for user {}: {}", requestDto.getUserId(), e.getMessage());
             throw new PaymentGatewayException("Unable to initiate payment. Please try again later.");
