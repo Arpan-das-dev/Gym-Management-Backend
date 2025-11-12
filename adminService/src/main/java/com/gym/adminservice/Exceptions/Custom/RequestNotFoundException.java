@@ -1,4 +1,4 @@
-package com.gym.adminservice.Exceptions;
+package com.gym.adminservice.Exceptions.Custom;
 
 public class RequestNotFoundException extends RuntimeException {
     public RequestNotFoundException(String message){
