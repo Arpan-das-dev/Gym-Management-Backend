@@ -1,13 +1,19 @@
 package com.gym.adminservice.Services.WebClientServices;
 
 import com.gym.adminservice.Dto.PlanDtos.Responses.CreationResponseDto;
+import com.gym.adminservice.Exceptions.Custom.PlanNotFounException;
+import com.gym.adminservice.Exceptions.Model.ErrorResponse;
+import lombok.extern.slf4j.Slf4j;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.scheduling.annotation.Async;
 import org.springframework.stereotype.Service;
 import org.springframework.web.reactive.function.client.WebClient;
+import reactor.core.publisher.Mono;
 
 import java.util.List;
+import java.util.concurrent.CompletableFuture;
 
+@Slf4j
 @Service
 /*
  * This service class is responsible for communicating with the Plan Service
@@ -34,9 +40,9 @@ public class WebClientPlanService {
 
 
     @Async
-    public void sendCreationToPlanService(Object body) {
+    public CompletableFuture<String>  sendCreationToPlanService(Object body) {
         String url = planServiceAdmin_URL + "addPlan";
-        postAsynchronously(url, body);
+       return postAsynchronously(url, body);
     }
 
 
@@ -48,47 +54,52 @@ public class WebClientPlanService {
     }
 
     @Async
-    public void sendUpdateCreationToPlanService(String id, Object body) {
+    public CompletableFuture<String> sendUpdateCreationToPlanService(String id, Object body) {
         String url = planServiceAdmin_URL + "updatePlan";
-        putAsynchronously(url,body,id);
+       return putAsynchronously(url,body,id);
     }
 
     @Async
-    public void sendDeletionRequestById(String id) {
-        String URL = planServiceAdmin_URL + "deletePlan";
-        webclient.build().delete()
-                .uri(url -> url
-                        .path(URL)
-                        .queryParam("id", id)
-                        .build())
-                .retrieve().toBodilessEntity().subscribe(
-                        success -> System.out.println("Successfully sent Api request"),
-                        error -> System.out.println("Failed to send Api request")
-                );
+    public CompletableFuture<String> sendDeletionRequestById(String id) {
+        String URL = planServiceAdmin_URL + "deletePlan"+"?id="+id;
+        return webclient.build().delete()
+                .uri(URL)
+                .exchangeToMono(response -> {
+                    if (response.statusCode().is2xxSuccessful()) {
+                        return response.bodyToMono(String.class); // success response
+                    } else {
+                        // parse error body to ErrorResponse and propagate message
+                        return response.bodyToMono(ErrorResponse.class)
+                                .flatMap(errorResponse -> Mono.error(
+                                        new PlanNotFounException(errorResponse.getMessage())
+                                ));
+                    }
+                })
+                .toFuture();
     }
 
 
-    private void postAsynchronously(String url, Object body) {
-        webclient.build().post()
+    private CompletableFuture<String> postAsynchronously(String url, Object body) {
+        return webclient.build().post()
                 .uri(url)
                 .bodyValue(body)
-                .retrieve().toBodilessEntity().subscribe(
-                        success -> System.out.println("Successfully sent Api request"),
-                        error -> System.out.println("Failed to send Api request")
-                );
+                .retrieve()
+                .bodyToMono(String.class)
+                .doOnSuccess(s -> System.out.println("Successfully sent Api request"))
+                .doOnError(e -> System.out.println("Failed to send Api request: " + e.getMessage()))
+                .toFuture();
     }
 
-    private void putAsynchronously(String url, Object body, String id) {
-        webclient.build().put()
-                .uri(uri->uri
-                        .path(url)
-                        .queryParam("id",id)
-                        .build())
+    private CompletableFuture<String>  putAsynchronously(String url, Object body, String id) {
+        String endpoint = url+"?id="+id;
+        return webclient.build().put()
+                .uri(endpoint)
                 .bodyValue(body)
-                .retrieve().toBodilessEntity().subscribe(
-                        success -> System.out.println("Successfully sent Api request"),
-                        error -> System.out.println("Failed to send Api request")
-                );
+                .retrieve().bodyToMono(String.class)
+                .doOnSuccess(s->log.info("Request sent to {}",endpoint))
+                .doOnError(e->log.warn("Failed to send request to {} due to ::{}",
+                        endpoint,e.getCause().toString()))
+                .toFuture();
     }
 
 }
