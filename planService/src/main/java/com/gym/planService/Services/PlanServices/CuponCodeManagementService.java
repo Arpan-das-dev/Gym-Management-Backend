@@ -5,6 +5,8 @@ import com.gym.planService.Dtos.CuponDtos.Requests.UpdateCuponRequestDto;
 import com.gym.planService.Dtos.CuponDtos.Responses.CuponCodeResponseDto;
 import com.gym.planService.Dtos.CuponDtos.Responses.CuponValidationResponseDto;
 import com.gym.planService.Dtos.CuponDtos.Wrappers.AllCuponCodeWrapperResponseDto;
+import com.gym.planService.Enums.AccessType;
+import com.gym.planService.Exception.Custom.CuponCodeCreationException;
 import com.gym.planService.Exception.Custom.CuponCodeNotFoundException;
 import com.gym.planService.Exception.Custom.DuplicateCuponCodeFoundException;
 import com.gym.planService.Exception.Custom.PlanNotFoundException;
@@ -19,11 +21,14 @@ import lombok.extern.slf4j.Slf4j;
 import org.springframework.cache.annotation.CacheEvict;
 import org.springframework.cache.annotation.CachePut;
 import org.springframework.cache.annotation.Cacheable;
+import org.springframework.cache.annotation.Caching;
 import org.springframework.data.redis.core.StringRedisTemplate;
 import org.springframework.stereotype.Service;
 
 import java.time.Duration;
 import java.time.LocalDate;
+import java.time.LocalDateTime;
+import java.time.format.DateTimeFormatter;
 import java.util.List;
 import java.util.Objects;
 
@@ -61,6 +66,7 @@ public class CuponCodeManagementService {
 
     private static final String REDIS_CUPON_PREFIX = "VALIDATION_CUPON::";
 
+    DateTimeFormatter formatter = DateTimeFormatter.ofPattern("yyyy-MM-dd HH:mm:ss");
     /**
      * Builds a Redis cache key for a given coupon code.
      *
@@ -75,7 +81,13 @@ public class CuponCodeManagementService {
      * Creates a new coupon code for a specified plan and caches it.
      */
     @Transactional
-    @CachePut(value = "cuponCodes", key = "#planId")
+    @Caching(put = {
+            @CachePut(value = "cuponCodes", key = "#planId"),
+            @CachePut(value = "cuponCodes", key = "'admin'"),
+    },
+    evict = {
+            @CacheEvict(value = "cuponCodes", key = "'public'")
+    })
     public AllCuponCodeWrapperResponseDto createCuponCode(String planId, CreateCuponCodeRequestDto requestDto) {
         log.info("SERVICE :: Creating coupon {} for plan {}", requestDto.getCuponCode(), planId);
 
@@ -84,14 +96,21 @@ public class CuponCodeManagementService {
         }
 
         if (cuponCodeRepository.existsById(requestDto.getCuponCode())) {
-            throw new DuplicateCuponCodeFoundException("Coupon already exists: " + requestDto.getCuponCode());
+            throw new DuplicateCuponCodeFoundException("Coupon already exists with name: " + requestDto.getCuponCode());
         }
-
+        if(requestDto.getAccess().toUpperCase().equals(AccessType.PRIVATE.name()) ||
+                requestDto.getAccess().toUpperCase().equals(AccessType.PUBLIC.name())){
+            throw new CuponCodeCreationException("can not create a cupon without setting access eg: PUBLIC, PRIVATE");
+        }
         PlanCuponCode entity = PlanCuponCode.builder()
                 .cuponCode(requestDto.getCuponCode())
+                .accessibility(requestDto.getAccess().toUpperCase())
+                .description(requestDto.getDescription())
+                .validFrom(requestDto.getValidFrom())
                 .validity(requestDto.getValidity())
                 .percentage(requestDto.getOffPercentage())
                 .planId(planId)
+                .cuponCodeUser(0)
                 .build();
 
         cuponCodeRepository.save(entity);
@@ -105,7 +124,11 @@ public class CuponCodeManagementService {
      * Updates an existing coupon and refreshes cache.
      */
     @Transactional
-    @CacheEvict(value = "cuponCodes", key = "#requestDto.planId")
+    @Caching(evict = {
+            @CacheEvict(value = "cuponCodes", key = "#requestDto.planId"),
+            @CacheEvict(value = "cuponCodes", key = "'admin'"),
+            @CacheEvict(value = "cuponCodes", key = "'public'")
+    })
     public CuponCodeResponseDto updateCupon(String cuponCode, UpdateCuponRequestDto requestDto) {
         log.info("SERVICE :: Updating coupon {}", cuponCode);
 
@@ -115,9 +138,15 @@ public class CuponCodeManagementService {
         if (!planRepository.existsById(requestDto.getPlanId())) {
             throw new PlanNotFoundException("Invalid plan for coupon: " + cuponCode);
         }
-
+        if(requestDto.getAccess().toUpperCase().equals(AccessType.PRIVATE.name()) ||
+                requestDto.getAccess().toUpperCase().equals(AccessType.PUBLIC.name())){
+            throw new CuponCodeCreationException("can not create a cupon without setting access eg: PUBLIC, PRIVATE");
+        }
+        existing.setValidFrom(requestDto.getValidFrom());
         existing.setValidity(requestDto.getValidity());
         existing.setPercentage(requestDto.getOffPercentage());
+        existing.setAccessibility(requestDto.getAccess().toUpperCase());
+        existing.setDescription(requestDto.getDescription());
         cuponCodeRepository.save(existing);
 
         refreshCuponCache(existing);
@@ -143,7 +172,11 @@ public class CuponCodeManagementService {
      * Deletes a coupon and removes it from cache.
      */
     @Transactional
-    @CacheEvict(value = "cuponCodes", key = "#planId")
+    @Caching(evict = {
+            @CacheEvict(value = "cuponCodes", key = "#planId"),
+            @CacheEvict(value = "cuponCodes", key = "#'admin'"),
+            @CacheEvict(value = "cuponCodes", key = "'public")
+    })
     public String deleteCuponByCuponCode(String cuponCode, String planId) {
         log.info("SERVICE :: Deleting coupon {} for plan {}", cuponCode, planId);
 
@@ -229,16 +262,40 @@ public class CuponCodeManagementService {
      * Builds a wrapper response containing all coupon codes for a plan.
      */
     private AllCuponCodeWrapperResponseDto buildResponse(String planId) {
-        List<CuponCodeResponseDto> codes = cuponCodeRepository.findAllByPlanId(planId).stream()
-                .map(c -> CuponCodeResponseDto.builder()
-                        .cuponCode(c.getCuponCode())
-                        .validityDate(c.getValidity())
-                        .offPercentage(c.getPercentage())
-                        .build())
-                .toList();
+        System.out.println("    ⌚ "+ LocalDateTime.now().format(formatter));
+        log.info(" 📩 Request reached in service class to retrieve all cupon codes by plan id {} ",planId);
+        return wrapperBuilder(cuponCodeRepository.findAllByPlanId(planId));
+    }
 
+    @Cacheable(value = "cuponCodes", key = "'admin'")
+    public AllCuponCodeWrapperResponseDto getAllCuponCodesForAdmin(){
+        System.out.println("    ⌚ "+ LocalDateTime.now().format(formatter));
+        log.info(" 📩 Request reached in service class to retrieve all cupon codes by admin ");
+        return wrapperBuilder(cuponCodeRepository.findAll());
+    }
+
+    @Cacheable(value = "cuponCodes", key = "'public'")
+    public AllCuponCodeWrapperResponseDto getAllPublicCuponCodes(){
+        System.out.println("    ⌚ "+ LocalDateTime.now().format(formatter));
+        log.info(" 📩 Request reached in service class to retrieve all cupon codes for public ");
+        return wrapperBuilder(cuponCodeRepository.findPublicCodes());
+    }
+
+    private AllCuponCodeWrapperResponseDto wrapperBuilder(List<PlanCuponCode> cuponCodes){
+        List<CuponCodeResponseDto> codeResponseDtoList = cuponCodes.stream()
+                .map(cupon-> CuponCodeResponseDto.builder()
+                        .cuponCode(cupon.getCuponCode())
+                        .access(cupon.getAccessibility())
+                        .validFrom(cupon.getValidFrom())
+                        .validityDate(cupon.getValidity())
+                        .users(cupon.getCuponCodeUser())
+                        .offPercentage(cupon.getPercentage())
+                        .description(cupon.getDescription())
+                        .build()).toList();
+        System.out.println("    ⌚ "+ LocalDateTime.now().format(formatter));
+        log.info("retrieved {} no of cupon codes from db/ cache ",codeResponseDtoList.size());
         return AllCuponCodeWrapperResponseDto.builder()
-                .responseDtoList(codes)
+                .responseDtoList(codeResponseDtoList)
                 .build();
     }
 }
