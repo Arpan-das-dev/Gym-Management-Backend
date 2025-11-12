@@ -3,10 +3,12 @@ package com.gym.adminservice.Dto.PlanDtos.Requests;
 import jakarta.validation.constraints.*;
 import lombok.AllArgsConstructor;
 import lombok.Data;
+import lombok.NoArgsConstructor;
 
 import java.util.List;
 
 @AllArgsConstructor
+@NoArgsConstructor
 @Data
 public class UpdatePlanRequestDto {
     @NotBlank(message = "id is required to update plan")
