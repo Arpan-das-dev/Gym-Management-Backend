@@ -5,7 +5,7 @@ import com.gym.adminservice.Dto.Requests.TrainerAssignRequestDto;
 import com.gym.adminservice.Dto.Responses.*;
 import com.gym.adminservice.Dto.Wrappers.AllPendingRequestResponseWrapperDto;
 import com.gym.adminservice.Enums.RoleType;
-import com.gym.adminservice.Exceptions.RequestNotFoundException;
+import com.gym.adminservice.Exceptions.Custom.RequestNotFoundException;
 import com.gym.adminservice.Models.MemberRequest;
 import com.gym.adminservice.Models.PendingRequest;
 import com.gym.adminservice.Repository.MemberRequestRepository;
