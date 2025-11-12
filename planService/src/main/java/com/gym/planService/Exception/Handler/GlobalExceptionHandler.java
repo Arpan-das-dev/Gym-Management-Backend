@@ -35,7 +35,9 @@ public class GlobalExceptionHandler {
         return ExceptionUtil.buildErrorResponse(HttpStatus.SERVICE_UNAVAILABLE,ex.getMessage(),request);
     }
 
-    @ExceptionHandler({Exception.class, EmailSendFailedException.class})
+    @ExceptionHandler({Exception.class,
+            EmailSendFailedException.class,
+            CuponCodeCreationException.class})
     public ResponseEntity<ErrorResponse> handleGlobal(Exception ex, HttpServletRequest request) {
         return ExceptionUtil.buildErrorResponse(HttpStatus.INTERNAL_SERVER_ERROR, ex.getMessage(), request);
     }
