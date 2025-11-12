@@ -42,16 +42,18 @@ public class CuponCodeResponseDto {
      * Example: "SPRING50"
      */
     private String cuponCode;
-
+    private String access;
+    private LocalDate validFrom;
     /**
      * The expiration date of the coupon code.
      * Coupons are valid through this date.
      */
     private LocalDate validityDate;
-
+    private Integer users;
     /**
      * The discount percentage provided by the coupon.
      * Represented as a double value between 1.0 and 100.0 inclusive.
      */
     private Double offPercentage;
+    private String description;
 }
