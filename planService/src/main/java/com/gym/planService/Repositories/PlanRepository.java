@@ -53,4 +53,7 @@ public interface PlanRepository extends JpaRepository< Plan, String > {
     @Query("SELECT SUM(p.membersCount) FROM Plan p")
     Integer findTotalUsers();
 
+    @Query("SELECT COUNT(p) > 0 FROM Plan p WHERE p.planId = :planId")
+    boolean exists(@Param("planId") String planId);
+
 }
