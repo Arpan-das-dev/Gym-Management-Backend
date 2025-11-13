@@ -5,6 +5,7 @@ import com.gym.planService.Dtos.CuponDtos.Requests.UpdateCuponRequestDto;
 import com.gym.planService.Dtos.CuponDtos.Responses.CuponCodeResponseDto;
 import com.gym.planService.Dtos.CuponDtos.Responses.CuponValidationResponseDto;
 import com.gym.planService.Dtos.CuponDtos.Wrappers.AllCuponCodeWrapperResponseDto;
+import com.gym.planService.Dtos.PlanDtos.Responses.GenericResponse;
 import com.gym.planService.Services.PlanServices.CuponCodeManagementService;
 import jakarta.validation.Valid;
 import jakarta.validation.constraints.NotBlank;
@@ -49,8 +50,8 @@ public class CuponCodeManagementController {
      */
     @PostMapping("/admin/addCupon")
     public ResponseEntity<AllCuponCodeWrapperResponseDto> launchCuponCode(
-            @RequestParam @Valid @NotBlank(message = "Plan ID must be provided.") String planId,
-            @Valid @RequestBody CreateCuponCodeRequestDto requestDto) {
+            @RequestParam  @NotBlank(message = "Plan ID must be provided.") String planId,
+             @RequestBody CreateCuponCodeRequestDto requestDto) {
 
         log.info("API :: [POST] /admin/addCupon | Launching coupon '{}' for plan '{}' valid till {}",
                 requestDto.getCuponCode(), planId, requestDto.getValidity());
@@ -83,7 +84,7 @@ public class CuponCodeManagementController {
      * @return ResponseEntity containing all coupons for the plan, status 200 OK.
      */
     @GetMapping("/admin/getCuponCodes")
-    public ResponseEntity<AllCuponCodeWrapperResponseDto> getAllCuponCodes(
+    public ResponseEntity<AllCuponCodeWrapperResponseDto> getAllCuponCodesByPlanId(
             @RequestParam @Valid @NotBlank(message = "Plan ID must be provided.") String planId) {
 
         log.info("API :: [GET] /admin/getCuponCodes | Fetching all coupons for plan '{}'", planId);
@@ -99,13 +100,13 @@ public class CuponCodeManagementController {
      * @return ResponseEntity containing confirmation message, status 202 Accepted.
      */
     @DeleteMapping("/admin/deleteCuponCode")
-    public ResponseEntity<String> deleteCuponCode(
+    public ResponseEntity<GenericResponse> deleteCuponCode(
             @RequestParam @Valid @NotBlank(message = "Coupon code must be provided.") String cuponCode,
             @RequestParam @Valid @NotBlank(message = "Plan ID must be provided.") String planId) {
 
         log.info("API :: [DELETE] /admin/deleteCuponCode | Deleting coupon '{}' for plan '{}'", cuponCode, planId);
         String result = cuponService.deleteCuponByCuponCode(cuponCode, planId);
-        return ResponseEntity.status(HttpStatus.ACCEPTED).body(result);
+        return ResponseEntity.status(HttpStatus.ACCEPTED).body(new GenericResponse(result));
     }
 
     /**
@@ -133,7 +134,7 @@ public class CuponCodeManagementController {
 
     @GetMapping("all/getAll")
     public ResponseEntity<AllCuponCodeWrapperResponseDto> getAllCuponCodesForAll(){
-        log.info("API :: [GET] /admin/getAll | get all cupon codes for all users");
+        log.info("API :: [GET] /all/getAll | get all cupon codes for all users");
         AllCuponCodeWrapperResponseDto response = cuponService.getAllPublicCuponCodes();
         return ResponseEntity.status(HttpStatus.ACCEPTED).body(response);
     }
