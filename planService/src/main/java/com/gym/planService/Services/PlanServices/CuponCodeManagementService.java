@@ -90,16 +90,18 @@ public class CuponCodeManagementService {
     })
     public AllCuponCodeWrapperResponseDto createCuponCode(String planId, CreateCuponCodeRequestDto requestDto) {
         log.info("SERVICE :: Creating coupon {} for plan {}", requestDto.getCuponCode(), planId);
+        log.info("access is {}",requestDto.getAccess());
 
-        if (!planRepository.existsById(planId)) {
+        if (!planRepository.exists(planId)) {
             throw new PlanNotFoundException("Plan not found with id: " + planId);
         }
 
         if (cuponCodeRepository.existsById(requestDto.getCuponCode())) {
             throw new DuplicateCuponCodeFoundException("Coupon already exists with name: " + requestDto.getCuponCode());
         }
-        if(requestDto.getAccess().toUpperCase().equals(AccessType.PRIVATE.name()) ||
-                requestDto.getAccess().toUpperCase().equals(AccessType.PUBLIC.name())){
+
+        if(!requestDto.getAccess().toUpperCase().equals(AccessType.PRIVATE.name()) &&
+                !requestDto.getAccess().toUpperCase().equals(AccessType.PUBLIC.name())){
             throw new CuponCodeCreationException("can not create a cupon without setting access eg: PUBLIC, PRIVATE");
         }
         PlanCuponCode entity = PlanCuponCode.builder()
