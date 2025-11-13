@@ -7,8 +7,13 @@ import com.razorpay.RazorpayException;
 import jakarta.servlet.http.HttpServletRequest;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
+import org.springframework.validation.FieldError;
+import org.springframework.web.bind.MethodArgumentNotValidException;
 import org.springframework.web.bind.annotation.ControllerAdvice;
 import org.springframework.web.bind.annotation.ExceptionHandler;
+import org.springframework.web.method.annotation.HandlerMethodValidationException;
+
+import java.util.stream.Collectors;
 
 @ControllerAdvice
 public class GlobalExceptionHandler {
@@ -37,8 +42,17 @@ public class GlobalExceptionHandler {
 
     @ExceptionHandler({Exception.class,
             EmailSendFailedException.class,
-            CuponCodeCreationException.class})
+            CuponCodeCreationException.class,})
     public ResponseEntity<ErrorResponse> handleGlobal(Exception ex, HttpServletRequest request) {
         return ExceptionUtil.buildErrorResponse(HttpStatus.INTERNAL_SERVER_ERROR, ex.getMessage(), request);
+    }
+
+    @ExceptionHandler({MethodArgumentNotValidException.class,
+            HandlerMethodValidationException.class})
+    public ResponseEntity<ErrorResponse> handleMethodArgumentNotValid(Exception ex, HttpServletRequest request) {
+//        String errorMessages = ex.getBindingResult().getFieldErrors().stream()
+//                .map(FieldError::getDefaultMessage)
+//                .collect(Collectors.joining(", "));
+        return ExceptionUtil.buildErrorResponse(HttpStatus.BAD_REQUEST, ex.getMessage(), request);
     }
 }
