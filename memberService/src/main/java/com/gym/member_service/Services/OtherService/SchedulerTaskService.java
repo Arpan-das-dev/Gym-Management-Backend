@@ -1,5 +1,6 @@
 package com.gym.member_service.Services.OtherService;
 
+import com.gym.member_service.Exception.Exceptions.PlanNotFounException;
 import com.gym.member_service.Model.*;
 import com.gym.member_service.Repositories.*;
 import jakarta.transaction.Transactional;
@@ -16,6 +17,7 @@ import java.time.LocalDate;
 import java.time.LocalDateTime;
 import java.util.List;
 import java.util.Map;
+import java.util.concurrent.ExecutionException;
 import java.util.stream.Collectors;
 
 /**
@@ -276,6 +278,25 @@ public class SchedulerTaskService {
                     session.getSessionStartTime());
             if(session.getSessionStartTime().minusMinutes(30).equals(threshold)) {
                 // TODO: send SMS/email/notification here
+            }
+        }
+    }
+
+
+    // scheduler service to expire plans
+    @Scheduled(cron = "0 0 0 * * *")
+    public void sendToPlanService(){
+        LocalDateTime now = LocalDateTime.now();
+        List<Member> memberList = memberRepository.findAllByExpiredPlans(now);
+        for (Member m : memberList) {
+            log.info("sending to plan service of member {}",m.getFirstName()+" "+m.getLastName());
+            try {
+                String  response =  webClientService.sendPlanServiceToDecrementMembersCount(m.getPlanID()).get();
+                System.out.println(response);
+                log.info("response sent");
+            } catch (InterruptedException | ExecutionException e) {
+                log.warn(e.getCause().getLocalizedMessage());
+                throw new RuntimeException(e);
             }
         }
     }
