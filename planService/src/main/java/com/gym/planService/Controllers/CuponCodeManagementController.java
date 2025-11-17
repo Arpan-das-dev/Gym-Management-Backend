@@ -49,7 +49,7 @@ public class CuponCodeManagementController {
      * @return ResponseEntity containing all coupon codes for the plan after addition, status 201 Created.
      */
     @PostMapping("/admin/addCupon")
-    public ResponseEntity<AllCuponCodeWrapperResponseDto> launchCuponCode(
+    public ResponseEntity<GenericResponse> launchCuponCode(
             @RequestParam  @NotBlank(message = "Plan ID must be provided.") String planId,
              @RequestBody CreateCuponCodeRequestDto requestDto) {
 
@@ -57,7 +57,10 @@ public class CuponCodeManagementController {
                 requestDto.getCuponCode(), planId, requestDto.getValidity());
 
         AllCuponCodeWrapperResponseDto response = cuponService.createCuponCode(planId, requestDto);
-        return ResponseEntity.status(HttpStatus.CREATED).body(response);
+        log.info("new cupon code created with name {} for plan ::{} with percentage {}",
+                requestDto.getCuponCode(),planId,requestDto.getOffPercentage());
+        GenericResponse genericResponse = new GenericResponse("New Cupon Code "+requestDto.getCuponCode()+"created");
+        return ResponseEntity.status(HttpStatus.CREATED).body(genericResponse);
     }
 
     /**
@@ -68,13 +71,15 @@ public class CuponCodeManagementController {
      * @return ResponseEntity containing the updated coupon code details, status 202 Accepted.
      */
     @PutMapping("/admin/updateCupon")
-    public ResponseEntity<CuponCodeResponseDto> updateCupon(
-            @RequestParam @Valid @NotBlank(message = "Coupon code must be provided.") String cuponCode,
-            @Valid @RequestBody UpdateCuponRequestDto requestDto) {
+    public ResponseEntity<GenericResponse> updateCupon(
+            @RequestParam  @NotBlank(message = "Coupon code must be provided.") String cuponCode,
+             @RequestBody UpdateCuponRequestDto requestDto) {
 
         log.info("API :: [PUT] /admin/updateCupon | Updating coupon '{}'", cuponCode);
         CuponCodeResponseDto response = cuponService.updateCupon(cuponCode, requestDto);
-        return ResponseEntity.status(HttpStatus.ACCEPTED).body(response);
+        log.info("cupon code update successfully for cupon code {}",response.getCuponCode());
+        GenericResponse genericResponse = new GenericResponse("Cupon Code"+response.getCuponCode()+"is updated successfully");
+        return ResponseEntity.status(HttpStatus.ACCEPTED).body(genericResponse);
     }
 
     /**
