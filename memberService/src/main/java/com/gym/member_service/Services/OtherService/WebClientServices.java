@@ -4,6 +4,8 @@ import com.gym.member_service.Dto.MemberPlanDto.Requests.PlanRequestDto;
 import com.gym.member_service.Dto.MemberTrainerDtos.Responses.TrainerAssignResponseDto;
 import com.gym.member_service.Dto.NotificationDto.MailNotificationDto;
 import com.gym.member_service.Dto.NotificationDto.PlanActivationNotificationDto;
+import com.gym.member_service.Exception.Exceptions.PlanNotFounException;
+import com.gym.member_service.Exception.Model.ErrorResponse;
 import com.gym.member_service.Model.Member;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.beans.factory.annotation.Value;
@@ -12,9 +14,11 @@ import org.springframework.scheduling.annotation.Async;
 import org.springframework.stereotype.Service;
 import org.springframework.web.reactive.function.client.WebClient;
 import org.springframework.web.reactive.function.client.WebClientRequestException;
+import reactor.core.publisher.Mono;
 
 import java.time.LocalDate;
 import java.time.LocalDateTime;
+import java.util.concurrent.CompletableFuture;
 
 /**
  * Web client service for handling asynchronous external service communications.
@@ -56,6 +60,8 @@ public class WebClientServices {
      */
     @Value("${app.adminService.approval_Url}")
     private final String Admin_ApprovalService_URL;
+
+    private final String Plan_Management_URL;
     /**
      * WebClient builder for constructing HTTP clients with custom configurations.
      */
@@ -73,10 +79,12 @@ public class WebClientServices {
      */
     public WebClientServices( @Value("${app.notificationService.plan_Url}") String Notification_MemberService_URL,
                               @Value("${app.adminService.approval_Url}")  String Admin_ApprovalService_URL,
+                              @Value("${app.planService.Base.Url}") String Plan_Management_URL,
                               WebClient.Builder webClient)
     {
         this.Notification_MemberService_URL = Notification_MemberService_URL;
         this.Admin_ApprovalService_URL = Admin_ApprovalService_URL;
+        this.Plan_Management_URL = Plan_Management_URL;
         this.webClient = webClient;
     }
 
@@ -299,5 +307,22 @@ public class WebClientServices {
                                 Admin_ApprovalService_URL,success.getStatusCode()),
                 error->log.error("Failed to send dto {}",error.getMessage())
                 );
+    }
+
+    public CompletableFuture<String> sendPlanServiceToDecrementMembersCount(String planID) {
+        String endpoint = Plan_Management_URL+"all/memberCount?planId="+planID;
+        return webClient.build().post()
+                .uri(endpoint)
+                .exchangeToMono(res->{
+                    if (res.statusCode().is2xxSuccessful()) {
+                        return res.bodyToMono(String.class);
+                    } else {
+                        return res.bodyToMono(ErrorResponse.class)
+                                .flatMap(err-> Mono.error(
+                                        new PlanNotFounException(err.getMessage())
+                                ));
+                    }
+                })
+                .toFuture();
     }
 }
