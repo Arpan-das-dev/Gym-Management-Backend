@@ -42,6 +42,7 @@ public class CuponCodeResponseDto {
      * Example: "SPRING50"
      */
     private String cuponCode;
+    private String planId;
     private String access;
     private LocalDate validFrom;
     /**
