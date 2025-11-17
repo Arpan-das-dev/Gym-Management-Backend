@@ -83,10 +83,11 @@ public class CuponCodeManagementService {
     @Transactional
     @Caching(put = {
             @CachePut(value = "cuponCodes", key = "#planId"),
-            @CachePut(value = "cuponCodes", key = "'admin'"),
+
     },
     evict = {
-            @CacheEvict(value = "cuponCodes", key = "'public'")
+            @CacheEvict(value = "cuponCodes", key = "'public'"),
+            @CacheEvict(value = "cuponCodes", key = "'admin'"),
     })
     public AllCuponCodeWrapperResponseDto createCuponCode(String planId, CreateCuponCodeRequestDto requestDto) {
         log.info("SERVICE :: Creating coupon {} for plan {}", requestDto.getCuponCode(), planId);
@@ -140,10 +141,15 @@ public class CuponCodeManagementService {
         if (!planRepository.existsById(requestDto.getPlanId())) {
             throw new PlanNotFoundException("Invalid plan for coupon: " + cuponCode);
         }
-        if(requestDto.getAccess().toUpperCase().equals(AccessType.PRIVATE.name()) ||
-                requestDto.getAccess().toUpperCase().equals(AccessType.PUBLIC.name())){
-            throw new CuponCodeCreationException("can not create a cupon without setting access eg: PUBLIC, PRIVATE");
+        if (
+                !requestDto.getAccess().equalsIgnoreCase(AccessType.PRIVATE.name()) &&
+                        !requestDto.getAccess().equalsIgnoreCase(AccessType.PUBLIC.name())
+        ) {
+            throw new CuponCodeCreationException(
+                    "Can not create a coupon without valid access type: PUBLIC or PRIVATE"
+            );
         }
+
         existing.setValidFrom(requestDto.getValidFrom());
         existing.setValidity(requestDto.getValidity());
         existing.setPercentage(requestDto.getOffPercentage());
@@ -176,8 +182,8 @@ public class CuponCodeManagementService {
     @Transactional
     @Caching(evict = {
             @CacheEvict(value = "cuponCodes", key = "#planId"),
-            @CacheEvict(value = "cuponCodes", key = "#'admin'"),
-            @CacheEvict(value = "cuponCodes", key = "'public")
+            @CacheEvict(value = "cuponCodes", key = "'admin'"),
+            @CacheEvict(value = "cuponCodes", key = "'public'")
     })
     public String deleteCuponByCuponCode(String cuponCode, String planId) {
         log.info("SERVICE :: Deleting coupon {} for plan {}", cuponCode, planId);
@@ -287,6 +293,7 @@ public class CuponCodeManagementService {
         List<CuponCodeResponseDto> codeResponseDtoList = cuponCodes.stream()
                 .map(cupon-> CuponCodeResponseDto.builder()
                         .cuponCode(cupon.getCuponCode())
+                        .planId(cupon.getPlanId())
                         .access(cupon.getAccessibility())
                         .validFrom(cupon.getValidFrom())
                         .validityDate(cupon.getValidity())
