@@ -111,7 +111,7 @@ public class PlanManagementController {
     }
 
     @PostMapping("all/memberCount")
-    public ResponseEntity<?> decreaseMembersCount(@Valid @RequestParam String planId){
+    public ResponseEntity<String> decreaseMembersCount(@Valid @RequestParam String planId){
         LocalDate date = LocalDate.now();
         log.info("{}::{}::{}Request received to decrement members count for plan:: {}"
                ,date.getYear(),date.getMonthValue(),date.getDayOfMonth() ,planId);
