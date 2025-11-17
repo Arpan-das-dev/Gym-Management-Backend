@@ -10,7 +10,9 @@ import jakarta.validation.constraints.Email;
 import lombok.*;
 
 @Entity
-@Table(name = "members")
+@Table(name = "members",indexes = {
+        @Index(name = "idx_plan_expiration",columnList = "plan_expiration")
+})
 @Data
 @AllArgsConstructor
 @NoArgsConstructor
