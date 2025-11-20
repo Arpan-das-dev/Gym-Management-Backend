@@ -1,32 +1,4 @@
 package com.gym.member_service.Configs;
 
-import org.springframework.beans.factory.annotation.Value;
-import org.springframework.context.annotation.Bean;
-import org.springframework.context.annotation.Configuration;
-import org.springframework.web.socket.WebSocketHandler;
-import org.springframework.web.socket.config.annotation.EnableWebSocket;
-import org.springframework.web.socket.config.annotation.WebSocketConfigurer;
-import org.springframework.web.socket.config.annotation.WebSocketHandlerRegistry;
-//
-//@Configuration
-//@EnableWebSocket
-//public class WebSocketConfig implements WebSocketConfigurer {
-//
-////    public WebSocketConfig(@Value("${app.frontend.Origin.Url}") String allowedOrigin) {
-////        this.allowedOrigin = allowedOrigin;
-////    }
-////
-////    private final String allowedOrigin;
-////
-////    @Override
-////    public void registerWebSocketHandlers(WebSocketHandlerRegistry registry) {
-////        registry.addHandler(myWebSocketHandler(),"fitStudio/memberCount")
-////                .setAllowedOrigins(allowedOrigin)
-////                .withSockJS();
-////    }
-////
-////    @Bean
-////    public WebSocketHandler myWebSocketHandler() {
-////        return new MyWebSocketHandler();
-////    }
-//}
+public class WebSocketConfig {
+}

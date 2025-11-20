@@ -50,7 +50,7 @@ public class ApprovalService {
      * and also if the request is already present it will throw an exception
      */
 
-    @Cacheable(value = "pendingRequest", key = "'allRequest'")
+    @CacheEvict(value = "pendingRequest", key = "'allRequest'")
     public String insertRequest(ApprovalRequestDto requestDto) {
         if (pendingRequestRepository.existsByEmail(requestDto.getEmail())) {
             throw new RuntimeException("request already present please wait until verified");
