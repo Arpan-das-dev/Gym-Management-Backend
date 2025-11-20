@@ -11,7 +11,12 @@ import lombok.*;
 
 @Entity
 @Table(name = "members",indexes = {
-        @Index(name = "idx_plan_expiration",columnList = "plan_expiration")
+        @Index(name = "idx_plan_expiration",columnList = "plan_expiration"),
+        @Index(name = "idx_first_Name", columnList = "firstName"),
+        @Index(name = "idx_last_Name", columnList = "lastName"),
+        @Index(name = "idx_gender", columnList = "gender"),
+        @Index(name = "idx_last_login", columnList = "last_login"),
+        @Index(name = "idx_plan_duration_left" , columnList = "plan_duration_left")
 })
 @Data
 @AllArgsConstructor
@@ -66,9 +71,11 @@ public class Member {
     private String planID;
     private Boolean activePlan;
     private String planName;
+    @Column(name = "plan_duration_left")
     private Integer planDurationLeft;
 
     private boolean frozen;
 
+    @Column(name = "last_login")
     private LocalDateTime lastLogin;
 }
