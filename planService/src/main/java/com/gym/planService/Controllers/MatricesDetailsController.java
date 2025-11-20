@@ -85,8 +85,8 @@ public class MatricesDetailsController {
      */
     @GetMapping("/admin/revenuePerMonth")
     public ResponseEntity<AllMonthlyRevenueWrapperResponseDto> getRevenuePerMonth(
-            @Positive @Valid @RequestParam int pageSize,
-            @Positive @Valid @RequestParam int pageNo) {
+            @Positive @RequestParam int pageSize,
+            @Positive  @RequestParam int pageNo) {
 
         log.info("API :: [GET] /admin/revenuePerMonth | Request received with pagination params | pageNo={} | pageSize={}", pageNo, pageSize);
 
