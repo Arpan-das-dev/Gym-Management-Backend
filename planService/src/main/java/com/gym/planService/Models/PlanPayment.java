@@ -17,6 +17,7 @@ import java.time.LocalDateTime;
 @Table(name = "plan_payment", indexes = {
         @Index(name = "idx_payment_user", columnList = "user_id"),
         @Index(name = "idx_payment_plan", columnList = "plan_id"),
+        @Index(name = "idx_user_name", columnList = "user_name"),
         @Index(name = "idx_payment_date", columnList = "payment_date"),
         @Index(name = "idx_payment_month_year", columnList = "payment_month, payment_year")
 })
