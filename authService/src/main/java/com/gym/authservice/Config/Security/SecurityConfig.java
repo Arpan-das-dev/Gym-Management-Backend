@@ -40,11 +40,15 @@ public class SecurityConfig {
                         .pathMatchers(HttpMethod.OPTIONS, "/**").permitAll()
                         // Public routes
                         .pathMatchers("/fitStudio/auth/**").permitAll()
+                        .pathMatchers("/ws/**").permitAll()
                         .pathMatchers("fitStudio/payment-service/all/*").permitAll()
                         // plan service configuration
                         // Admin routes only
                         .pathMatchers("/fitStudio/plan-service/*/admin/**").hasRole("ADMIN")
+                        .pathMatchers("/fitStudio/member-service/*/admin/**").hasRole("ADMIN")
+                        .pathMatchers("/fitStudio/member-service/*/member/**").hasAnyRole("ADMIN","MEMBER")
                         .pathMatchers("/fitStudio/plan-service/*/all/**").permitAll()
+                        .pathMatchers("/fitStudio/member-service/*/all/*").permitAll()
                         // admin service routes
                         .pathMatchers("/fitStudio/admin/auth-management/**").hasRole("ADMIN")
                         // Everything else must be authenticated
