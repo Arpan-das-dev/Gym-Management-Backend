@@ -15,12 +15,15 @@ import java.time.LocalDateTime;
 public class RecentTransactionsResponseDto {
 
     private String paymentId;
+    private String orderId;
     private String userName;
     private String userId;
     private String planName;
+    private String planId;
     private Double paidPrice;
     private String paymentStatus;
     private String paymentMethod;
     private LocalDate paymentDate;
     private LocalDateTime  paymentTime;
+    private String receiptUrl;
 }
