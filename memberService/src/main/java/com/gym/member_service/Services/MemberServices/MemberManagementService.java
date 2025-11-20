@@ -9,15 +9,19 @@ import com.gym.member_service.Model.*;
 import com.gym.member_service.Repositories.MemberRepository;
 import com.gym.member_service.Services.OtherService.WebClientServices;
 import lombok.RequiredArgsConstructor;
+import lombok.extern.slf4j.Slf4j;
 import org.springframework.cache.annotation.CacheEvict;
 import org.springframework.cache.annotation.Cacheable;
 import org.springframework.cache.annotation.Caching;
+import org.springframework.data.domain.Sort;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
 import java.time.LocalDateTime;
+import java.time.format.DateTimeFormatter;
 import java.util.List;
 
+@Slf4j
 @Service
 @RequiredArgsConstructor
 
@@ -30,6 +34,7 @@ public class MemberManagementService {
     private final MemberRepository memberRepository;
     private final WebClientServices webClientService;
 
+    DateTimeFormatter formatter = DateTimeFormatter.ofPattern("yyyy-MM-dd HH:mm:ss");
     /*
      *  This method creates a new member and save
      * there data in the database
@@ -101,17 +106,27 @@ public class MemberManagementService {
      */
 
     @Cacheable(value = "memberListCache", key = "'All'")
-    public List<AllMemberResponseDto> getAllMember() {
-        // using stream with map to build the return output
-        List<Member> members = memberRepository.findAll();
-        return members.stream().map(member -> AllMemberResponseDto.builder()
-                .id(member.getId()).imageUrl(member.getProfileImageUrl())
-                .firstName(member.getFirstName()).lastName(member.getLastName())
-                .email(member.getEmail()).phone(member.getPhone())
-                .gender(member.getGender())
-                .planExpiration(member.getPlanExpiration())
-                .frozen(member.isFrozen())
-                .build()).toList();
+    public List<AllMemberResponseDto> getAllMember(String searchBy, String sortBy, String sortDirection,
+                                                   int pageNo, int pageSize)
+    {
+        long start = System.currentTimeMillis();
+        System.out.println("Request received on "+LocalDateTime.now().format(formatter)+"to get all members");
+        log.info("Admin Fetch Request | search='{}' | sort='{}' | dir='{}' | page={} | size={}",
+                searchBy, sortBy, sortDirection, pageNo, pageSize);
+        String search = (searchBy == null || searchBy.isBlank()) ? "" : searchBy.trim();
+        Sort.Direction direction = "asc".equalsIgnoreCase(sortDirection.trim()) ?
+                Sort.Direction.ASC : Sort.Direction.DESC;
+
+        Sort sort = switch (sortBy.toLowerCase()) {
+            case "planexpiration" -> Sort.by(direction, "planExpiration");
+            case "durationleft" -> Sort.by(direction, "planDurationLeft");
+            case "name" -> Sort.by(direction,"firstName","lastName");
+            case "date" -> Sort.by(direction, "lastLogin");
+            default -> {
+                log.warn("Unknown sortBy='{}', defaulting to transactionTime DESC", sortBy);
+                yield Sort.by(Sort.Direction.DESC, "planExpiration");
+            }
+        };
     }
 
     /*
@@ -200,5 +215,6 @@ public class MemberManagementService {
         return requestDto.isFreeze() ? // check if true returns first response otherwise second response
                 "Account frozen successfully" : "Account unfrozen successfully";
     }
+
 
 }
