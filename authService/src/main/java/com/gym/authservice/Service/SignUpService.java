@@ -5,16 +5,20 @@ import com.gym.authservice.Dto.Request.SignupRequestDto;
 import com.gym.authservice.Dto.Response.*;
 import com.gym.authservice.Entity.SignedUps;
 import com.gym.authservice.Exceptions.Custom.DuplicateUserException;
+import com.gym.authservice.Exceptions.Model.ErrorResponse;
 import com.gym.authservice.Repository.SignedUpsRepository;
 import com.gym.authservice.Roles.RoleType;
 import com.gym.authservice.Utils.IdGenerationUtil;
+import lombok.extern.slf4j.Slf4j;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
+import org.springframework.web.reactive.function.BodyInserters;
 import org.springframework.web.reactive.function.client.WebClient;
 import reactor.core.publisher.Mono;
 
+@Slf4j
 @Service
 
 public class SignUpService {
@@ -41,10 +45,13 @@ public class SignUpService {
 
     @Transactional
     public Mono<SignUpResponseDto> signUp(SignupRequestDto requestDto) {
+        log.info("Starting signup process for email: {}", requestDto.getEmail());
+
         return validateUserUniqueness(requestDto.getEmail(), requestDto.getPhone())
+                .doOnSuccess(v -> log.info("User uniqueness validated for email: {}", requestDto.getEmail()))
                 .then(Mono.defer(() -> {
 
-                    // ✅ Step 1: Build the SignedUps entity
+                    // Step 1: Build entity
                     SignedUps signedUps = SignedUps.builder()
                             .id(idGenerationUtil.idGeneration(
                                     requestDto.getRole().name(),
@@ -62,7 +69,6 @@ public class SignUpService {
                             .approved(false)
                             .build();
 
-                    // ✅ Step 2: Prepare approval DTO
                     ApproveResponseDto approvalDto = new ApproveResponseDto(
                             requestDto.getEmail(),
                             requestDto.getPhone(),
@@ -71,32 +77,52 @@ public class SignUpService {
                             requestDto.getJoinDate()
                     );
 
-                    // ✅ Step 3: Role-specific setup
+                    Mono<Void> approvalFlow;
+
+                    // ======= Role Logic =======
                     switch (requestDto.getRole()) {
+
                         case TRAINER -> {
                             signedUps.setRole(RoleType.TRAINER_PENDING);
-                            sendApprovalRequest(approveUrl, approvalDto);
+                            log.info("Sending approval request for TRAINER: {}", signedUps.getEmail());
+                            approvalFlow = sendApprovalRequestReactive(approveUrl, approvalDto)
+                                    .doOnNext(resp -> log.info("Approval response for TRAINER {}: {}", signedUps.getEmail(), resp))
+                                    .then();
                         }
+
                         case TRAINER_ADMIN -> {
                             signedUps.setRole(RoleType.TRAINER);
                             signedUps.setApproved(true);
+                            log.info("Auto-approved TRAINER_ADMIN: {}", signedUps.getEmail());
+                            approvalFlow = Mono.empty();
                         }
+
                         case ADMIN_ADMIN -> {
                             signedUps.setRole(RoleType.ADMIN);
                             signedUps.setApproved(true);
+                            log.info("Auto-approved ADMIN_ADMIN: {}", signedUps.getEmail());
+                            approvalFlow = Mono.empty();
                         }
+
                         case MEMBER_ADMIN -> {
                             signedUps.setRole(RoleType.MEMBER);
                             signedUps.setApproved(true);
+                            log.info("Auto-approved MEMBER_ADMIN: {}", signedUps.getEmail());
+                            approvalFlow = Mono.empty();
                         }
+
                         default -> {
                             signedUps.setRole(RoleType.MEMBER);
-                            sendApprovalRequest(approveUrl, approvalDto);
+                            log.info("Sending approval request for MEMBER: {}", signedUps.getEmail());
+                            approvalFlow = sendApprovalRequestReactive(approveUrl, approvalDto)
+                                    .doOnNext(resp -> log.info("Approval response for MEMBER {}: {}", signedUps.getEmail(), resp))
+                                    .then();
                         }
                     }
 
-                    // ✅ Step 4: Save user
-                    return signedUpsRepository.insertSignedUp(
+                    // ========== FINAL FLOW ==========
+                    return approvalFlow
+                            .then(signedUpsRepository.insertSignedUp(
                                     signedUps.getId(),
                                     signedUps.getFirstName(),
                                     signedUps.getLastName(),
@@ -109,18 +135,23 @@ public class SignUpService {
                                     signedUps.isEmailVerified(),
                                     signedUps.isPhoneVerified(),
                                     signedUps.isApproved()
-                            )
-
-                            // ✅ Step 5: Continue after successful insert
+                            ))
+                            .doOnSuccess(v -> log.info("User saved successfully: {}", signedUps.getEmail()))
                             .then(Mono.defer(() -> {
-                                SignupNotificationDto notificationDto = new SignupNotificationDto(
-                                        signedUps.getId(),
-                                        signedUps.getEmail(),
-                                        signedUps.getPhone(),
-                                        signedUps.getFirstName() + " " + signedUps.getLastName()
-                                );
-
-                                notificationService.sendWelcome(notificationDto);
+                                try {
+                                    notificationService.sendWelcome(
+                                            new SignupNotificationDto(
+                                                    signedUps.getId(),
+                                                    signedUps.getEmail(),
+                                                    signedUps.getPhone(),
+                                                    signedUps.getFirstName() + " " + signedUps.getLastName()
+                                            )
+                                    );
+                                    log.info("Notification sent for user: {}", signedUps.getEmail());
+                                } catch (Exception e) {
+                                    log.error("Notification failed for user: {}", signedUps.getEmail(), e);
+                                    // Notification failures do not affect signup
+                                }
 
                                 return Mono.just(new SignUpResponseDto(
                                         "User created successfully.\nPlease verify your mobile number and email ID."
@@ -128,6 +159,7 @@ public class SignUpService {
                             }));
                 }));
     }
+
 
     private Mono<Void> validateUserUniqueness(String email, String phone) {
         return Mono.zip(
@@ -145,11 +177,23 @@ public class SignUpService {
     }
 
 
-    public void sendApprovalRequest(String url,ApproveResponseDto responseDto){
-        webClient.build().post()
+    public Mono<String> sendApprovalRequestReactive(String url, ApproveResponseDto dto) {
+        log.info("Sending approval request to URL: {} for email: {}", url, dto.getEmail());
+        return webClient.build()
+                .post()
                 .uri(url)
-                .bodyValue(responseDto)
-                .retrieve().toBodilessEntity().subscribe();
+                .body(BodyInserters.fromValue(dto))
+                .retrieve()
+                .onStatus(
+                        status -> !status.is2xxSuccessful(),
+                        clientResponse -> clientResponse.bodyToMono(ErrorResponse.class)
+                                .flatMap(err -> {
+                                    log.error("Approval request failed for email: {} - {}", dto.getEmail(), err.getMessage());
+                                    return Mono.error(new DuplicateUserException(err.getMessage()));
+                                })
+                )
+                .bodyToMono(String.class)
+                .doOnNext(resp -> log.info("Approval request succeeded for email: {} - response: {}", dto.getEmail(), resp));
     }
 
     public Mono<SignUpResponseDto> createAdmin(AdminCreationRequestDto requestDto) {
@@ -202,4 +246,6 @@ public class SignUpService {
                             }));
                 }));
     }
+
+
 }
