@@ -6,6 +6,7 @@ import com.gym.member_service.Dto.MemberManagementDto.Responses.AllMemberRespons
 import com.gym.member_service.Services.MemberServices.MemberManagementService;
 import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
+import lombok.extern.slf4j.Slf4j;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.validation.annotation.Validated;
@@ -13,6 +14,7 @@ import org.springframework.web.bind.annotation.*;
 
 import java.util.List;
 
+@Slf4j
 @RestController
 @RequestMapping("${member-service.BASE_URL}")
 @RequiredArgsConstructor
@@ -92,9 +94,22 @@ public class MemberManagementController {
      * returns a members basic details
      */
     @GetMapping("admin/getAll")
-    public ResponseEntity<List<AllMemberResponseDto>> getAllMembers(){
+    public ResponseEntity<List<AllMemberResponseDto>> getAllMembers(
+            @RequestParam(required = false) String searchBy,
+            @RequestParam(defaultValue = "date") String sortBy,
+            @RequestParam(defaultValue = "desc") String sortDirection,
+            @RequestParam int pageNo,
+            @RequestParam int pageSize
+    ){
+        pageNo = Math.max(pageNo,0);
+        pageSize = pageSize < 0 ?  20  : pageSize;
+        log.info(
+                "Admin Transaction Request | page={} | size={} | searchBy='{}' | sortBy='{}' | direction='{}'",
+                pageNo, pageSize, searchBy, sortBy, sortDirection
+        );
         // set response to send as response
-        List<AllMemberResponseDto> response = memberManagementService.getAllMember();
+        List<AllMemberResponseDto> response = memberManagementService
+                .getAllMember(searchBy,sortBy, sortDirection,pageNo,pageSize);
         return ResponseEntity.status(HttpStatus.OK).body(response);
         // if successfully operation done returns response with OK http status
     }
