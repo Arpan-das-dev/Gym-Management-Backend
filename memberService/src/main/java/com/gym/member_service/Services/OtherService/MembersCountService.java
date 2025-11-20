@@ -4,6 +4,7 @@ import com.gym.member_service.Model.MembersActive;
 import com.gym.member_service.Repositories.MemberActiveRepository;
 import lombok.RequiredArgsConstructor;
 import org.springframework.data.redis.core.RedisTemplate;
+import org.springframework.messaging.simp.SimpMessagingTemplate;
 import org.springframework.scheduling.annotation.Scheduled;
 import org.springframework.stereotype.Service;
 
@@ -21,6 +22,7 @@ public class MembersCountService {
     // we will use redis set to store the active members
     private final RedisTemplate<String, String> redisTemplate;
     private final MemberActiveRepository memberActiveRepository;
+    private final SimpMessagingTemplate template;
     // the name of the set
     private final String ACTIVE_MEMBER_SET = "memberCountCache";
 
@@ -32,13 +34,18 @@ public class MembersCountService {
     public void markAsActive(String id) {
         if (!isActive(id)) { // check if the member is already active if not then add the member to the set
                              // to prevent duplicate entries
-            redisTemplate.opsForSet().add(ACTIVE_MEMBER_SET, id); // add the member to the set
+            redisTemplate.opsForSet().add(ACTIVE_MEMBER_SET, id);
+            System.out.println("Marking active: " + id + ", broadcasting count...");// add the member to the set
+            broadCastLiveCount();
         }
     }
 
     public void markAsInactive(String id) {
-        redisTemplate.opsForSet().remove(ACTIVE_MEMBER_SET, id); // remove the member from the set if he is
-                                                                 // inactive(response form frontend)
+        if(isActive(id)) {
+            redisTemplate.opsForSet().remove(ACTIVE_MEMBER_SET, id);// remove the member from the set if he is
+            System.out.println("Marking inactive: " + id + ", broadcasting count...");
+            broadCastLiveCount();
+        }                                 // inactive(response form frontend)
     }
 
     public Long getActiveMembersCount() {
@@ -52,6 +59,10 @@ public class MembersCountService {
                                                                                     // or not
     }
 
+    public void broadCastLiveCount(){
+        Long currentActive = getActiveMembersCount();
+        template.convertAndSend("/topic/activeMembers", currentActive);
+    }
 
     /*
      * later on we will add a scheduler task which will sent to the frontend
