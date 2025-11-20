@@ -1,12 +1,16 @@
 package com.gym.member_service.Controllers;
 
+import com.gym.member_service.Dto.NotificationDto.GenericResponse;
 import com.gym.member_service.Services.MemberServices.MemberProfileService;
 import lombok.RequiredArgsConstructor;
+import lombok.extern.slf4j.Slf4j;
+import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.validation.annotation.Validated;
 import org.springframework.web.bind.annotation.*;
 import org.springframework.web.multipart.MultipartFile;
 
+@Slf4j
 @RestController
 @RequestMapping("${member-service.Base_Url.profile}")
 @RequiredArgsConstructor
@@ -30,7 +34,7 @@ public class MemberProfileController {
      * it took member id and file as
      * RequestParam to do so using MemberProfile service
      */
-    @PostMapping("/upload")
+    @PostMapping("/member/upload")
     public ResponseEntity<String> uploadImage(@RequestParam String id,
                                               @RequestParam("image") MultipartFile image){
         // setting the response for return which is a profile image url
@@ -46,7 +50,7 @@ public class MemberProfileController {
      * it took member id  as RequestParam
      * to do so using MemberProfile service
      */
-    @DeleteMapping("/delete")
+    @DeleteMapping("/member/delete")
     public ResponseEntity<String> deleteImage(@RequestParam String id){
         // deleting the profile image from
         // AWS s3 bucket and also from database
@@ -56,4 +60,11 @@ public class MemberProfileController {
     }
 
 
+    @GetMapping("/all/getProfileImage")
+    public ResponseEntity <GenericResponse> getProfileImageUrl(@RequestParam String memberId) {
+        log.info("Request received to get profile image at controller [**/all/getProfileImage]");
+        GenericResponse response = profileService.getProfileImageUrlByMemberId(memberId);
+        log.info("Sending profile url {} ...........",response.getMessage().substring(0,7));
+        return ResponseEntity.status(HttpStatus.OK).body(response);
+    }
 }
