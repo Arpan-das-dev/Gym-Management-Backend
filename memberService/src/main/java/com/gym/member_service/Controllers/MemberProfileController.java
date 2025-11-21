@@ -35,11 +35,11 @@ public class MemberProfileController {
      * RequestParam to do so using MemberProfile service
      */
     @PostMapping("/member/upload")
-    public ResponseEntity<String> uploadImage(@RequestParam String id,
+    public ResponseEntity<GenericResponse> uploadImage(@RequestParam String memberId,
                                               @RequestParam("image") MultipartFile image){
         // setting the response for return which is a profile image url
-        String urlResponse =  profileService.uploadImage(id,image);
-        return ResponseEntity.accepted().body(urlResponse);
+        String urlResponse =  profileService.uploadImage(memberId,image);
+        return ResponseEntity.accepted().body(new GenericResponse(urlResponse));
         // after successfully upload returns response with ACCEPTED http status.
     }
     /*
@@ -51,11 +51,11 @@ public class MemberProfileController {
      * to do so using MemberProfile service
      */
     @DeleteMapping("/member/delete")
-    public ResponseEntity<String> deleteImage(@RequestParam String id){
+    public ResponseEntity<GenericResponse> deleteImage(@RequestParam String memberId){
         // deleting the profile image from
         // AWS s3 bucket and also from database
-        profileService.deleteImage(id);
-        return ResponseEntity.accepted().body("Image deleted Successfully");
+        profileService.deleteImage(memberId);
+        return ResponseEntity.accepted().body(new GenericResponse("Image deleted Successfully"));
         // if deletes successfully return message with ACCEPTED http status.
     }
 
