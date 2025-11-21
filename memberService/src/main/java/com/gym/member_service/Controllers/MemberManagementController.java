@@ -3,6 +3,9 @@ package com.gym.member_service.Controllers;
 import com.gym.member_service.Dto.MemberManagementDto.Requests.FreezeRequestDto;
 import com.gym.member_service.Dto.MemberManagementDto.Requests.MemberCreationRequestDto;
 import com.gym.member_service.Dto.MemberManagementDto.Responses.AllMemberResponseDto;
+import com.gym.member_service.Dto.MemberManagementDto.Responses.LoginStreakResponseDto;
+import com.gym.member_service.Dto.MemberManagementDto.Wrappers.AllMembersInfoWrapperResponseDtoList;
+import com.gym.member_service.Dto.NotificationDto.GenericResponse;
 import com.gym.member_service.Services.MemberServices.MemberManagementService;
 import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
@@ -11,8 +14,6 @@ import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.validation.annotation.Validated;
 import org.springframework.web.bind.annotation.*;
-
-import java.util.List;
 
 @Slf4j
 @RestController
@@ -37,10 +38,11 @@ public class MemberManagementController {
      * it took a Valid body as a parameter to creates a member
      */
     @PostMapping("create")
-    public ResponseEntity<String> createMember (@Valid @RequestBody MemberCreationRequestDto requestDto){
+    public ResponseEntity<GenericResponse> createMember (@Valid @RequestBody MemberCreationRequestDto requestDto){
         // set response to return in response
         String  response = memberManagementService.createMember(requestDto);
-        return ResponseEntity.status(HttpStatus.CREATED).body(response);
+        GenericResponse res = new GenericResponse(response);
+        return ResponseEntity.status(HttpStatus.CREATED).body(res);
         // If member creates successfully returns CREATED as http status
     }
 
@@ -51,9 +53,9 @@ public class MemberManagementController {
      * it took a Valid member id(@RequestParam) parameter to freeze a member
      */
     @PostMapping("admin/freeze")
-    public ResponseEntity<String> freeze(@Valid @RequestBody FreezeRequestDto requestDto){
+    public ResponseEntity<GenericResponse> freeze(@Valid @RequestBody FreezeRequestDto requestDto){
         String response =  memberManagementService.freezeOrUnFrozen(requestDto);
-        return ResponseEntity.status(HttpStatus.ACCEPTED).body(response);
+        return ResponseEntity.status(HttpStatus.ACCEPTED).body(new GenericResponse(response));
     }
 
     /*
@@ -63,11 +65,16 @@ public class MemberManagementController {
      * it took a Valid member id(@RequestParam) parameter to
      * set the login Streak and returns current login streak
      */
-    @GetMapping("streak")
-    public ResponseEntity<Integer> getLoginStreak(@RequestParam String id){
-        // set response to send as response
-        Integer response = memberManagementService.setAndGetLoginStreak(id);
+    @PostMapping("setStreak")
+    public ResponseEntity<LoginStreakResponseDto> setLoginStreak(@RequestParam String id) {
+        LoginStreakResponseDto response = memberManagementService.setLoginStreak(id);
         return ResponseEntity.status(HttpStatus.OK).body(response);
+    }
+    @GetMapping("getStreak")
+    public ResponseEntity<LoginStreakResponseDto> getLoginStreak(@RequestParam String id){
+        // set response to send as response
+        LoginStreakResponseDto res = memberManagementService.getLoginStreak(id);
+        return ResponseEntity.status(HttpStatus.OK).body(res);
         // if successfully operation done returns response with OK http status
     }
 
@@ -94,22 +101,24 @@ public class MemberManagementController {
      * returns a members basic details
      */
     @GetMapping("admin/getAll")
-    public ResponseEntity<List<AllMemberResponseDto>> getAllMembers(
-            @RequestParam(required = false) String searchBy,
-            @RequestParam(defaultValue = "date") String sortBy,
-            @RequestParam(defaultValue = "desc") String sortDirection,
-            @RequestParam int pageNo,
-            @RequestParam int pageSize
+    public ResponseEntity<AllMembersInfoWrapperResponseDtoList> getAllMembers(
+            @RequestParam(required = false, defaultValue = "") String searchBy,
+            @RequestParam(required = false, defaultValue = "") String gender,
+            @RequestParam(required = false, defaultValue = "") String status,
+            @RequestParam(required = false, defaultValue = "planExpiration") String sortBy,
+            @RequestParam(required = false, defaultValue = "desc") String sortDirection,
+            @RequestParam(required = false, defaultValue = "0") Integer pageNo,
+            @RequestParam(required = false, defaultValue = "20") Integer pageSize
     ){
         pageNo = Math.max(pageNo,0);
         pageSize = pageSize < 0 ?  20  : pageSize;
         log.info(
-                "Admin Transaction Request | page={} | size={} | searchBy='{}' | sortBy='{}' | direction='{}'",
-                pageNo, pageSize, searchBy, sortBy, sortDirection
+ "Admin Transaction Request | page={} | size={} | searchBy='{}' | sortBy='{}' | direction='{}' | gender='{}' | status = '{}'",
+pageNo, pageSize, searchBy, sortBy, sortDirection,gender,status
         );
         // set response to send as response
-        List<AllMemberResponseDto> response = memberManagementService
-                .getAllMember(searchBy,sortBy, sortDirection,pageNo,pageSize);
+        AllMembersInfoWrapperResponseDtoList response = memberManagementService
+                .getAllMember(searchBy,gender,status,sortBy, sortDirection,pageNo,pageSize);
         return ResponseEntity.status(HttpStatus.OK).body(response);
         // if successfully operation done returns response with OK http status
     }
@@ -121,11 +130,11 @@ public class MemberManagementController {
      * it took a Valid member id(@RequestParam) parameter to
      * delete member from the database
      */
-    @DeleteMapping("delete")
-    public ResponseEntity<String> deleteMemberById(@Valid @RequestParam String id){
+    @DeleteMapping("admin/delete")
+    public ResponseEntity<GenericResponse> deleteMemberById(@RequestParam String id){
         // set response to send as response
         String  response = memberManagementService.deleteMemberById(id);
-        return ResponseEntity.status(HttpStatus.ACCEPTED).body(response);
+        return ResponseEntity.status(HttpStatus.ACCEPTED).body(new GenericResponse(response));
         // if successfully operation done returns response with OK http status
     }
 }
