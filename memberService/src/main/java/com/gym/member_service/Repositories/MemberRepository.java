@@ -2,6 +2,8 @@ package com.gym.member_service.Repositories;
 
 import com.gym.member_service.Model.Member;
 import io.lettuce.core.dynamic.annotation.Param;
+import org.springframework.data.domain.Page;
+import org.springframework.data.domain.Pageable;
 import org.springframework.data.jpa.repository.EntityGraph;
 import org.springframework.data.jpa.repository.JpaRepository;
 import org.springframework.data.jpa.repository.Modifying;
@@ -63,4 +65,31 @@ public interface MemberRepository extends JpaRepository<Member, String> {
     @Query(value = "SELECT * FROM members " +
             "WHERE plan_expiration = :duration", nativeQuery = true)
     List<Member> findAllByExpiredPlans(@Param("duration") LocalDateTime duration);
+
+
+    @Query("""
+            SELECT m FROM Member m
+            WHERE
+                (:search = '' OR
+                    LOWER(CONCAT(TRIM(m.firstName), ' ', TRIM(m.lastName))) LIKE LOWER(CONCAT('%', :search, '%')) OR
+                    LOWER(m.firstName) LIKE LOWER(CONCAT('%', :search, '%')) OR
+                    LOWER(m.lastName) LIKE LOWER(CONCAT('%', :search, '%')) OR
+                    LOWER(m.planName) LIKE LOWER(CONCAT('%', :search, '%')) OR
+                    m.id LIKE CONCAT('%', :search, '%')
+                )
+            AND (:gender = '' OR LOWER(m.gender) = LOWER(:gender))
+            AND (
+                  :status = ''
+                  OR (:status = 'ACTIVE' AND m.frozen = FALSE)
+                  OR (:status = 'expired' AND m.planExpiration <= CURRENT_TIMESTAMP)
+                  OR (:status = 'frozen' AND m.frozen = TRUE)
+            )
+            """)
+    Page<Member> findAllWithFilters(
+            @Param("search") String search,
+            @Param("gender") String gender,
+            @Param("status") String status,
+            Pageable pageable
+    );
+
 }
