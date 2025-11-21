@@ -1,9 +1,6 @@
 package com.gym.notificationservice.Services;
 
-import com.gym.notificationservice.Dto.AuthNotificationRequests.EmailOtpRequestDto;
-import com.gym.notificationservice.Dto.AuthNotificationRequests.PhoneOtpRequestDto;
-import com.gym.notificationservice.Dto.AuthNotificationRequests.SendCredentialRequestDto;
-import com.gym.notificationservice.Dto.AuthNotificationRequests.WelcomeRequestDto;
+import com.gym.notificationservice.Dto.AuthNotificationRequests.*;
 import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Service;
@@ -62,5 +59,9 @@ public class AuthNotificationService {
 
         String body = templateEngine.process("reset-password",context);
         mailService.sendMail(requestDto.getEmail(), "Email Verification For Password Reset",body);
+    }
+
+    public String sendMessageOrReportResolvedStatus(MessageOrReportNotificationRequestDto requestDto) {
+       return mailService.sendMail(requestDto.getSendTo(), requestDto.getSubject(), requestDto.getMessage());
     }
 }
