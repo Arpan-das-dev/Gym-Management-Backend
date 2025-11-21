@@ -1,0 +1,23 @@
+package com.gym.adminservice.Dto.Wrappers;
+
+import com.gym.adminservice.Dto.Responses.AllReportsList;
+import lombok.AllArgsConstructor;
+import lombok.Builder;
+import lombok.Data;
+import lombok.NoArgsConstructor;
+
+import java.util.List;
+
+@Data
+@Builder
+@AllArgsConstructor
+@NoArgsConstructor
+public class AllReportWrapperResponseDto {
+    List<AllReportsList> reportsLists;
+    private int pageNo;
+    private int pageSize;
+    private long totalElements;
+    private int totalPages;
+
+    private boolean lastPage;
+}
