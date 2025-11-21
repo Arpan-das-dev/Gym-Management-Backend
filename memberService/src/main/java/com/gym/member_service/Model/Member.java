@@ -65,6 +65,7 @@ public class Member {
     @Column(name = "login_streak")
     private Integer loginStreak;
 
+    private Integer MaxLoginStreak;
     @JsonFormat(shape = JsonFormat.Shape.STRING, pattern = "yyyy-MM-dd")
     @Column(name = "plan_expiration")
     private LocalDateTime planExpiration;
