@@ -9,6 +9,7 @@ import com.gym.member_service.Dto.MemberFitDtos.Wrappers.BmiSummaryResponseWrapp
 import com.gym.member_service.Dto.MemberFitDtos.Wrappers.PrSummaryResponseWrapperDto;
 import com.gym.member_service.Dto.MemberManagementDto.Responses.AllMemberResponseDto;
 import com.gym.member_service.Dto.MemberManagementDto.Responses.MemberDetailsResponseDto;
+import com.gym.member_service.Dto.MemberManagementDto.Wrappers.AllMembersInfoWrapperResponseDtoList;
 import com.gym.member_service.Dto.MemberTrainerDtos.Responses.TrainerInfoResponseDto;
 import com.gym.member_service.Dto.MemberTrainerDtos.Wrapper.AllSessionInfoResponseDto;
 import org.springframework.cache.CacheManager;
@@ -77,12 +78,18 @@ public class RedisConfig {
     }
 
     @Bean
+    TypedJsonRedisSerializer<AllMembersInfoWrapperResponseDtoList> allMembersInfoWrapperResponseDtoListSerializer
+            (ObjectMapper redisObjectMapper) {
+        return new TypedJsonRedisSerializer<>(redisObjectMapper, AllMembersInfoWrapperResponseDtoList.class);
+    }
+    @Bean
     public CacheManager cacheManager(RedisConnectionFactory connectionFactory,
                                      TypedJsonRedisSerializer<AllMemberResponseDto> memberDtoSerializer,
                                      TypedJsonRedisSerializer<TrainerInfoResponseDto> trainerInfoResponseDtoSerializer,
                                      TypedJsonRedisSerializer<AllSessionInfoResponseDto> allSessionInfoResponseDtoSerializer,
                                      TypedJsonRedisSerializer<BmiSummaryResponseWrapperDto> monthlyBmiSummarySerializer,
                                      TypedJsonRedisSerializer<PrSummaryResponseWrapperDto> monthlyPrSummarySerializer,
+                                     TypedJsonRedisSerializer<AllMembersInfoWrapperResponseDtoList> allMembersInfoWrapperResponseDtoListSerializer,
                                      GenericJackson2JsonRedisSerializer genericSerializer) {
 
         RedisCacheConfiguration defaultConfig = RedisCacheConfiguration.defaultCacheConfig()
@@ -96,8 +103,8 @@ public class RedisConfig {
                 .entryTtl(Duration.ofHours(2)));
 
         cacheConfigs.put("memberListCache", defaultConfig
-                .serializeValuesWith(RedisSerializationContext.SerializationPair.fromSerializer(genericSerializer))
-                .entryTtl(Duration.ofMinutes(6)));
+                .serializeValuesWith(RedisSerializationContext.SerializationPair.fromSerializer(allMembersInfoWrapperResponseDtoListSerializer))
+                .entryTtl(Duration.ofMinutes(60)));
 
         cacheConfigs.put("memberCache", defaultConfig
                 .serializeValuesWith(RedisSerializationContext.SerializationPair.fromSerializer(memberDtoSerializer))
@@ -128,6 +135,11 @@ public class RedisConfig {
 
         cacheConfigs.put("profileImageUrl",
                 RedisCacheConfiguration.defaultCacheConfig().entryTtl(Duration.ofHours(18)));
+
+        cacheConfigs.put("loginStreak",defaultConfig
+                .serializeValuesWith(RedisSerializationContext.SerializationPair
+                        .fromSerializer(genericSerializer))
+                .entryTtl(Duration.ofHours(2)));
 
         return RedisCacheManager.builder(connectionFactory)
                 .cacheDefaults(defaultConfig)
