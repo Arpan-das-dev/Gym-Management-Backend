@@ -7,12 +7,14 @@ import com.sendgrid.SendGrid;
 import com.sendgrid.helpers.mail.Mail;
 import com.sendgrid.helpers.mail.objects.Content;
 import com.sendgrid.helpers.mail.objects.Email;
+import lombok.extern.slf4j.Slf4j;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.scheduling.annotation.Async;
 import org.springframework.stereotype.Service;
 
 import java.io.IOException;
 
+@Slf4j
 @Service
 public class MailService {
     private final String sender;
@@ -24,7 +26,7 @@ public class MailService {
     }
 
     @Async
-    public void sendMail(String to, String subject, String body) {
+    public String  sendMail(String to, String subject, String body) {
         Email from = new Email(sender);
         Email sendTo = new Email(to);
         Content content = new Content("text/html", body);
@@ -36,8 +38,10 @@ public class MailService {
             request.setBody(mail.build());
             Response response = sendGrid.api(request);
             System.out.println("SendGrid Status: " + response.getStatusCode());
+            return "Sent mail to {}"+to;
         } catch (IOException e) {
-            throw new RuntimeException("error to process message");
+            log.warn(e.getLocalizedMessage());
+            return "unable to sent mail due to"+e.getLocalizedMessage();
         }
     }
 
