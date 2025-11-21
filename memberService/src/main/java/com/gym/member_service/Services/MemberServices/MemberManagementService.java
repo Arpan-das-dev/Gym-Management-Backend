@@ -2,17 +2,25 @@ package com.gym.member_service.Services.MemberServices;
 
 import com.gym.member_service.Dto.MemberManagementDto.Requests.FreezeRequestDto;
 import com.gym.member_service.Dto.MemberManagementDto.Requests.MemberCreationRequestDto;
+import com.gym.member_service.Dto.MemberManagementDto.Responses.AllMemberListResponseDto;
+import com.gym.member_service.Dto.MemberManagementDto.Responses.LoginStreakResponseDto;
+import com.gym.member_service.Dto.MemberManagementDto.Wrappers.AllMembersInfoWrapperResponseDtoList;
 import com.gym.member_service.Exception.Exceptions.DuplicateUserFoundException;
 import com.gym.member_service.Exception.Exceptions.UserNotFoundException;
 import com.gym.member_service.Dto.MemberManagementDto.Responses.AllMemberResponseDto;
 import com.gym.member_service.Model.*;
 import com.gym.member_service.Repositories.MemberRepository;
+import com.gym.member_service.Services.OtherService.MembersCountService;
 import com.gym.member_service.Services.OtherService.WebClientServices;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.cache.annotation.CacheEvict;
+import org.springframework.cache.annotation.CachePut;
 import org.springframework.cache.annotation.Cacheable;
 import org.springframework.cache.annotation.Caching;
+import org.springframework.data.domain.Page;
+import org.springframework.data.domain.PageRequest;
+import org.springframework.data.domain.Pageable;
 import org.springframework.data.domain.Sort;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
@@ -33,6 +41,7 @@ public class MemberManagementService {
 
     private final MemberRepository memberRepository;
     private final WebClientServices webClientService;
+    private final MembersCountService countService;
 
     DateTimeFormatter formatter = DateTimeFormatter.ofPattern("yyyy-MM-dd HH:mm:ss");
     /*
@@ -47,7 +56,7 @@ public class MemberManagementService {
 
     @Caching(evict = {
             @CacheEvict(value = "memberListCache", key = "'All'"),
-            @CacheEvict(value = "memberCache", key = "#requestDto.id")
+            @CacheEvict(value = "memberCache", allEntries = true)
     })
     @Transactional
     public String createMember(MemberCreationRequestDto requestDto) {
@@ -105,30 +114,71 @@ public class MemberManagementService {
      * here using stream and .toList() to return a list of data
      */
 
-    @Cacheable(value = "memberListCache", key = "'All'")
-    public List<AllMemberResponseDto> getAllMember(String searchBy, String sortBy, String sortDirection,
-                                                   int pageNo, int pageSize)
+
+    @Cacheable(
+            value = "memberListCache",
+            key = "'search=' + (#searchBy ?: '') +':gender=' + (#gender ?: '') +':status=' + (#status ?: '') +':sort=' + #sortBy +':dir=' + #sortDirection +':p=' + #pageNo +':s=' + #pageSize"
+            )
+    public AllMembersInfoWrapperResponseDtoList getAllMember(String searchBy,String gender,String status,
+                                          String sortBy, String sortDirection, int pageNo, int pageSize)
     {
         long start = System.currentTimeMillis();
-        System.out.println("Request received on "+LocalDateTime.now().format(formatter)+"to get all members");
-        log.info("Admin Fetch Request | search='{}' | sort='{}' | dir='{}' | page={} | size={}",
-                searchBy, sortBy, sortDirection, pageNo, pageSize);
+        log.info("Fetching members | search={} | gender={} | status={} | sort={} | dir={} at:: {}",
+                searchBy, gender, status, sortBy, sortDirection,LocalDateTime.now().format(formatter));
+
         String search = (searchBy == null || searchBy.isBlank()) ? "" : searchBy.trim();
-        Sort.Direction direction = "asc".equalsIgnoreCase(sortDirection.trim()) ?
-                Sort.Direction.ASC : Sort.Direction.DESC;
+        String gFilter = (gender == null || gender.isBlank() || gender.equalsIgnoreCase("all")) ? "" : gender.trim();
+        String sFilter = (status == null || status.isBlank() || status.equalsIgnoreCase("all")) ? "" : status.trim();
+
+        // sorting
+        Sort.Direction direction = sortDirection.equalsIgnoreCase("asc")
+                ? Sort.Direction.ASC : Sort.Direction.DESC;
 
         Sort sort = switch (sortBy.toLowerCase()) {
             case "planexpiration" -> Sort.by(direction, "planExpiration");
             case "durationleft" -> Sort.by(direction, "planDurationLeft");
-            case "name" -> Sort.by(direction,"firstName","lastName");
+            case "name" -> Sort.by(direction, "firstName", "lastName");
             case "date" -> Sort.by(direction, "lastLogin");
-            default -> {
-                log.warn("Unknown sortBy='{}', defaulting to transactionTime DESC", sortBy);
-                yield Sort.by(Sort.Direction.DESC, "planExpiration");
-            }
+            case "gender" -> Sort.by(direction, "gender");
+            default -> Sort.by(Sort.Direction.DESC, "planExpiration");
         };
-    }
 
+        Pageable pageable = PageRequest.of(pageNo, pageSize, sort);
+
+        // 🔥 Main query: search + filters in one repo method
+        Page<Member> members = memberRepository.findAllWithFilters(search, gFilter, sFilter, pageable);
+
+        // convert entity → DTO
+        List<AllMemberListResponseDto> list =
+                members.stream().map(m -> AllMemberListResponseDto.builder()
+                        .id(m.getId())
+                        .firstName(m.getFirstName())
+                        .lastName(m.getLastName())
+                        .email(m.getEmail())
+                        .phone(m.getPhone())
+                        .gender(m.getGender())
+                        .planDurationLeft(m.getPlanDurationLeft() == null ? 0: m.getPlanDurationLeft() )
+                        .planExpiration(m.getPlanExpiration())
+                        .planId(m.getPlanID())
+                        .planName(m.getPlanName())
+                        .frozen(m.isFrozen())
+                        .profileImageUrl(profileImageMapper(m.getProfileImageUrl()))
+                        .isActive(countService.isActive(m.getId()))
+                        .build()
+                ).toList();
+
+        long end = System.currentTimeMillis();
+        log.info("Processed in {} ms", end - start);
+        log.info("sending {} no of members and {} have last page and remaining elements are {}",
+                list.size(),members.isLast() ? "doesn't": "does", members.getTotalElements()-list.size());
+        return AllMembersInfoWrapperResponseDtoList.builder()
+                .responseDtoList(list)
+                .pageNo(members.getNumber())
+                .lastPage(members.isLast())
+                .pageSize(members.getSize())
+                .totalElements(members.getTotalElements())
+                .build();
+    }
     /*
      * Generally in Auth service user decided to delete account this
      * method runs and delete a specific member and all records from database
@@ -138,7 +188,7 @@ public class MemberManagementService {
      */
 
     @Caching(evict = {
-            @CacheEvict(value = "memberListCache", key = "'All'"),
+            @CacheEvict(value = "memberListCache", allEntries = true),
             @CacheEvict(value = "memberCache", key = "#id")
     })
     @Transactional
@@ -160,34 +210,59 @@ public class MemberManagementService {
      * the login streak
      * and then also update the cache
      */
-    @Caching(evict = {
-            @CacheEvict(value = "memberListCache", key = "'All'"),
-            @CacheEvict(value = "memberCache", key = "#id")
-    })
+    @Caching(
+            evict = {
+                    @CacheEvict(value = "memberListCache", allEntries = true),
+                    @CacheEvict(value = "memberCache", key = "#id"),
+            },
+            put = {
+                    @CachePut(value = "loginStreak", key = "'userId::'#id")
+            }
+    )
     @Transactional
-    public Integer setAndGetLoginStreak(String id) {
+    public LoginStreakResponseDto setLoginStreak(String id) {
         Member member = memberRepository.findById(id)
                 .orElseThrow(() -> new UserNotFoundException("Member with this id does not exist")); // finding member
-                                                                                                     // if it doesn't
-                                                                                                     // exist throws
-                                                                                                     // exception
+                                                                                                        // if it doesn't
+                                                                                                        // exist throws
+                                                                                                        // exception
         LocalDateTime today = LocalDateTime.now();
         if (member.getLastLogin() == null || member.getLastLogin().isBefore(today.minusDays(1))) // if last login or
-                                                                                                 // last login date is
-                                                                                                 // more than current
-                                                                                                 // date then reset the
-                                                                                                 // streak to 1
+                                                                                                        // last login date is
+                                                                                                        // more than current
+                                                                                                        // date then reset the
+                                                                                                        // streak to 1
         {
             member.setLoginStreak(1);
         } else if (member.getLastLogin().equals(today.minusDays(1))) { // if current date time and the last login time
                                                                        // has difference has one day increase the login
                                                                        // streak
-            member.setLoginStreak(member.getLoginStreak() + 1);
+            Integer maxLoginStreak = member.getMaxLoginStreak();
+            Integer loginSteak = member.getLoginStreak();
+            member.setLoginStreak(loginSteak + 1);
+            member.setMaxLoginStreak(Math.max(maxLoginStreak,loginSteak+1));
+
         } else {
             member.setLastLogin(LocalDateTime.now()); // set the last login time as of now
         }
         memberRepository.save(member);
-        return member.getLoginStreak();
+        return LoginStreakResponseDto.builder()
+                .logInStreak(member.getLoginStreak())
+                .maxLogInStreak(member.getMaxLoginStreak())
+                .build();
+    }
+    @Cacheable(value = "loginStreak", key = "'userId::'#id")
+    public LoginStreakResponseDto getLoginStreak(String id) {
+        Member member = memberRepository.findById(id)
+                .orElseThrow(() -> new UserNotFoundException("Member with this id does not exist")); // finding member
+                                                                                                     // if it doesn't
+                                                                                                     // exist throws
+                                                                                                     // exception
+
+        return LoginStreakResponseDto.builder()
+                .logInStreak(member.getLoginStreak())
+                .maxLogInStreak(member.getMaxLoginStreak())
+                .build();
     }
 
     /*
@@ -201,10 +276,15 @@ public class MemberManagementService {
      */
     @Transactional
     @Caching(evict = {
-            @CacheEvict(value = "memberListCache", key = "'All'"),
+            @CacheEvict(value = "memberListCache", allEntries = true),
             @CacheEvict(value = "memberCache", key = "#requestDto.id")
     })
     public String freezeOrUnFrozen(FreezeRequestDto requestDto) {
+        String time = LocalDateTime.now().format(formatter);
+        System.out.println("Request received to change status for member's account on::"+ time);
+        long start = System.currentTimeMillis();
+        String freeze = requestDto.isFreeze()? "freeze" : "unfreeze";
+        log.info("Request received to {} for id {}",freeze,requestDto.getId());
         String id = requestDto.getId();
         Member member = memberRepository.findById(id)
                 .orElseThrow(() -> new UserNotFoundException("Member with this id does not exist")); // if no user found
@@ -212,9 +292,15 @@ public class MemberManagementService {
         member.setFrozen(requestDto.isFreeze()); // set the freeze status as per request
         memberRepository.save(member);
         if(requestDto.isFreeze()) webClientService.sendFrozenMessage(member);
+        long end = System.currentTimeMillis();
+        log.info("sending request on {} ,request completed in {}",time,end-start);
         return requestDto.isFreeze() ? // check if true returns first response otherwise second response
                 "Account frozen successfully" : "Account unfrozen successfully";
     }
 
 
+    private String profileImageMapper(String imageUrl) {
+        if(imageUrl == null || imageUrl.isBlank()) return "";
+        return imageUrl;
+    }
 }
