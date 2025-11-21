@@ -12,7 +12,7 @@ import java.util.List;
 @Builder
 @AllArgsConstructor
 @NoArgsConstructor
-public class AllReportWrapperResponseDto {
+public class AllMessageWrapperResponseDto {
     List<AllReportsList> reportsLists;
     private int pageNo;
     private int pageSize;
