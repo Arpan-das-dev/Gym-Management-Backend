@@ -1,5 +1,6 @@
 package com.gym.adminservice.Exceptions.Handler;
 
+import com.gym.adminservice.Exceptions.Custom.MessageNotFoundException;
 import com.gym.adminservice.Exceptions.Custom.PlanNotFounException;
 import com.gym.adminservice.Exceptions.Custom.RequestNotFoundException;
 import com.gym.adminservice.Exceptions.Model.ErrorResponse;
@@ -16,7 +17,7 @@ import java.util.concurrent.ExecutionException;
 public class GlobalExceptionHandler {
 
     @ExceptionHandler({RequestNotFoundException.class,
-    PlanNotFounException.class})
+    PlanNotFounException.class, MessageNotFoundException.class})
     ResponseEntity<ErrorResponse> handleNotFound(Exception ex, HttpServletRequest request) {
         return ExceptionUtil.buildErrorResponse(HttpStatus.NOT_FOUND, ex.getMessage(), request);
     }
