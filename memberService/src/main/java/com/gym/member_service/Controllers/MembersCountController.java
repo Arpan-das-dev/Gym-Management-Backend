@@ -1,5 +1,6 @@
 package com.gym.member_service.Controllers;
 
+import com.gym.member_service.Dto.NotificationDto.GenericResponse;
 import com.gym.member_service.Services.OtherService.MembersCountService;
 import lombok.RequiredArgsConstructor;
 import org.springframework.http.HttpStatus;
@@ -8,7 +9,6 @@ import org.springframework.stereotype.Service;
 import org.springframework.web.bind.annotation.*;
 
 @RequiredArgsConstructor
-@Service
 @RestController
 @RequestMapping("${member-service.Base_Url.count}")
 /*
@@ -49,7 +49,7 @@ public class MembersCountController {
      * as of now it's returning but near future
      * it will return using websocket
      */
-    @GetMapping("/active-count")
+    @GetMapping("all/active-count")
     public ResponseEntity<Long> getActiveMemberCount() {
         return ResponseEntity.status(HttpStatus.OK).body(otherService.getActiveMembersCount());
         // returning member count as OK http status
