@@ -33,7 +33,7 @@ public class MemberPlanController {
      */
     @PostMapping("plan")
     public ResponseEntity<String> updatePlanInfo(@RequestParam String id,
-                                                 @Valid @RequestBody PlanRequestDto requestDto)
+                                                  @RequestBody PlanRequestDto requestDto)
     {   // set the response using method present in MemberFitService
         String response = planSerVice.updatePlan(id,requestDto);
         return ResponseEntity.status(HttpStatus.ACCEPTED).body(response);
