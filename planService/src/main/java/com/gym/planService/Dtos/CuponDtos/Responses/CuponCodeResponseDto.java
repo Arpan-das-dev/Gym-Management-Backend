@@ -43,6 +43,7 @@ public class CuponCodeResponseDto {
      */
     private String cuponCode;
     private String planId;
+    private String planName;
     private String access;
     private LocalDate validFrom;
     /**
