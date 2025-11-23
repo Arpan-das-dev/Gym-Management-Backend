@@ -1,5 +1,6 @@
 package com.gym.adminservice.Exceptions.Handler;
 
+import com.gym.adminservice.Exceptions.Custom.InvalidUserException;
 import com.gym.adminservice.Exceptions.Custom.MessageNotFoundException;
 import com.gym.adminservice.Exceptions.Custom.PlanNotFounException;
 import com.gym.adminservice.Exceptions.Custom.RequestNotFoundException;
@@ -29,5 +30,10 @@ public class GlobalExceptionHandler {
     @ExceptionHandler({Exception.class})
     ResponseEntity<ErrorResponse> handleGlobal(Exception ex, HttpServletRequest request) {
         return ExceptionUtil.buildErrorResponse(HttpStatus.INTERNAL_SERVER_ERROR,ex.getMessage(),request);
+    }
+
+    @ExceptionHandler({InvalidUserException.class})
+    ResponseEntity<ErrorResponse> handleInvalidRequests(Exception ex, HttpServletRequest request){
+        return ExceptionUtil.buildErrorResponse(HttpStatus.BAD_REQUEST, ex.getMessage(), request);
     }
 }
