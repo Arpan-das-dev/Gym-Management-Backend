@@ -39,6 +39,5 @@ public class PlanPaymentRequestDto {
     private String cuponCode;
 
     @NotNull(message = "Payment date is required")
-    @FutureOrPresent(message = "Payment date cannot be in the past")
     private LocalDateTime paymentDate;
 }
