@@ -13,6 +13,7 @@ import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.validation.annotation.Validated;
 import org.springframework.web.bind.annotation.*;
+import reactor.core.publisher.Mono;
 
 import java.time.LocalDateTime;
 import java.time.format.DateTimeFormatter;
@@ -36,10 +37,10 @@ public class PaymentController {
 
     // Step 2: Confirm payment after success
     @PostMapping("/all/confirmPayment")
-    public ResponseEntity<GenericResponse> confirmPayment(@RequestBody ConfirmPaymentDto confirmDto) {
+    public ResponseEntity<Mono<GenericResponse>> confirmPayment(@RequestBody ConfirmPaymentDto confirmDto) {
         log.info("Confirming payment for orderId: {}", confirmDto.getOrderId());
-        String receiptUrl = paymentService.confirmPayment(confirmDto);
-        return ResponseEntity.ok(new GenericResponse(receiptUrl));
+        Mono <GenericResponse> response = paymentService.confirmPayment(confirmDto);
+        return ResponseEntity.ok(response);
     }
 
     @GetMapping("/admin/getAllTransaction")
