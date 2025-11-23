@@ -3,6 +3,7 @@ package com.gym.member_service.Services.OtherService;
 import com.gym.member_service.Dto.MemberPlanDto.Requests.PlanRequestDto;
 import com.gym.member_service.Dto.MemberTrainerDtos.Responses.TrainerAssignResponseDto;
 import com.gym.member_service.Dto.NotificationDto.MailNotificationDto;
+import com.gym.member_service.Dto.NotificationDto.NotificationFrozenRequestDto;
 import com.gym.member_service.Dto.NotificationDto.PlanActivationNotificationDto;
 import com.gym.member_service.Exception.Exceptions.PlanNotFounException;
 import com.gym.member_service.Exception.Model.ErrorResponse;
@@ -221,6 +222,7 @@ public class WebClientServices {
      *
      * @see MailNotificationDto
      */
+    @Async
     private void sendMailToNotificationService(String endpoint, MailNotificationDto notificationDto) {
         // set the final url of notification service
         String notificationDtoUrl= Notification_MemberService_URL+endpoint;
@@ -247,7 +249,7 @@ public class WebClientServices {
      *
      * @param requestDto the plan request containing plan name and duration details.
      *                   Must not be null and must have valid plan information.
-     * @param name the descriptive name for logging purposes, typically the service
+     * @param member the descriptive name for logging purposes, typically the service
      *             or operation name that triggered this notification.
      * @throws IllegalArgumentException if requestDto is null or missing required plan fields
      * @throws WebClientRequestException if the notification service call fails
@@ -256,8 +258,11 @@ public class WebClientServices {
      * @see PlanActivationNotificationDto
      */
     @Async
-    public void sendUpdatePlanNotification(PlanRequestDto requestDto,String name) {
+    public void sendUpdatePlanNotification(PlanRequestDto requestDto,Member member) {
+        String name = member.getFirstName()+ " " + member.getLastName();
         PlanActivationNotificationDto notificationDto = PlanActivationNotificationDto.builder()
+                .mailId(member.getEmail())
+                .phone(member.getPhone())
                 .planName(requestDto.getPlanName())
                 .subject("Plan Renewed")
                 .activationDate(LocalDate.now())
@@ -324,5 +329,21 @@ public class WebClientServices {
                     }
                 })
                 .toFuture();
+    }
+
+    public Mono<String> sendFrozenMessageByAdmin(Member member, boolean freeze) {
+        NotificationFrozenRequestDto requestDto = NotificationFrozenRequestDto.builder()
+                .name(member.getFirstName()+" "+member.getLastName())
+                .mailId(member.getEmail())
+                .frozenDate(LocalDate.now())
+                .frozen(freeze)
+                .build();
+        String url = Notification_MemberService_URL+"/accountStatus";
+        return webClient.build().post()
+                .uri(url)
+                .bodyValue(requestDto)
+                .retrieve().bodyToMono(String.class)
+                .doOnSuccess(s->log.info("successfully sent to {} ",url))
+                .doOnError(e->log.warn("failed to sent to {} due to {}",url,e.getCause().toString()));
     }
 }
