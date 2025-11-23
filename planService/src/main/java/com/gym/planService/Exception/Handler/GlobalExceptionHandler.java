@@ -42,17 +42,14 @@ public class GlobalExceptionHandler {
 
     @ExceptionHandler({Exception.class,
             EmailSendFailedException.class,
-            CuponCodeCreationException.class,})
+            CuponCodeCreationException.class, InterServiceCommunicationException.class})
     public ResponseEntity<ErrorResponse> handleGlobal(Exception ex, HttpServletRequest request) {
         return ExceptionUtil.buildErrorResponse(HttpStatus.INTERNAL_SERVER_ERROR, ex.getMessage(), request);
     }
 
     @ExceptionHandler({MethodArgumentNotValidException.class,
-            HandlerMethodValidationException.class})
+            HandlerMethodValidationException.class,})
     public ResponseEntity<ErrorResponse> handleMethodArgumentNotValid(Exception ex, HttpServletRequest request) {
-//        String errorMessages = ex.getBindingResult().getFieldErrors().stream()
-//                .map(FieldError::getDefaultMessage)
-//                .collect(Collectors.joining(", "));
         return ExceptionUtil.buildErrorResponse(HttpStatus.BAD_REQUEST, ex.getMessage(), request);
     }
 }
