@@ -97,8 +97,6 @@ public class MemberPlanSerVice {
      * @throws WebClientRequestException if the notification service call fails
      *
      * @see PlanRequestDto
-     * @see Member
-     * @see WebClientServices#sendUpdatePlanNotification(PlanRequestDto, String)
      */
     @Caching(evict = {
             @CacheEvict(value = "memberListCache", key = "'All'"),
@@ -117,13 +115,13 @@ public class MemberPlanSerVice {
         member.setPlanName(requestDto.getPlanName()); // setting the new plan
         member.setPlanDurationLeft(member.getPlanDurationLeft()+ requestDto.getDuration()); // increased the duration
                                                                                             // in days left ;
-        if (!member.getActivePlan()){
+        if (member.getActivePlan() ==null || !member.getActivePlan() ){
             member.setActivePlan(true);
             member.setFrozen(false);
         }
         memberRepository.save(member);
 
-        webClientServices.sendUpdatePlanNotification(requestDto,member.getFirstName()+" "+member.getLastName());
+        webClientServices.sendUpdatePlanNotification(requestDto,member);
         return "plan updated successfully";
     }
     /**
