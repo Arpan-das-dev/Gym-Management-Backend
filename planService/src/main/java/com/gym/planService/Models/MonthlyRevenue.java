@@ -31,4 +31,5 @@ public class MonthlyRevenue {
     private String currentMonth;
 
     private Integer currentYear;
+
 }
