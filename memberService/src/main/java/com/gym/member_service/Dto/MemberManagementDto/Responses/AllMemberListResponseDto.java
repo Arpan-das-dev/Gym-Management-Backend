@@ -24,5 +24,5 @@ public class AllMemberListResponseDto {
     private String planName;
     private String planId;
     private String profileImageUrl;
-    private boolean isActive;
+    private boolean active;
 }
