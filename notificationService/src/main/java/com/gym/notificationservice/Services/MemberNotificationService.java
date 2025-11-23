@@ -2,14 +2,18 @@ package com.gym.notificationservice.Services;
 
 
 import com.gym.notificationservice.Dto.MailNotificationDtos.MailNotificationRequestDto;
+import com.gym.notificationservice.Dto.MailNotificationDtos.NotificationFrozenRequestDto;
 import com.gym.notificationservice.Dto.MailNotificationDtos.PlanActivationNotificationRequestDto;
 import lombok.RequiredArgsConstructor;
+import lombok.extern.slf4j.Slf4j;
 import org.springframework.stereotype.Service;
 import org.thymeleaf.TemplateEngine;
 import org.thymeleaf.context.Context;
 
+import java.time.LocalDateTime;
 import java.time.format.DateTimeFormatter;
 
+@Slf4j
 @Service
 @RequiredArgsConstructor
 /*
@@ -19,8 +23,8 @@ import java.time.format.DateTimeFormatter;
 public class MemberNotificationService {
     //adding all the dependencies through constructor
     private final TemplateEngine templateEngine;
-    private final MailService mailService;
-    private final SmsService smsService;
+//    private final MailService mailService;
+    private final MailjetService mailjetService;
 
     /*
      * This method send thyme leaf mail and sms to
@@ -36,16 +40,11 @@ public class MemberNotificationService {
         String body = templateEngine.process("plan-alert", context); // "plan-alert" is present
                                                                              // in src/main/resources/templates
         // sending mail by using mail service.
-        mailService.sendMail(requestDto.getMailId(), requestDto.getSubject(), body);
+        //mailService.sendMail(requestDto.getMailId(), requestDto.getSubject(), body);
+        mailjetService.sendMail(requestDto.getMailId(), requestDto.getSubject(), body);
         // using date formatter to format the date.
-        DateTimeFormatter formatter = DateTimeFormatter.ofPattern("dd-MMM-yyyy");
         // using string concatenation to write the final message.
-        String smsMessage = "Hello " + requestDto.getName() + ", your FIT STUDIO gym plan will expire on "
-                + requestDto.getTime().format(formatter) + " (only 3 days left). "
-                + "Renew now to avoid account freeze after 10 days of expiry. "
-                + "Ignore if already renewed.";
-        // sends sms using sms service.
-        smsService.sendSms(requestDto.getPhone(), smsMessage);
+
     }
 
     /*
@@ -62,17 +61,13 @@ public class MemberNotificationService {
         String body = templateEngine.process("plan-expired",context); // "plan-expired" is present
                                                                               // in src/main/resources/templates
         // sending mail by using mail service.
-        mailService.sendMail(requestDto.getMailId(), requestDto.getSubject(), body);
+//        mailService.sendMail(requestDto.getMailId(), requestDto.getSubject(), body);
+        mailjetService.sendMail(requestDto.getMailId(), requestDto.getSubject(), body);
         // using date formatter to format the date.
         DateTimeFormatter formatter = DateTimeFormatter.ofPattern("dd-MMM-yyyy");
         // using string concatenation to write the final message.
-        String smsMessage = "Hello " + requestDto.getName()
-                + ", your FIT STUDIO gym plan has expired on "
-                + requestDto.getTime().format(formatter) + ". "
-                + "Please renew immediately to continue access. "
-                + "Your account will be frozen in 10 days if not renewed.";
+        requestDto.getTime().format(formatter);
         // sends sms using sms service.
-        smsService.sendSms(requestDto.getPhone(), smsMessage);
     }
 
     /*
@@ -89,17 +84,13 @@ public class MemberNotificationService {
         String body = templateEngine.process("account-frozen",context); // "account-frozen" is present
                                                                                 // in src/main/resources/templates
         // sending mail by using mail service.
-        mailService.sendMail(requestDto.getMailId(), requestDto.getSubject(), body);
+        //mailService.sendMail(requestDto.getMailId(), requestDto.getSubject(), body);
+        mailjetService.sendMail(requestDto.getMailId(), requestDto.getSubject(), body);
         // using date formatter to format the date.
         DateTimeFormatter formatter = DateTimeFormatter.ofPattern("dd-MMM-yyyy");
         // using string concatenation to write the final message.
-        String smsMessage = "Hello " + requestDto.getName()
-                + ", your FIT STUDIO account has been FROZEN. "
-                + "Your plan expired on " + requestDto.getTime().format(formatter)
-                + " and was not renewed in 10 days. "
-                + "Please renew immediately to reactivate your account.";
+        requestDto.getTime().format(formatter);
         // sends sms using sms service.
-        smsService.sendSms(requestDto.getPhone(), smsMessage);
     }
 
     /*
@@ -109,7 +100,7 @@ public class MemberNotificationService {
      * using template engine it sends email to the member
      * using member service where we used send grid for sms.
      */
-    public void sendPlanUpdateEmail( PlanActivationNotificationRequestDto requestDto) {
+    public void sendPlanUpdateEmail(PlanActivationNotificationRequestDto requestDto) {
         // using date formatter to format the date.
         DateTimeFormatter formatter = DateTimeFormatter.ofPattern("dd-MMM-yyyy");
         // creating a context
@@ -125,16 +116,13 @@ public class MemberNotificationService {
         // using template engine to stringify the context with html template
         String body = templateEngine.process("plan-renewed",context);
         // sending mail by using mail service.
-        mailService.sendMail(requestDto.getMailId(),requestDto.getSubject(),body);
+//        mailService.sendMail(requestDto.getMailId(),requestDto.getSubject(),body);
+        mailjetService.sendMail(requestDto.getMailId(),requestDto.getSubject(),body);
         // using string concatenation to write the final message.
-        String smsMessage = "Hello " + requestDto.getPlanName()
-                + " plan has been activated! "
-                + "Start: " + requestDto.getActivationDate().format(formatter)
-                + ", Expiry: " + requestDto.getPlanExpiration().format(formatter)
-                + ", Duration: " + requestDto.getDuration() + " days. "
-                + "Welcome back to FIT STUDIO 💪";
+        requestDto.getActivationDate().format(formatter);
+        requestDto.getPlanExpiration().format(formatter);
         // sends sms using sms service.
-        smsService.sendSms(requestDto.getPhone(),smsMessage);
+
     }
 
     // this is the private method which returns context for sending sms
@@ -148,5 +136,22 @@ public class MemberNotificationService {
         context.setVariable("time",requestDto.getTime().format(formatter));
 
         return context;
+    }
+
+    public String sendAccountStatusUpdate(NotificationFrozenRequestDto requestDto) {
+        Context context = new Context();
+        context.setVariable("name", requestDto.getName());
+        context.setVariable("frozenDate", requestDto.getFrozenDate());
+        context.setVariable("time", LocalDateTime.now());
+
+// dynamic subject based on frozen/unfrozen
+        String subject = requestDto.isFrozen()
+                ? "Your FIT STUDIO Account Has Been Frozen"
+                : "Your FIT STUDIO Account Has Been Restored";
+        String template = requestDto.isFrozen() ? "frozen-account":"unFrozen-account";
+        String body = templateEngine.process(template,context);
+        mailjetService.sendMail(requestDto.getMailId(), subject, body);
+        log.info("sent mail at {}",requestDto.getFrozenDate());
+        return "mail sent successfully";
     }
 }
