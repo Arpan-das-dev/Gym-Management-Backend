@@ -2,12 +2,16 @@ package com.gym.adminservice.Services.WebClientServices;
 
 import com.gym.adminservice.Dto.Responses.*;
 
+import com.gym.adminservice.Exceptions.Custom.interServiceCommunicationException;
 import lombok.extern.slf4j.Slf4j;
 
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.scheduling.annotation.Async;
 import org.springframework.stereotype.Service;
 import org.springframework.web.reactive.function.client.WebClient;
+import reactor.core.publisher.Mono;
+
+import java.util.concurrent.CompletableFuture;
 
 @Slf4j
 @Service
@@ -59,9 +63,9 @@ public class WebClientAuthService {
 
     // delete the user from the auth service asynchronously via webclient
     @Async
-    public void deleteUser(String identifier) {
+    public CompletableFuture<String> deleteUser(String identifier) {
         String url = authServiceAdmin_URL + "/delete";
-        deleteAsynchronously(url, identifier);
+       return deleteAsynchronously(url, identifier);
     }
 
     // delete the trainer from the trainer service asynchronously via webclient
@@ -95,18 +99,12 @@ public class WebClientAuthService {
 
     // generic method to send delete request asynchronously via webclient which is
     // used for sending requests to the auth service
-    private void deleteAsynchronously(String url, String deleteBy) {
-        webClient.build().delete() // define the method as delete
-                .uri(uri -> uri // setting the uri
-                        .path(url)// setting the path to the url passed
-                        .queryParam("identifier", deleteBy)// setting the query param to the identifier passed
-                        .build())
-                .retrieve().toBodilessEntity()// retrieve the response as a bodiless entity
-                .subscribe( // subscribe to the response to handle success and error but asynchronously for
-                            // better performance
-                        success -> System.out.println("API request  sent successfully to " + url),
-                        error -> System.out
-                                .println("Failed to send API request to " + url + ": " + error.getMessage()));
+    private CompletableFuture<String> deleteAsynchronously(String url, String deleteBy) {
+        String URI = url+"?identifier="+deleteBy;
+       return webClient.build().delete() // define the method as delete
+                .uri(URI)
+                .retrieve()// retrieve the response as a bodiless entity
+               .bodyToMono(String.class).toFuture();
     }
 
     // send the approval status to the auth service asynchronously via webclient so
