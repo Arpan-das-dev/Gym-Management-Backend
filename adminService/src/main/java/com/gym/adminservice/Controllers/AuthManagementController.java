@@ -3,6 +3,7 @@ package com.gym.adminservice.Controllers;
 import com.gym.adminservice.Dto.Requests.CreateAdminRequestDto;
 import com.gym.adminservice.Dto.Requests.CreateMemberRequestDto;
 import com.gym.adminservice.Dto.Requests.CreateTrainerRequestDto;
+import com.gym.adminservice.Dto.Responses.GenericResponseDto;
 import com.gym.adminservice.Dto.Responses.UserCreationResponseDto;
 import com.gym.adminservice.Enums.RoleType;
 import com.gym.adminservice.Services.AuthService.AuthManagementService;
@@ -12,6 +13,8 @@ import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.validation.annotation.Validated;
 import org.springframework.web.bind.annotation.*;
+
+import java.util.concurrent.ExecutionException;
 
 @RestController
 @RequestMapping("${app.management.url}")
@@ -81,15 +84,19 @@ public class AuthManagementController {
      */
 
     @DeleteMapping("delete")
-    public ResponseEntity<UserCreationResponseDto> deleteUser(@RequestParam String identifier,@RequestParam RoleType role){
-        UserCreationResponseDto response = managementService.deleteUser(identifier,role);
-        return ResponseEntity.status(HttpStatus.OK).body(response);
+    public ResponseEntity<GenericResponseDto> deleteUser(@RequestParam String identifier, @RequestParam RoleType role){
+        try {
+            GenericResponseDto response = managementService.deleteUser(identifier,role);
+            return ResponseEntity.status(HttpStatus.OK).body(response);
+        } catch (ExecutionException | InterruptedException e) {
+            throw new RuntimeException(e);
+        }
     }
 
     /*
      * Endpoint to freeze a user (member/trainer) account temporarily so that
      * the user can access the system but cannot user their dashboard and other features
-     * but still can login and view basic info and contact admin for more info and also do shoping
+     * but still can log in and view basic info and contact admin for more info and also do shopping
      */
 
      /*
