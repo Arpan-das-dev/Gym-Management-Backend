@@ -24,6 +24,7 @@ import org.springframework.data.domain.Pageable;
 import org.springframework.data.domain.Sort;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
+import reactor.core.publisher.Mono;
 
 import java.time.LocalDateTime;
 import java.time.format.DateTimeFormatter;
@@ -163,7 +164,7 @@ public class MemberManagementService {
                         .planName(m.getPlanName())
                         .frozen(m.isFrozen())
                         .profileImageUrl(profileImageMapper(m.getProfileImageUrl()))
-                        .isActive(countService.isActive(m.getId()))
+                        .active(countService.isActive(m.getId()))
                         .build()
                 ).toList();
 
@@ -294,6 +295,8 @@ public class MemberManagementService {
         if(requestDto.isFreeze()) webClientService.sendFrozenMessage(member);
         long end = System.currentTimeMillis();
         log.info("sending request on {} ,request completed in {}",time,end-start);
+        Mono<String> res =  webClientService.sendFrozenMessageByAdmin(member,requestDto.isFreeze());
+        log.info("got response from notification service {}",res);
         return requestDto.isFreeze() ? // check if true returns first response otherwise second response
                 "Account frozen successfully" : "Account unfrozen successfully";
     }
