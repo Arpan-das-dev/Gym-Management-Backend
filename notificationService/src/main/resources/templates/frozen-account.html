@@ -1,0 +1,91 @@
+<!DOCTYPE html>
+<html xmlns:th="http://www.thymeleaf.org" lang="en">
+<head>
+    <meta charset="UTF-8">
+    <title th:text="${subject}">Account Frozen</title>
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            background-color: #f8f8f8;
+            margin: 0;
+            padding: 0;
+        }
+        .container {
+            max-width: 600px;
+            margin: 30px auto;
+            background: #ffffff;
+            border-radius: 12px;
+            box-shadow: 0 4px 12px rgba(0,0,0,0.1);
+            border: 1px solid #ddd;
+            overflow: hidden;
+        }
+        .header {
+            background: linear-gradient(90deg, #d32f2f, #111);
+            color: #fff;
+            padding: 20px;
+            text-align: center;
+        }
+        .header h2 {
+            margin: 0;
+            font-size: 22px;
+        }
+        .content {
+            padding: 25px;
+            color: #333;
+        }
+        .highlight {
+            color: #ff7a00;
+            font-weight: bold;
+        }
+        .danger {
+            color: #d32f2f;
+            font-weight: bold;
+        }
+        .footer {
+            background: #111;
+            color: #ccc;
+            text-align: center;
+            font-size: 12px;
+            padding: 15px;
+        }
+        .button {
+            display: inline-block;
+            margin-top: 20px;
+            padding: 12px 20px;
+            background-color: #d32f2f;
+            color: #fff !important;
+            text-decoration: none;
+            font-weight: bold;
+            border-radius: 6px;
+        }
+        .button:hover {
+            background-color: #b71c1c;
+        }
+    </style>
+</head>
+<body>
+<div class="container">
+    <div class="header">
+        <h2 th:text="${subject}">Account Frozen</h2>
+    </div>
+
+    <div class="content">
+        <p>Hello, <span class="highlight" th:text="${name}">Member</span>,</p>
+
+        <p class="danger">🚫 Your <strong>FIT STUDIO</strong> account has been frozen by the admin team.</p>
+
+        <p>The action was performed on:
+            <span class="danger" th:text="${frozenDate}">2025-09-01</span>
+        </p>
+
+        <p>If you believe this was a mistake or need clarification, please contact the support team.</p>
+
+        <a th:href="${frontend.support.url}" class="button">Contact Support</a>
+    </div>
+
+    <div class="footer">
+        © <span th:text="${#dates.format(time, 'yyyy')}">2025</span> FIT STUDIO. All rights reserved.
+    </div>
+</div>
+</body>
+</html>
