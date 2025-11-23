@@ -5,14 +5,19 @@ import com.gym.adminservice.Dto.Requests.CreateMemberRequestDto;
 import com.gym.adminservice.Dto.Requests.CreateTrainerRequestDto;
 import com.gym.adminservice.Dto.Responses.*;
 import com.gym.adminservice.Enums.RoleType;
+import com.gym.adminservice.Exceptions.Custom.InvalidUserException;
 import com.gym.adminservice.Models.AdminEntity;
 import com.gym.adminservice.Repository.AdminRepository;
 import com.gym.adminservice.Services.WebClientServices.WebClientAuthService;
 import com.gym.adminservice.Utils.IdGenUtil;
 import lombok.AllArgsConstructor;
+import lombok.extern.slf4j.Slf4j;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
+import java.util.concurrent.ExecutionException;
+
+@Slf4j
 @Service
 @AllArgsConstructor
 public class AuthManagementService {
@@ -132,10 +137,12 @@ public class AuthManagementService {
      * one can set the id
      */
     public UserCreationResponseDto setCustomIdToAdmin(String id, String role, String email) {
-
-        AdminEntity entity = adminRepository.findByEmail(email).orElseThrow(); // userNotFoundException
-        entity.setId(id);
-        return new UserCreationResponseDto("Id set successfully");
+        if(!role.equals(RoleType.ADMIN.name())) {
+            AdminEntity entity = adminRepository.findByEmail(email).orElseThrow(); // userNotFoundException
+            entity.setId(id);
+            return new UserCreationResponseDto("Id set successfully");
+        }
+        throw new InvalidUserException("Only an Admin can set request");
     }
 
     /*
@@ -146,7 +153,7 @@ public class AuthManagementService {
      * and as this service is called by admin so only admin can delete a user
      * without any authentication
      */
-    public UserCreationResponseDto deleteUser(String identifier, RoleType role) {
+    public GenericResponseDto deleteUser(String identifier, RoleType role) throws ExecutionException, InterruptedException {
         /*
          * this service will delete a user from the auth service via admin and sent
          * requests via webclient
@@ -155,18 +162,10 @@ public class AuthManagementService {
          * and as this service is called by admin so only admin can delete a user
          * without any authentication
          */
-        if (role.isTrainerRole()) {
-            webClientService.deleteUser(identifier);
-            // webClientTrainerService.deleteTrainer(identifier);
-            return new UserCreationResponseDto("trainer request deleted successfully");
-        } else if (role.equals(RoleType.ADMIN)) {
-            adminRepository.deleteByEmail(identifier);
-            return new UserCreationResponseDto("admin deleted successfully");
-        } else {
-            webClientService.deleteUser(identifier);
-            // webClientMemberService.deleteMember(identifier);
-            return new UserCreationResponseDto("member request deleted successfully");
-        }
+
+        log.info("Request received to delete user {} for role {}",identifier,role);
+        String res = webClientService.deleteUser(identifier).get();
+        return new GenericResponseDto(res);
     }
 
     public UserCreationResponseDto freezeAccount(String email, RoleType role) {
