@@ -10,6 +10,7 @@ import com.gym.planService.Exception.Custom.CuponCodeCreationException;
 import com.gym.planService.Exception.Custom.CuponCodeNotFoundException;
 import com.gym.planService.Exception.Custom.DuplicateCuponCodeFoundException;
 import com.gym.planService.Exception.Custom.PlanNotFoundException;
+import com.gym.planService.Models.Plan;
 import com.gym.planService.Models.PlanCuponCode;
 import com.gym.planService.Repositories.PlanCuponCodeRepository;
 import com.gym.planService.Repositories.PlanRepository;
@@ -294,6 +295,7 @@ public class CuponCodeManagementService {
                 .map(cupon-> CuponCodeResponseDto.builder()
                         .cuponCode(cupon.getCuponCode())
                         .planId(cupon.getPlanId())
+                        .planName(nameMapper(cupon))
                         .access(cupon.getAccessibility())
                         .validFrom(cupon.getValidFrom())
                         .validityDate(cupon.getValidity())
@@ -306,5 +308,14 @@ public class CuponCodeManagementService {
         return AllCuponCodeWrapperResponseDto.builder()
                 .responseDtoList(codeResponseDtoList)
                 .build();
+    }
+
+    private String nameMapper(PlanCuponCode cupon) {
+        Plan plan = planRepository.findById(cupon.getPlanId()).orElse(null);
+        if(plan != null) {
+            return  (plan.getPlanName() == null || plan.getPlanName().isEmpty()) ?
+                    "" : plan.getPlanName();
+        }
+        return "";
     }
 }
