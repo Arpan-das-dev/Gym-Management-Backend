@@ -1,0 +1,91 @@
+<!DOCTYPE html>
+<html xmlns:th="http://www.thymeleaf.org" lang="en">
+<head>
+    <meta charset="UTF-8">
+    <title th:text="${subject}">Account Restored</title>
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            background-color: #f8f8f8;
+            margin: 0;
+            padding: 0;
+        }
+        .container {
+            max-width: 600px;
+            margin: 30px auto;
+            background: #ffffff;
+            border-radius: 12px;
+            box-shadow: 0 4px 12px rgba(0,0,0,0.1);
+            border: 1px solid #ddd;
+            overflow: hidden;
+        }
+        .header {
+            background: linear-gradient(90deg, #2e7d32, #111);
+            color: #fff;
+            padding: 20px;
+            text-align: center;
+        }
+        .header h2 {
+            margin: 0;
+            font-size: 22px;
+        }
+        .content {
+            padding: 25px;
+            color: #333;
+        }
+        .highlight {
+            color: #2e7d32;
+            font-weight: bold;
+        }
+        .success {
+            color: #2e7d32;
+            font-weight: bold;
+        }
+        .footer {
+            background: #111;
+            color: #ccc;
+            text-align: center;
+            font-size: 12px;
+            padding: 15px;
+        }
+        .button {
+            display: inline-block;
+            margin-top: 20px;
+            padding: 12px 20px;
+            background-color: #2e7d32;
+            color: #fff !important;
+            text-decoration: none;
+            font-weight: bold;
+            border-radius: 6px;
+        }
+        .button:hover {
+            background-color: #1b5e20;
+        }
+    </style>
+</head>
+<body>
+<div class="container">
+    <div class="header">
+        <h2 th:text="${subject}">Account Unfrozen</h2>
+    </div>
+
+    <div class="content">
+        <p>Hello, <span class="highlight" th:text="${name}">Member</span>,</p>
+
+        <p class="success">✅ Your <strong>FIT STUDIO</strong> account has been restored by the admin team.</p>
+
+        <p>The action was completed on:
+            <span class="success" th:text="${frozenDate}">2025-09-01</span>
+        </p>
+
+        <p>You now have full access to your account again.</p>
+
+        <a th:href="${frontend.dashboard.url}" class="button">Go to Dashboard</a>
+    </div>
+
+    <div class="footer">
+        © <span th:text="${#dates.format(time, 'yyyy')}">2025</span> FIT STUDIO. All rights reserved.
+    </div>
+</div>
+</body>
+</html>

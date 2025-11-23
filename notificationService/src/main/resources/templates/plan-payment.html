@@ -1,0 +1,163 @@
+<!DOCTYPE html>
+<html xmlns:th="http://www.thymeleaf.org" lang="en">
+<head>
+    <meta charset="UTF-8">
+    <title th:text="${subject}">Plan Purchase Receipt</title>
+
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            background: #f5faff;
+            margin: 0;
+            padding: 0;
+        }
+
+        .container {
+            max-width: 650px;
+            margin: 30px auto;
+            background: #fff;
+            border-radius: 14px;
+            box-shadow: 0 4px 14px rgba(0, 0, 0, 0.1);
+            overflow: hidden;
+            border: 1px solid #e6e6e6;
+        }
+
+        .header {
+            background: linear-gradient(90deg, #00b4ff, #ff7a00);
+            color: #fff;
+            padding: 25px;
+            text-align: center;
+        }
+
+        .header h2 {
+            margin: 0;
+            font-size: 24px;
+        }
+
+        .content {
+            padding: 30px;
+            color: #333;
+        }
+
+        .content p {
+            margin: 14px 0;
+            line-height: 1.7;
+        }
+
+        .highlight {
+            color: #ff7a00;
+            font-weight: bold;
+        }
+
+        .positive {
+            color: #00b4ff;
+            font-weight: bold;
+        }
+
+        .footer {
+            background: #111;
+            color: #ccc;
+            text-align: center;
+            font-size: 13px;
+            padding: 15px;
+        }
+
+        .button {
+            display: inline-block;
+            margin-top: 25px;
+            padding: 14px 25px;
+            background-color: #00b4ff;
+            color: #fff !important;
+            text-decoration: none;
+            font-weight: bold;
+            border-radius: 8px;
+        }
+
+        .button:hover {
+            background-color: #0092cc;
+        }
+
+        .receipt-box {
+            margin-top: 25px;
+            padding: 18px;
+            background: #f0f8ff;
+            border-left: 4px solid #00b4ff;
+            border-radius: 8px;
+        }
+
+        .receipt-row {
+            display: flex;
+            justify-content: space-between;
+            margin: 8px 0;
+            font-size: 15px;
+        }
+
+        .receipt-label {
+            font-weight: bold;
+        }
+
+    </style>
+</head>
+
+<body>
+<div class="container">
+    <div class="header">
+        <h2 th:text="${subject}">Your Plan Receipt</h2>
+    </div>
+
+    <div class="content">
+
+        <p>Hello <span class="highlight" th:text="${userName}">Member</span>,</p>
+
+        <p class="positive">
+            Thank you for choosing <strong th:text="${planName}">Premium Plan</strong> 🎉
+        </p>
+
+        <p>Your purchase is confirmed! Below are your receipt details:</p>
+
+        <!-- Receipt Box -->
+        <div class="receipt-box">
+            <div class="receipt-row">
+                <span class="receipt-label">Plan Name:</span>
+                <span th:text="${planName}">Premium Plan</span>
+            </div>
+
+            <div class="receipt-row">
+                <span class="receipt-label">Plan Duration:</span>
+                <span th:text="${planDuration}">6</span> months
+            </div>
+
+            <div class="receipt-row">
+                <span class="receipt-label">Plan Price:</span>
+                ₹ <span th:text="${planPrice}">1999</span>
+            </div>
+
+            <div class="receipt-row">
+                <span class="receipt-label">Purchase Date:</span>
+                <span th:text="${purchaseDate}">2025-10-15</span>
+            </div>
+
+            <div class="receipt-row">
+                <span class="receipt-label">Expiration Date:</span>
+                <span class="highlight" th:text="${expirationDate}">2026-04-15</span>
+            </div>
+
+            <div class="receipt-row">
+                <span class="receipt-label">Email:</span>
+                <span th:text="${userMail}">user@mail.com</span>
+            </div>
+        </div>
+
+        <p>
+            We’re excited to continue your fitness
+            journey with <strong>FIT STUDIO</strong> 💪.
+        </p>
+
+    </div>
+
+    <div class="footer">
+        © <span th:text="${year}">2025</span> FIT STUDIO. Stay fit. Stay strong.
+    </div>
+</div>
+</body>
+</html>
