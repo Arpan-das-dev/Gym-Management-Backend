@@ -3,7 +3,7 @@ package com.gym.authservice.Controller;
 import com.gym.authservice.Dto.Request.LogiInRequestDto;
 import com.gym.authservice.Dto.Response.LoginResponseDto;
 import com.gym.authservice.Dto.Response.SignupDetailsInfoDto;
-import com.gym.authservice.Service.LogiInService;
+import com.gym.authservice.Service.LoginService;
 import jakarta.validation.Valid;
 import jakarta.validation.constraints.NotBlank;
 import lombok.RequiredArgsConstructor;
@@ -27,7 +27,7 @@ import reactor.core.publisher.Mono;
  */
 public class LoginController {
 
-    private final LogiInService logiInService;
+    private final LoginService logiInService;
 
     /*
      * Endpoint to handle user login requests.
