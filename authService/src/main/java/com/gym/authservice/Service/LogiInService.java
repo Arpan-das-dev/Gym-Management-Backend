@@ -39,27 +39,16 @@ public class LogiInService {
     /**
      * Fetches user details reactively.
      */
+
     public Mono<SignupDetailsInfoDto> getUserDetails(String identifier) {
         return loadUserByIdentifier(identifier)
-                .map(user -> SignupDetailsInfoDto.builder()
-                        .id(user.getId())
-                        .firstName(user.getFirstName())
-                        .lastName(user.getLastName())
-                        .gender(user.getGender())
-                        .email(user.getEmail())
-                        .phone(user.getPhone())
-                        .role(user.getRole())
-                        .joinDate(user.getJoinDate())
-                        .emailVerified(user.isEmailVerified())
-                        .phoneVerified(user.isPhoneVerified())
-                        .isApproved(user.isApproved())
-                        .build());
+                .map(this::infoMapper);
     }
 
     /**
      * Loads user by ID or email reactively.
      */
-    @Cacheable(value = "userInfo", key = "#identifier")
+    @Cacheable(value = "userInfo", key = "#result.map(u -> u.id).block()")
     public Mono<SignedUps> loadUserByIdentifier(String identifier) {
         Mono<SignedUps> userMono = identifier.contains("@")
                 ? signedUpsRepository.findByEmail(identifier)
@@ -81,5 +70,21 @@ public class LogiInService {
                     }
                     return Mono.just(true);
                 });
+    }
+
+    public SignupDetailsInfoDto infoMapper(SignedUps user) {
+        return SignupDetailsInfoDto.builder()
+                .id(user.getId())
+                .firstName(user.getFirstName())
+                .lastName(user.getLastName())
+                .gender(user.getGender())
+                .email(user.getEmail())
+                .phone(user.getPhone())
+                .role(user.getRole())
+                .joinDate(user.getJoinDate())
+                .emailVerified(user.isEmailVerified())
+                .phoneVerified(user.isPhoneVerified())
+                .isApproved(user.isApproved())
+                .build();
     }
 }
