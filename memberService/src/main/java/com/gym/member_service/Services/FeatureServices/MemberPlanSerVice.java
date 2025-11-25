@@ -2,13 +2,16 @@ package com.gym.member_service.Services.FeatureServices;
 
 import com.gym.member_service.Dto.MemberPlanDto.Requests.MembersPlanMeticsRequestDto;
 import com.gym.member_service.Dto.MemberPlanDto.Requests.PlanRequestDto;
+import com.gym.member_service.Dto.MemberPlanDto.Responses.MemberPlanInfoResponseDto;
 import com.gym.member_service.Dto.MemberPlanDto.Responses.MemberPlansMeticsResponseDto;
 import com.gym.member_service.Exception.Exceptions.UserNotFoundException;
 import com.gym.member_service.Model.Member;
 import com.gym.member_service.Repositories.MemberRepository;
 import com.gym.member_service.Services.OtherService.WebClientServices;
 import lombok.RequiredArgsConstructor;
+import lombok.extern.slf4j.Slf4j;
 import org.springframework.cache.annotation.CacheEvict;
+import org.springframework.cache.annotation.Cacheable;
 import org.springframework.cache.annotation.Caching;
 import org.springframework.dao.DataAccessException;
 import org.springframework.stereotype.Service;
@@ -50,6 +53,7 @@ import java.util.List;
  * @since 1.0
  */
 
+@Slf4j
 @Service
 @RequiredArgsConstructor
 public class MemberPlanSerVice {
@@ -100,7 +104,8 @@ public class MemberPlanSerVice {
      */
     @Caching(evict = {
             @CacheEvict(value = "memberListCache", key = "'All'"),
-            @CacheEvict(value = "memberCache", key = "#id")
+            @CacheEvict(value = "memberCache", key = "#id"),
+            @CacheEvict(value = "memberPlanInfo", key = "#id")
     })
     @Transactional
     public String updatePlan(String id, PlanRequestDto requestDto) {
@@ -111,6 +116,8 @@ public class MemberPlanSerVice {
         member.setPlanID(requestDto.getPlanId()); // set the new plan id
         LocalDateTime current = member.getPlanExpiration(); // get the current expiration date
         if(current==null) current = LocalDateTime.now();
+        if(member.getPlanDurationLeft() == null) member.setPlanDurationLeft(requestDto.getDuration());
+        if(member.getPlanExpiration() == null) member.setPlanExpiration(current.plusDays(requestDto.getDuration()));
         member.setPlanExpiration(current.plusDays(requestDto.getDuration())); // add on the duration on previous days
         member.setPlanName(requestDto.getPlanName()); // setting the new plan
         member.setPlanDurationLeft(member.getPlanDurationLeft()+ requestDto.getDuration()); // increased the duration
@@ -177,5 +184,40 @@ public class MemberPlanSerVice {
         }
         return responseDtoList;
     }
+    /**
 
+     Retrieves member plan details, caching the result to optimize repeated access.
+
+     <p>This method fetches the member entity by its ID and maps relevant plan details
+     into a response DTO. It logs key events including incoming requests and successful
+
+     data retrieval for observability.
+
+     <p>The response includes:
+     <ul>
+     <li>Plan expiration date</li>
+     <li>Remaining plan duration</li>
+     <li>Plan name</li>
+     <li>Plan ID</li>
+     </ul>
+     <p>Throws {@link UserNotFoundException} if no member is found with the given ID.
+     @param memberId the unique identifier of the member whose plan details are requested
+
+     @return a {@link MemberPlanInfoResponseDto} containing the member's plan information
+
+     @throws UserNotFoundException if member with the given ID does not exist
+     */
+    @Cacheable(value = "memberPlanInfo", key = "#memberId")
+    public MemberPlanInfoResponseDto getMemberPlanDetails(String memberId) {
+        log.info("Request reached service to get plan details for memberId :: {}", memberId);
+        Member member = memberRepository.findById(memberId)
+                .orElseThrow(() -> new UserNotFoundException("Member with this id does not exist"));
+        log.info("Fetched member {} {} from database", member.getFirstName(), member.getLastName());
+        return MemberPlanInfoResponseDto.builder()
+                .planExpiration(member.getPlanExpiration())
+                .planDurationLeft(member.getPlanDurationLeft())
+                .planName(member.getPlanName())
+                .planId(member.getPlanID())
+                .build();
+    }
 }
