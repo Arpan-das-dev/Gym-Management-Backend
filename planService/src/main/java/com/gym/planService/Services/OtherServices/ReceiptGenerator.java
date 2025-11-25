@@ -16,7 +16,6 @@ import com.itextpdf.layout.properties.UnitValue;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.scheduling.annotation.Async;
 import org.springframework.stereotype.Service;
-import reactor.core.publisher.Mono;
 
 import java.io.ByteArrayOutputStream;
 import java.time.LocalDate;
@@ -41,7 +40,7 @@ public class ReceiptGenerator {
 
 
             // Header
-            document.add(new Paragraph("FITNESS STUDIO")
+            document.add(new Paragraph("FITh STUDIO")
                     .setBold()
                     .setFontSize(22)
                     .setTextAlignment(TextAlignment.CENTER)
@@ -76,7 +75,7 @@ public class ReceiptGenerator {
             document.add(table);
 
             // Footer
-            document.add(new Paragraph("\nThank you for choosing Fitness Studio!")
+            document.add(new Paragraph("\nThank you for choosing Fit Studio!")
                     .setItalic()
                     .setTextAlignment(TextAlignment.CENTER)
                     .setFontSize(11)
