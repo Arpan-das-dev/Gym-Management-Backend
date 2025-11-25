@@ -3,6 +3,7 @@ package com.gym.member_service.Services.OtherService;
 import com.gym.member_service.Model.MembersActive;
 import com.gym.member_service.Repositories.MemberActiveRepository;
 import lombok.RequiredArgsConstructor;
+import lombok.extern.slf4j.Slf4j;
 import org.springframework.data.redis.core.RedisTemplate;
 import org.springframework.messaging.simp.SimpMessagingTemplate;
 import org.springframework.scheduling.annotation.Scheduled;
@@ -10,6 +11,7 @@ import org.springframework.stereotype.Service;
 
 import java.time.LocalDateTime;
 
+@Slf4j
 @Service
 @RequiredArgsConstructor
 
@@ -62,6 +64,7 @@ public class MembersCountService {
     public void broadCastLiveCount(){
         Long currentActive = getActiveMembersCount();
         template.convertAndSend("/topic/activeMembers", currentActive);
+        log.info("current member's active count is {}",currentActive);
     }
 
     /*
