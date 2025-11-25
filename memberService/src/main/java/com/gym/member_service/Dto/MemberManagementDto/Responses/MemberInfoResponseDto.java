@@ -1,4 +1,20 @@
 package com.gym.member_service.Dto.MemberManagementDto.Responses;
 
-public class MemberInfoDto {
+import lombok.AllArgsConstructor;
+import lombok.Builder;
+import lombok.Data;
+import lombok.NoArgsConstructor;
+
+@Data
+@Builder
+@AllArgsConstructor
+@NoArgsConstructor
+public class MemberInfoResponseDto {
+    private String memberId;
+    private String firstName;
+    private String lastName;
+    private String email;
+    private String phone;
+    private String gender;
+    private boolean frozen;
 }
