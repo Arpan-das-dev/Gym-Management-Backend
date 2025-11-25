@@ -6,6 +6,7 @@ import com.gym.member_service.Exception.Util.ExceptionUtil;
 import jakarta.servlet.http.HttpServletRequest;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
+import org.springframework.web.bind.MethodArgumentNotValidException;
 import org.springframework.web.bind.annotation.ControllerAdvice;
 import org.springframework.web.bind.annotation.ExceptionHandler;
 
@@ -28,7 +29,7 @@ public class GlobalExceptionHandler {
 
     @ExceptionHandler({
             InvalidImageUrlException.class, InvalidInputDateException.class, InvalidSessionException.class,
-            InvalidTrainerException.class, PlanExpiredException.class
+            InvalidTrainerException.class, PlanExpiredException.class, MethodArgumentNotValidException.class
     })
     ResponseEntity<ErrorResponse> handleInvalidExceptions(HttpServletRequest request, Exception ex) {
         return ExceptionUtil.buildErrorResponse(HttpStatus.BAD_REQUEST, ex.getMessage(), request);
