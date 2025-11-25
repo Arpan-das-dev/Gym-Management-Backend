@@ -8,10 +8,14 @@ import com.fasterxml.jackson.datatype.jsr310.JavaTimeModule;
 import com.gym.member_service.Dto.MemberFitDtos.Wrappers.BmiSummaryResponseWrapperDto;
 import com.gym.member_service.Dto.MemberFitDtos.Wrappers.PrSummaryResponseWrapperDto;
 import com.gym.member_service.Dto.MemberManagementDto.Responses.AllMemberResponseDto;
+import com.gym.member_service.Dto.MemberManagementDto.Responses.LoginStreakResponseDto;
 import com.gym.member_service.Dto.MemberManagementDto.Responses.MemberDetailsResponseDto;
+import com.gym.member_service.Dto.MemberManagementDto.Responses.MemberInfoResponseDto;
 import com.gym.member_service.Dto.MemberManagementDto.Wrappers.AllMembersInfoWrapperResponseDtoList;
+import com.gym.member_service.Dto.MemberPlanDto.Responses.MemberPlanInfoResponseDto;
 import com.gym.member_service.Dto.MemberTrainerDtos.Responses.TrainerInfoResponseDto;
 import com.gym.member_service.Dto.MemberTrainerDtos.Wrapper.AllSessionInfoResponseDto;
+import com.gym.member_service.Dto.NotificationDto.GenericResponse;
 import org.springframework.cache.CacheManager;
 import org.springframework.cache.annotation.EnableCaching;
 import org.springframework.context.annotation.Bean;
@@ -78,9 +82,32 @@ public class RedisConfig {
     }
 
     @Bean
-    TypedJsonRedisSerializer<AllMembersInfoWrapperResponseDtoList> allMembersInfoWrapperResponseDtoListSerializer
+    public TypedJsonRedisSerializer<AllMembersInfoWrapperResponseDtoList> allMembersInfoWrapperResponseDtoListSerializer
             (ObjectMapper redisObjectMapper) {
         return new TypedJsonRedisSerializer<>(redisObjectMapper, AllMembersInfoWrapperResponseDtoList.class);
+    }
+
+    @Bean
+    public TypedJsonRedisSerializer<MemberInfoResponseDto> memberInfoResponseDtoSerializer
+            (ObjectMapper redisObjectMapper) {
+        return new TypedJsonRedisSerializer<>(redisObjectMapper, MemberInfoResponseDto.class);
+    }
+
+    @Bean
+    public TypedJsonRedisSerializer<LoginStreakResponseDto> loginStreakResponseDtoSerializer
+            (ObjectMapper redisObjectMapper) {
+        return new TypedJsonRedisSerializer<>(redisObjectMapper,LoginStreakResponseDto.class);
+    }
+
+    @Bean
+    public TypedJsonRedisSerializer<GenericResponse> genericResponseSerializer (ObjectMapper redisObjectMapper){
+        return new TypedJsonRedisSerializer<>(redisObjectMapper,GenericResponse.class);
+    }
+
+    @Bean
+    public TypedJsonRedisSerializer<MemberPlanInfoResponseDto> memberPlanInfoResponseDtoSerializer
+            (ObjectMapper redisObjectMapper) {
+        return new TypedJsonRedisSerializer<>(redisObjectMapper,MemberPlanInfoResponseDto.class);
     }
     @Bean
     public CacheManager cacheManager(RedisConnectionFactory connectionFactory,
@@ -90,6 +117,10 @@ public class RedisConfig {
                                      TypedJsonRedisSerializer<BmiSummaryResponseWrapperDto> monthlyBmiSummarySerializer,
                                      TypedJsonRedisSerializer<PrSummaryResponseWrapperDto> monthlyPrSummarySerializer,
                                      TypedJsonRedisSerializer<AllMembersInfoWrapperResponseDtoList> allMembersInfoWrapperResponseDtoListSerializer,
+                                     TypedJsonRedisSerializer<MemberInfoResponseDto> memberInfoResponseDtoTypedJsonRedisSerializer,
+                                     TypedJsonRedisSerializer<LoginStreakResponseDto> loginStreakResponseDtoTypedJsonRedisSerializer,
+                                     TypedJsonRedisSerializer<GenericResponse> genericResponseRedisSerializer,
+                                     TypedJsonRedisSerializer<MemberPlanInfoResponseDto> memberPlanInfoResponseDtoSerializer,
                                      GenericJackson2JsonRedisSerializer genericSerializer) {
 
         RedisCacheConfiguration defaultConfig = RedisCacheConfiguration.defaultCacheConfig()
@@ -109,6 +140,11 @@ public class RedisConfig {
         cacheConfigs.put("memberCache", defaultConfig
                 .serializeValuesWith(RedisSerializationContext.SerializationPair.fromSerializer(memberDtoSerializer))
                 .entryTtl(Duration.ofHours(3)));
+
+        cacheConfigs.put("memberInfo",defaultConfig
+                .serializeValuesWith(RedisSerializationContext.SerializationPair
+                        .fromSerializer(memberInfoResponseDtoTypedJsonRedisSerializer))
+                .entryTtl(Duration.ofHours(6)));
 
         cacheConfigs.put("member'sTrainer",defaultConfig
                 .serializeValuesWith(RedisSerializationContext.SerializationPair
@@ -133,13 +169,20 @@ public class RedisConfig {
         cacheConfigs.put("memberCountCache",
                 RedisCacheConfiguration.defaultCacheConfig().entryTtl(Duration.ofHours(15)));
 
-        cacheConfigs.put("profileImageUrl",
-                RedisCacheConfiguration.defaultCacheConfig().entryTtl(Duration.ofHours(18)));
+        cacheConfigs.put("profileImageUrl", defaultConfig
+                .serializeValuesWith(RedisSerializationContext.SerializationPair
+                        .fromSerializer(genericResponseRedisSerializer))
+                .entryTtl(Duration.ofHours(2)));
 
         cacheConfigs.put("loginStreak",defaultConfig
                 .serializeValuesWith(RedisSerializationContext.SerializationPair
-                        .fromSerializer(genericSerializer))
+                        .fromSerializer(loginStreakResponseDtoTypedJsonRedisSerializer))
                 .entryTtl(Duration.ofHours(2)));
+
+        cacheConfigs.put("memberPlanInfo",defaultConfig
+                .serializeValuesWith(RedisSerializationContext.SerializationPair
+                        .fromSerializer(memberPlanInfoResponseDtoSerializer))
+                .entryTtl(Duration.ofHours(6)));
 
         return RedisCacheManager.builder(connectionFactory)
                 .cacheDefaults(defaultConfig)
