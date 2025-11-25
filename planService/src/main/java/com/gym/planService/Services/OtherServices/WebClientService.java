@@ -98,11 +98,13 @@ public class WebClientService {
     @Async
     public CompletableFuture<String> sendReviewAttachment(byte[] pdfArray) {
         try {
-            File file = convertFileFromByteArray(pdfArray,"INVOICE FOR YEAR:"+ LocalDate.now().getYear());
+            File file = convertFileFromByteArray(pdfArray,"INVOICE_FOR_YEAR_"+ LocalDate.now().getYear());
            return webclient.build().post()
                     .uri(notification_service_Base_URL)
                     .body(BodyInserters.fromMultipartData("attachment",new FileSystemResource(file)))
                     .retrieve().bodyToMono(String.class)
+                   .doOnSuccess(s-> log.info("attachment sent"))
+                   .doOnError(e-> log.warn("failed to sent attachment due to {}",e.getMessage()))
                     .toFuture();
         } catch (IOException e) {
             throw new RuntimeException(e);
