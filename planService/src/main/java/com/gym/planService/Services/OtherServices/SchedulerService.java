@@ -106,8 +106,8 @@ public class SchedulerService {
      * Runs automatically at year-end and summarizes monthly revenues with % change.
      */
     @Transactional
-//    @Scheduled(cron = "0 0 0 1 1 *")
-    @Scheduled(cron = "0 8 19 * * ?")
+    @Scheduled(cron = "0 0 0 1 1 *")
+//    @Scheduled(cron = "0 8 19 * * ?")
     public void schedularYearlyMatricesGenerator() {
         long start = System.currentTimeMillis();
         LocalDate currentDate = LocalDate.now();
