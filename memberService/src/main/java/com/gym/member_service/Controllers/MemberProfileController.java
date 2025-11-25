@@ -2,6 +2,7 @@ package com.gym.member_service.Controllers;
 
 import com.gym.member_service.Dto.NotificationDto.GenericResponse;
 import com.gym.member_service.Services.MemberServices.MemberProfileService;
+import jakarta.validation.constraints.NotBlank;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.http.HttpStatus;
@@ -10,61 +11,99 @@ import org.springframework.validation.annotation.Validated;
 import org.springframework.web.bind.annotation.*;
 import org.springframework.web.multipart.MultipartFile;
 
+
+/**
+
+ Controller responsible for managing member profile images including upload, deletion, and retrieval.
+
+ <p>This controller handles multipart file uploads and interacts with AWS S3 via the MemberProfileService.
+ It provides REST endpoints to:
+
+ <ul>
+ <li>Upload member profile images and store the image URL in the database</li>
+ <li>Delete profile images from AWS S3 and clear the database reference</li>
+ <li>Retrieve profile image URLs for display</li>
+ </ul>
+ <p>Endpoints are protected and validated, with logging added to trace operations and important input values.
+ Appropriate HTTP response statuses are used to denote operation results.
+
+ @author Arpan Das
+
+ @version 1.0
+
+ @since 1.0
+ */
 @Slf4j
 @RestController
 @RequestMapping("${member-service.Base_Url.profile}")
 @RequiredArgsConstructor
 @Validated
-/*
- * This controller is responsible for
- * member to upload or delete image
- * The endpoint is defined in application.properties
- * it uses Aws s3 service which is used in
- * MemberProfileService
- */
+
 public class MemberProfileController {
-    // injecting the service class by constructor
+
     private final MemberProfileService profileService;
 
-    /*
-     * This method allows members to upload
-     * image(profile image) and save as
-     * the profile image url in the database,
-     * at a specific endpoint ("/upload")
-     * it took member id and file as
-     * RequestParam to do so using MemberProfile service
+    /**
+
+     Uploads a profile image for a member.
+
+     <p>Accepts memberId and image multipart file as request parameters.
+     Validates inputs and stores the image URL using MemberProfileService.
+
+     Returns a GenericResponse containing the upload result with HTTP status 202 ACCEPTED.
+
+     @param memberId member's unique identifier
+
+     @param image multipart file containing the profile image to upload
+
+     @return ResponseEntity containing the upload outcome wrapped in GenericResponse
      */
     @PostMapping("/member/upload")
     public ResponseEntity<GenericResponse> uploadImage(@RequestParam String memberId,
-                                              @RequestParam("image") MultipartFile image){
-        // setting the response for return which is a profile image url
-        String urlResponse =  profileService.uploadImage(memberId,image);
-        return ResponseEntity.accepted().body(new GenericResponse(urlResponse));
-        // after successfully upload returns response with ACCEPTED http status.
+                                                       @RequestParam("image") MultipartFile image) {
+        log.info("Received profile image upload request for memberId: {}", memberId);
+        GenericResponse urlResponse = profileService.uploadImage(memberId, image);
+        log.info("Profile image upload processed for memberId: {}", memberId);
+        return ResponseEntity.accepted().body(urlResponse);
     }
-    /*
-     * This method allows members to delete
-     * image(profile image) and save as
-     * the profile image url(as null) in the database,
-     * at a specific endpoint ("/delete")
-     * it took member id  as RequestParam
-     * to do so using MemberProfile service
+
+    /**
+
+     Deletes a profile image of a member.
+
+     <p>Removes image from AWS S3 and clears the profile image URL in the database.
+     Returns confirmation message with HTTP status 202 ACCEPTED.
+
+     @param memberId member's unique identifier whose image is to be deleted
+
+     @return ResponseEntity with deletion confirmation wrapped in GenericResponse
      */
     @DeleteMapping("/member/delete")
-    public ResponseEntity<GenericResponse> deleteImage(@RequestParam String memberId){
-        // deleting the profile image from
-        // AWS s3 bucket and also from database
+    public ResponseEntity<GenericResponse> deleteImage(@RequestParam String memberId) {
+        log.info("Received profile image deletion request for memberId: {}", memberId);
         profileService.deleteImage(memberId);
+        log.info("Profile image deleted successfully for memberId: {}", memberId);
         return ResponseEntity.accepted().body(new GenericResponse("Image deleted Successfully"));
-        // if deletes successfully return message with ACCEPTED http status.
     }
 
+    /**
 
+     Retrieves the profile image URL for a specific member.
+
+     <p>Validates that memberId is not blank, logs the request,
+     and returns the URL wrapped in GenericResponse with HTTP 200 OK.
+
+     @param memberId non-blank member identifier for which profile image URL is requested
+
+     @return ResponseEntity containing the profile image URL wrapped in GenericResponse
+     */
     @GetMapping("/all/getProfileImage")
-    public ResponseEntity <GenericResponse> getProfileImageUrl(@RequestParam String memberId) {
-        log.info("Request received to get profile image at controller [**/all/getProfileImage]");
+    public ResponseEntity<GenericResponse> getProfileImageUrl(
+            @RequestParam @NotBlank(message = "Cannot retrieve profile image without member ID") String memberId) {
+        log.info("Request received to get profile image for memberId: {}", memberId);
         GenericResponse response = profileService.getProfileImageUrlByMemberId(memberId);
-        log.info("Sending profile url {} ...........",response.getMessage().substring(0,7));
-        return ResponseEntity.status(HttpStatus.OK).body(response);
+        String urlPreview = response.getMessage().length() > 7 ? response.getMessage().substring(0, 7) : response.getMessage();
+        log.info("Sending profile URL preview: {}...", urlPreview);
+        return ResponseEntity.ok(response);
     }
 }
