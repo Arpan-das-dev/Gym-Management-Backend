@@ -12,4 +12,10 @@ import java.util.List;
 @NoArgsConstructor
 public class MemberBmiResponseWrapperDto {
     private List<MemberWeighBmiEntryResponseDto> bmiEntryResponseDtoList;
+    private int pageNo;
+    private int pageSize;
+    private long totalElements;
+    private int totalPages;
+    private boolean lastPage;
 }
+
