@@ -7,17 +7,21 @@ import com.gym.member_service.Dto.MemberFitDtos.Wrappers.MemberBmiResponseWrappe
 import com.gym.member_service.Dto.MemberFitDtos.Responses.MemberWeighBmiEntryResponseDto;
 import com.gym.member_service.Dto.MemberFitDtos.Responses.MemberPrProgressResponseDto;
 import com.gym.member_service.Dto.MemberFitDtos.Wrappers.MemberPrProgressWrapperDto;
+import com.gym.member_service.Dto.NotificationDto.GenericResponse;
 import com.gym.member_service.Services.FitnessServices.MemberFitService;
+import com.gym.member_service.Utils.LogExecutionTime;
 import jakarta.validation.Valid;
-import jakarta.validation.constraints.FutureOrPresent;
-import jakarta.validation.constraints.PastOrPresent;
+import jakarta.validation.constraints.*;
 import lombok.RequiredArgsConstructor;
+import lombok.extern.slf4j.Slf4j;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.validation.annotation.Validated;
 import org.springframework.web.bind.annotation.*;
 
 import java.time.LocalDate;
+import java.time.LocalDateTime;
+import java.time.format.DateTimeFormatter;
 import java.util.List;
 /**
  * REST controller for managing Member Fitness data (BMI entries and PR progress).
@@ -27,6 +31,7 @@ import java.util.List;
  *
  * <p><b>Base URL:</b> configured via {@code member-service.Base_Url.Fit} in application.properties
  */
+@Slf4j
 @RestController
 @RequiredArgsConstructor
 @RequestMapping("${member-service.Base_Url.Fit}")
@@ -35,6 +40,7 @@ import java.util.List;
 public class MemberFitController {
 
     private final MemberFitService fitService;
+    private DateTimeFormatter formatter = DateTimeFormatter.ofPattern("yyyy-MM-dd HH:mm:ss");
     /**
      * Add a new BMI/weight entry for a given member.
      *
@@ -44,27 +50,41 @@ public class MemberFitController {
      *
      * <p>Returns {@link HttpStatus#CREATED} if successfully inserted.</p>
      */
+    @LogExecutionTime
     @PostMapping("/weight-bmi-entry")
-    ResponseEntity<MemberWeighBmiEntryResponseDto> addWeightBmi(@RequestParam String memberId,
-                                                                @Valid @RequestBody MemberWeighBmiEntryRequestDto
+    ResponseEntity<GenericResponse> addWeightBmi(
+            @RequestParam @NotBlank(message = "member id is required to add new entries") String memberId,
+                                                 @RequestBody MemberWeighBmiEntryRequestDto
                                                                         requestDto)
     {
-        MemberWeighBmiEntryResponseDto responseDto = fitService.addWeighBmiEntry(memberId, requestDto);
-        return ResponseEntity.status(HttpStatus.CREATED).body(responseDto);
+        log.info("⌛⌛ {} request received to add new bmi entry for member {} on {}",
+                LocalDateTime.now().format(formatter),memberId,requestDto.getDate());
+        MemberWeighBmiEntryResponseDto response = fitService.addWeighBmiEntry(memberId, requestDto);
+        log.info("successfully updated member's bmi entry of weight {} with bmi {}"
+                , response.getWeight(),response.getBmi());
+        String responseDto = "Successfully added new bmi entry";
+        return ResponseEntity.status(HttpStatus.CREATED).body(new GenericResponse(responseDto));
     }
     /**
      * Retrieve all BMI/weight entries for a member within the last given number of days.
      *
      * @param memberId member identifier
-     * @param days     number of days to look back
+     * @param pageNo and
+     * @param pageSize  of days to look back
      * @return list of BMI entries wrapped in response DTO
      *
      * <p>Returns {@link HttpStatus#ACCEPTED} when records are fetched successfully.</p>
      */
-    @GetMapping("/weightBmi")
-    ResponseEntity<MemberBmiResponseWrapperDto> getAllBmiListById(@RequestParam String memberId,
-                                                                  @RequestParam int days) {
-        MemberBmiResponseWrapperDto responseDtoList = fitService.getAllBmiEntry(memberId, days);
+    @LogExecutionTime
+    @GetMapping("/get/{pageNo}/WeightBmiEntries/{pageSize}")
+    ResponseEntity<MemberBmiResponseWrapperDto> getAllBmiListById(
+            @RequestParam @NotBlank(message = "please verify your identity before add any entries") String memberId,
+            @PathVariable @PositiveOrZero(message = "Can not proceed negative page numbers please try again") int pageNo,
+            @PathVariable @PositiveOrZero(message = "Can not proceed negative page sizes please try again" ) int pageSize)
+    {
+        log.info("request received on ⌛⌛ {} to get bmi entries for member {} for last {}th month for {} days",
+                LocalDateTime.now().format(formatter), memberId,pageNo, pageSize);
+        MemberBmiResponseWrapperDto responseDtoList = fitService.getAllBmiEntry(memberId, pageNo,pageSize);
         return ResponseEntity.status(HttpStatus.ACCEPTED).body(responseDtoList);
     }
     /**
@@ -76,14 +96,15 @@ public class MemberFitController {
      *
      * <p>Returns {@link HttpStatus#OK} if deletion was successful.</p>
      */
-    @DeleteMapping("/weightBmi")
-    ResponseEntity<String> deleteByIdDate(@RequestParam String memberId,
-                                          @RequestParam
-                                          @FutureOrPresent(message = "Can not delete a pr from future")
-                                          LocalDate date)
-    {
-       String response = fitService.deleteByDateAndId(memberId,date);
-       return ResponseEntity.status(HttpStatus.OK).body(response);
+    @LogExecutionTime
+    @DeleteMapping("/deleteWeightBmi")
+    ResponseEntity<GenericResponse> deleteByIdDate(
+            @RequestParam @NotBlank(message = "please verify your identity to delete any entries") String memberId,
+            @RequestParam @PastOrPresent(message = "Can not delete a bmi entry from future") LocalDate date) {
+        log.info("⌛⌛ {} request received to to delete bmi entries for member {} for date {}",
+                LocalDateTime.now().format(formatter),memberId,date);
+        String response = fitService.deleteByDateAndId(memberId, date);
+        return ResponseEntity.status(HttpStatus.OK).body(new GenericResponse(response));
     }
     /**
      * Add one or more new PR (Personal Record) entries for a given member.
@@ -164,9 +185,17 @@ public class MemberFitController {
      *
      * <p>Returns {@link HttpStatus#OK} along with cached data (via Redis) if available.</p>
      */
+    @LogExecutionTime
     @GetMapping("/bmiSummary")
-    ResponseEntity<BmiSummaryResponseWrapperDto> getMonthlyBmiReport(@RequestParam String memberId){
-        BmiSummaryResponseWrapperDto response = fitService.getBmiReportByMonth(memberId);
+    ResponseEntity<BmiSummaryResponseWrapperDto> getMonthlyBmiReport(
+             @RequestParam @NotBlank(message = "please verify your identity to view summaries") String memberId,
+             @PathVariable @PositiveOrZero(message = "Can not proceed negative page numbers please enter valid page no again") int pageNo,
+             @PathVariable @PositiveOrZero(message = "Can not proceed negative page sizes please enter a valid page size again" ) int pageSize)
+
+    {
+        log.info("request received on ⌛⌛ {} to get bmi summaries for member {} for  {}  for {} days",
+                LocalDateTime.now().format(formatter), memberId,pageNo, pageSize);
+        BmiSummaryResponseWrapperDto response = fitService.getBmiReportByMonth(memberId,pageNo,pageSize);
         return  ResponseEntity.status(HttpStatus.OK).body(response);
     }
     /**
