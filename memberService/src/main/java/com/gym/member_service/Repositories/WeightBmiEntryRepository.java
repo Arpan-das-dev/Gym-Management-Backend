@@ -1,6 +1,8 @@
 package com.gym.member_service.Repositories;
 
 import com.gym.member_service.Model.WeightBmiEntry;
+import org.springframework.data.domain.Page;
+import org.springframework.data.domain.Pageable;
 import org.springframework.data.jpa.repository.JpaRepository;
 import org.springframework.data.jpa.repository.Query;
 import org.springframework.data.repository.query.Param;
@@ -27,15 +29,11 @@ public interface WeightBmiEntryRepository extends JpaRepository<WeightBmiEntry, 
      * a custom method(definition) with custom query to find member with data
      * between certain date range
      */
-    @Query(value = "SELECT * FROM members.weight_bmi_entries " +
-            "WHERE member_id = :memberId " +
-            "AND date BETWEEN :endDate AND :starDate",
-            nativeQuery = true)
-    List<WeightBmiEntry> findMemberByDateRange(@Param("memberId") String memberId,
-                                               @Param("endDate") LocalDate endDate,
-                                               @Param("starDate") LocalDate starDate);
+    @Query("SELECT w FROM WeightBmiEntry w WHERE w.member.id = :memberId ORDER BY w.date DESC")
+    Page<WeightBmiEntry> findWeightBmiEntryByPages(@Param("memberId") String memberId, Pageable pageable);
 
-    @Query(value = "SELECT * FROM members.weight_bmi_entries " +
+
+    @Query(value = "SELECT * FROM memberservice.weight_bmi_entries " +
             "WHERE member_id = :memberId " +
             "AND date BETWEEN :endDate AND :startDate",
             nativeQuery = true)
