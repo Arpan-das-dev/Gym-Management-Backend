@@ -39,6 +39,6 @@ public class GlobalExceptionHandler {
             Exception.class
     })
     ResponseEntity<ErrorResponse> handleDefaultExceptions (HttpServletRequest request, Exception ex) {
-        return ExceptionUtil.buildErrorResponse(HttpStatus.INTERNAL_SERVER_ERROR,ex.getMessage(),request);
+        return ExceptionUtil.buildErrorResponse(HttpStatus.INTERNAL_SERVER_ERROR,ex.getLocalizedMessage(),request);
     }
 }
