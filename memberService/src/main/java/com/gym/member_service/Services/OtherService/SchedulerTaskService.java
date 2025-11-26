@@ -179,66 +179,99 @@ public class SchedulerTaskService {
      * @see WeightBmiEntry
      * @see PrProgresses
      */
-    @Scheduled(cron = "0 0 1 * * SUN")
+//    @Scheduled(cron = "0 0 1 * * SUN")
+    @Scheduled(cron = "32 30 * * * *")
     @Transactional
     public void computeSummary() {
+        log.info("schedular task triggered to compute summaries");
         List<Member> allMembers = memberRepository.findAll();
         LocalDate startDate = LocalDate.now().minusDays(1);
         LocalDate endDate = LocalDate.now().minusDays(6);
 
+
         for (Member member : allMembers) {
-            int year = startDate.getYear();
-            int month = startDate.getMonthValue();
-
-            // Compute BMI summary
-            List<WeightBmiEntry> bmiEntries = weightBmiEntryRepository
-                    .findAllByMemberIdAndWeek(member.getId(), endDate, startDate);
-            if (!bmiEntries.isEmpty()) {
-                double avgBmi = bmiEntries.stream().mapToDouble(WeightBmiEntry::getBmi).average().orElse(0);
-                double minBmi = bmiEntries.stream().mapToDouble(WeightBmiEntry::getBmi).min().orElse(0);
-                double maxBmi = bmiEntries.stream().mapToDouble(WeightBmiEntry::getBmi).max().orElse(0);
-
-                double avgWeight = bmiEntries.stream().mapToDouble(WeightBmiEntry::getWeight).average().orElse(0);
-                double minWeight = bmiEntries.stream().mapToDouble(WeightBmiEntry::getWeight).min().orElse(0);
-                double maxWeight = bmiEntries.stream().mapToDouble(WeightBmiEntry::getWeight).max().orElse(0);
-
-                BmiSummary summary = BmiSummary.builder()
-                        .member(member)
-                        .year(year).month(month)
-                        .avgBmi(avgBmi).minBmi(minBmi).maxBmi(maxBmi)
-                        .avgWeight(avgWeight).minWeight(minWeight).maxWeight(maxWeight)
-                        .entryCount(bmiEntries.size())
-                        .build();
-                bmiSummaryRepository.save(summary);
-            }
-
-            // Compute PR summary
-            List<PrProgresses> progresses = prProgressRepository
-                    .findAllByMemberIdAndWeek(member.getId(), startDate, endDate);
-            Map<String, List<PrProgresses>> groupedWorkouts =
-                    progresses.stream().collect(Collectors.groupingBy(PrProgresses::getWorkoutName));
-
-            for (Map.Entry<String, List<PrProgresses>> entry : groupedWorkouts.entrySet()) {
-                String workoutName = entry.getKey();
-                List<PrProgresses> prs = entry.getValue();
-
-                double avgWeight = prs.stream().mapToDouble(PrProgresses::getWeight).average().orElse(0);
-                double maxWeight = prs.stream().mapToDouble(PrProgresses::getWeight).max().orElse(0);
-
-                int avgReps = (int) prs.stream().mapToDouble(PrProgresses::getRepetitions).average().orElse(0);
-                int maxReps = (int) prs.stream().mapToDouble(PrProgresses::getRepetitions).max().orElse(0);
-
-                PrSummary summary = PrSummary.builder()
-                        .year(year).month(month)
-                        .workoutName(workoutName)
-                        .avgWeight(avgWeight).avgReps(avgReps)
-                        .maxWeight(maxWeight).maxReps(maxReps)
-                        .entryCount(prs.size())
-                        .build();
-                prRepositorySummary.save(summary);
-            }
+             computeWeightBmi(member,startDate,endDate);
+//             computePr(member,startDate,endDate);
         }
     }
+
+    public void computePr(Member member, LocalDate startDate, LocalDate endDate) {
+        List<PrProgresses> progresses = prProgressRepository
+                .findAllByMemberIdAndWeek(member.getId(), startDate, endDate);
+        Map<String, List<PrProgresses>> groupedWorkouts =
+                progresses.stream().collect(Collectors.groupingBy(PrProgresses::getWorkoutName));
+        for (Map.Entry<String, List<PrProgresses>> entry : groupedWorkouts.entrySet()) {
+            String workoutName = entry.getKey();
+            List<PrProgresses> prs = entry.getValue();
+
+            double avgWeight = prs.stream().mapToDouble(PrProgresses::getWeight).average().orElse(0);
+            double maxWeight = prs.stream().mapToDouble(PrProgresses::getWeight).max().orElse(0);
+
+            int avgReps = (int) prs.stream().mapToDouble(PrProgresses::getRepetitions).average().orElse(0);
+            int maxReps = (int) prs.stream().mapToDouble(PrProgresses::getRepetitions).max().orElse(0);
+
+            PrSummary summary = PrSummary.builder()
+                    .year(LocalDate.now().getYear())
+                    .month(LocalDate.now().getMonthValue())
+                    .workoutName(workoutName)
+                    .avgWeight(avgWeight).avgReps(avgReps)
+                    .maxWeight(maxWeight).maxReps(maxReps)
+                    .entryCount(prs.size())
+                    .build();
+            prRepositorySummary.save(summary);
+        }
+    }
+
+    public void computeWeightBmi(Member member, LocalDate startDate, LocalDate endDate) {
+        log.info("computeWeightBmi started for memberId={} for period {} to {}",
+                member.getId(), startDate, endDate);
+
+        int year = startDate.getYear();
+        int month = startDate.getMonthValue();
+
+        List<WeightBmiEntry> bmiEntries = weightBmiEntryRepository
+                .findAllByMemberIdAndWeek(member.getId(), endDate, startDate);
+
+        log.debug("Fetched {} BMI entries for memberId={} between {} and {}",
+                bmiEntries.size(), member.getId(), startDate, endDate);
+
+        if (!bmiEntries.isEmpty()) {
+            double avgBmi = bmiEntries.stream().mapToDouble(WeightBmiEntry::getBmi).average().orElse(0);
+            double minBmi = bmiEntries.stream().mapToDouble(WeightBmiEntry::getBmi).min().orElse(0);
+            double maxBmi = bmiEntries.stream().mapToDouble(WeightBmiEntry::getBmi).max().orElse(0);
+
+            double avgWeight = bmiEntries.stream().mapToDouble(WeightBmiEntry::getWeight).average().orElse(0);
+            double minWeight = bmiEntries.stream().mapToDouble(WeightBmiEntry::getWeight).min().orElse(0);
+            double maxWeight = bmiEntries.stream().mapToDouble(WeightBmiEntry::getWeight).max().orElse(0);
+
+            log.info("Computed BMI summary for memberId={}: avgBmi={}, minBmi={}, maxBmi={}, avgWeight={}, minWeight={}, maxWeight={}, entryCount={}",
+                    member.getId(), avgBmi, minBmi, maxBmi, avgWeight, minWeight, maxWeight, bmiEntries.size());
+
+            BmiSummary summary = BmiSummary.builder()
+                    .member(member)
+                    .year(year)
+                    .month(month)
+                    .avgBmi(avgBmi)
+                    .minBmi(minBmi)
+                    .maxBmi(maxBmi)
+                    .avgWeight(avgWeight)
+                    .minWeight(minWeight)
+                    .maxWeight(maxWeight)
+                    .entryCount(bmiEntries.size())
+                    .build();
+
+            bmiSummaryRepository.save(summary);
+            log.info("BmiSummary saved for memberId={} year={} month={}", member.getId(), year, month);
+        } else {
+            log.warn("No BMI entries found to compute summary for memberId={} between {} and {}",
+                    member.getId(), startDate, endDate);
+        }
+
+        log.info("computeWeightBmi completed for memberId={}", member.getId());
+    }
+
+
+
     /**
      * Real-time session reminder notification task.
      *
