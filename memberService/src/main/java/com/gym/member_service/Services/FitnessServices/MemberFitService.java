@@ -16,10 +16,15 @@ import com.gym.member_service.Exception.Exceptions.InvalidInputDateException;
 import com.gym.member_service.Exception.Exceptions.UserNotFoundException;
 import com.gym.member_service.Model.*;
 import com.gym.member_service.Repositories.*;
+import com.gym.member_service.Services.OtherService.SchedulerTaskService;
 import lombok.RequiredArgsConstructor;
+import lombok.extern.slf4j.Slf4j;
 import org.springframework.cache.annotation.CacheEvict;
 import org.springframework.cache.annotation.Cacheable;
 import org.springframework.cache.annotation.Caching;
+import org.springframework.data.domain.Page;
+import org.springframework.data.domain.PageRequest;
+import org.springframework.data.domain.Pageable;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
@@ -67,6 +72,7 @@ import java.util.stream.Collectors;
  * {@link PrSummaryResponseWrapperDto}) are used to avoid Redis
  * serialization issues with plain lists.</p>
  */
+@Slf4j
 @Service
 @RequiredArgsConstructor
 public class MemberFitService {
@@ -76,7 +82,7 @@ public class MemberFitService {
     private final PrProgressRepository prProgressRepository;
     private final BmiSummaryRepository bmiSummaryRepository;
     private final PrSummaryRepository prSummaryRepository;
-
+    private final SchedulerTaskService taskService;
     /**
      * Adds a new weight and BMI entry for the specified member.
      *
@@ -96,24 +102,29 @@ public class MemberFitService {
      * @throws DuplicateUserFoundException if the entry already exists (depending on rules)
      */
     @Transactional
-    @Caching(evict = {
-            @CacheEvict(value = "memberListCache", key = "'All'"),
-            @CacheEvict(value = "memberCache", key = "#memberId"),
-            @CacheEvict(value = "memberBmiCache", key = "#memberId")
-    })
+    @CacheEvict(value = "memberBmiCache", key = "#memberId + '*'")
     public MemberWeighBmiEntryResponseDto addWeighBmiEntry(String memberId, MemberWeighBmiEntryRequestDto requestDto) {
-
+        log.info("request reached service class to add bmi entry for member {}",memberId);
         Member member = memberRepository.findById(memberId)
-                .orElseThrow(() -> new UserNotFoundException("Member with id " + memberId + " not found"));
+                .orElseThrow(() -> {
+                    String message = "Member with id " + memberId + " not found";
+                    log.error("🛑 Member Lookup Failed: {}", message);
+                    return new UserNotFoundException("Member with id " + memberId + " not found");
+                });
+        log.debug("Found member with ID: {}", memberId);
         Optional<WeightBmiEntry> existingEntryOpt = weightBmiEntryRepository
                 .findByMemberIdAndDate(memberId, requestDto.getDate());
 
         WeightBmiEntry bmiEntry;
+        String operationType;
         if (existingEntryOpt.isPresent()) {
             bmiEntry = existingEntryOpt.get();
             bmiEntry.setBmi(requestDto.getBmi());
             bmiEntry.setMember(member);
             bmiEntry.setWeight(requestDto.getWeight());
+            operationType = "UPDATE";
+            log.info("DB OPERATION :: Existing BMI entry found for member {} on {}. Preparing to update.",
+                    memberId, requestDto.getDate());
         } else {
             bmiEntry = WeightBmiEntry.builder()
                     .date(requestDto.getDate())
@@ -121,14 +132,23 @@ public class MemberFitService {
                     .bmi(requestDto.getBmi())
                     .weight(requestDto.getWeight())
                     .build();
+            operationType = "CREATE";
+            log.info("DB OPERATION :: No existing BMI entry found for member {} on {}. Preparing to create new entry.",
+                    memberId, requestDto.getDate());
         }
 
         if (!requestDto.getDate().isBefore(LocalDate.now())) {
+            log.info("MEMBER UPDATE :: Date {} is today or future. Updating member {}'s current BMI to {}.",
+                    requestDto.getDate(), memberId, requestDto.getBmi());
             member.setCurrentBmi(requestDto.getBmi());
+            taskService.computeWeightBmi(member,requestDto.getDate().minusMonths(1),requestDto.getDate());
             memberRepository.save(member);
+            log.debug("MEMBER UPDATE :: Member entity saved successfully with new current BMI.");
         }
 
         WeightBmiEntry responseEntry = weightBmiEntryRepository.save(bmiEntry);
+        log.info("SUCCESS {} :: BMI entry (ID: {}) for member {} on {} was successfully persisted.",
+                operationType, responseEntry.getId(), memberId, responseEntry.getDate());
         return MemberWeighBmiEntryResponseDto.builder()
                 .date(responseEntry.getDate())
                 .bmi(responseEntry.getBmi())
@@ -149,16 +169,16 @@ public class MemberFitService {
      * </ul>
      *
      * @param memberId member identifier
-     * @param days     number of days of history to fetch
+     * @param pageNo and      number of page of history to fetch
+     * @param pageSize how many data will be sent on every request
      * @return wrapper DTO containing list of BMI entries
      */
     @Transactional(readOnly = true)
-    @Cacheable(value = "memberBmiCache", key = "#memberId")
-    public MemberBmiResponseWrapperDto getAllBmiEntry(String memberId, int days) {
-        LocalDate startDate = LocalDate.now();
-        LocalDate endDate = startDate.minusDays(days - 1);
-        List<WeightBmiEntry> bmiEntries = weightBmiEntryRepository
-                .findMemberByDateRange(memberId, endDate,startDate);
+    @Cacheable(value = "memberBmiCache", key = "#memberId + ':pageNo:' + #pageNo + '::pageSize:' + #pageSize")
+    public MemberBmiResponseWrapperDto getAllBmiEntry(String memberId, int pageNo, int pageSize) {
+        Pageable page = PageRequest.of(pageNo,pageSize);
+        Page<WeightBmiEntry> bmiEntries = weightBmiEntryRepository
+                .findWeightBmiEntryByPages(memberId, page);
 
         List<MemberWeighBmiEntryResponseDto> bmiList = bmiEntries.stream()
                 .map(entry -> MemberWeighBmiEntryResponseDto.builder()
@@ -169,6 +189,11 @@ public class MemberFitService {
                 .toList();
         return MemberBmiResponseWrapperDto.builder()
                 .bmiEntryResponseDtoList(bmiList)
+                .lastPage(bmiEntries.isLast())
+                .pageNo(bmiEntries.getNumber())
+                .pageSize(bmiEntries.getSize())
+                .totalElements(bmiEntries.getTotalElements())
+                .totalPages(bmiEntries.getTotalPages())
                 .build();
     }
     /**
@@ -185,11 +210,8 @@ public class MemberFitService {
      * @param date     date of the entry to delete
      * @return success message once deleted
      */
-    @Caching(evict = {
-            @CacheEvict(value = "memberBmiCache", key = "#memberId"),
-            @CacheEvict(value = "memberListCache", key = "'All'"),
-            @CacheEvict(value = "memberCache", key = "#memberId")
-    })
+
+    @CacheEvict(value = "memberBmiCache",  key = "#memberId + '*'")
     @Transactional
     public String deleteByDateAndId(String memberId, LocalDate date) {
         int deleted = weightBmiEntryRepository.deleteByMember_IdAndDate(memberId, date);
@@ -381,19 +403,20 @@ public class MemberFitService {
      */
     @Cacheable(value = "membersMonthlyBmiCache",key = "#memberId")
     @Transactional(readOnly = true)
-    public BmiSummaryResponseWrapperDto getBmiReportByMonth(String memberId) {
+    public BmiSummaryResponseWrapperDto getBmiReportByMonth(String memberId,int pageNo, int pageSize) {
         // Fetch raw BMI summaries for this member from DB
-       List<BmiSummary> summary = bmiSummaryRepository.findByMemberId(memberId);
+        Pageable pageable = PageRequest.of(pageNo,pageSize);
         // Map entity -> DTO
-        List<BmiSummaryResponseDto> responseDto = summary.stream()
-                .map(response-> BmiSummaryResponseDto.builder()
-                        .avgBmi(response.getAvgBmi())
-                        .avgWeight(response.getAvgWeight())
-                        .maxBmi(response.getMaxBmi())
-                        .minBmi(response.getMinBmi())
-                        .entryCount(response.getEntryCount())
-                        .build())
+        List<BmiSummaryResponseDto> responseDto = bmiSummaryRepository.findByMemberId(memberId,pageable)
+                .stream().map(response-> BmiSummaryResponseDto.builder()
+                .avgBmi(response.getAvgBmi())
+                .avgWeight(response.getAvgWeight())
+                .maxBmi(response.getMaxBmi())
+                .minBmi(response.getMinBmi())
+                .entryCount(response.getEntryCount())
+                .build())
                 .collect(Collectors.toList());
+
         // Wrap the list to fix serialization issues & standardize response format
         return BmiSummaryResponseWrapperDto.builder()
                .summaryResponseDto(responseDto)
@@ -433,7 +456,10 @@ public class MemberFitService {
                 .build();
     }
 
+
+
 }
+
 /*
  * ============================================================================
  *  MemberFitService
