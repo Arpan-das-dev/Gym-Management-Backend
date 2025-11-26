@@ -16,6 +16,6 @@ public class test {
     private final SmsService smsService;
     @PostMapping("/now")
     public void sendSms(){
-        smsService.sendOtp("8145415374","BApKeLauDe");
+        smsService.sendOtp("8145415374","hello world");
     }
 }
