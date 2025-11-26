@@ -6,6 +6,7 @@ import com.fasterxml.jackson.databind.ObjectMapper;
 import com.fasterxml.jackson.databind.SerializationFeature;
 import com.fasterxml.jackson.datatype.jsr310.JavaTimeModule;
 import com.gym.member_service.Dto.MemberFitDtos.Wrappers.BmiSummaryResponseWrapperDto;
+import com.gym.member_service.Dto.MemberFitDtos.Wrappers.MemberBmiResponseWrapperDto;
 import com.gym.member_service.Dto.MemberFitDtos.Wrappers.PrSummaryResponseWrapperDto;
 import com.gym.member_service.Dto.MemberManagementDto.Responses.AllMemberResponseDto;
 import com.gym.member_service.Dto.MemberManagementDto.Responses.LoginStreakResponseDto;
@@ -109,6 +110,12 @@ public class RedisConfig {
             (ObjectMapper redisObjectMapper) {
         return new TypedJsonRedisSerializer<>(redisObjectMapper,MemberPlanInfoResponseDto.class);
     }
+
+    @Bean
+    public TypedJsonRedisSerializer<MemberBmiResponseWrapperDto> memberBmiResponseWrapperDtoSerializer
+            (ObjectMapper redisObjectMapper) {
+        return new TypedJsonRedisSerializer<>(redisObjectMapper,MemberBmiResponseWrapperDto.class);
+    }
     @Bean
     public CacheManager cacheManager(RedisConnectionFactory connectionFactory,
                                      TypedJsonRedisSerializer<AllMemberResponseDto> memberDtoSerializer,
@@ -121,6 +128,7 @@ public class RedisConfig {
                                      TypedJsonRedisSerializer<LoginStreakResponseDto> loginStreakResponseDtoTypedJsonRedisSerializer,
                                      TypedJsonRedisSerializer<GenericResponse> genericResponseRedisSerializer,
                                      TypedJsonRedisSerializer<MemberPlanInfoResponseDto> memberPlanInfoResponseDtoSerializer,
+                                     TypedJsonRedisSerializer<MemberBmiResponseWrapperDto> memberBmiResponseWrapperDtoSerializer,
                                      GenericJackson2JsonRedisSerializer genericSerializer) {
 
         RedisCacheConfiguration defaultConfig = RedisCacheConfiguration.defaultCacheConfig()
@@ -137,9 +145,6 @@ public class RedisConfig {
                 .serializeValuesWith(RedisSerializationContext.SerializationPair.fromSerializer(allMembersInfoWrapperResponseDtoListSerializer))
                 .entryTtl(Duration.ofMinutes(60)));
 
-        cacheConfigs.put("memberCache", defaultConfig
-                .serializeValuesWith(RedisSerializationContext.SerializationPair.fromSerializer(memberDtoSerializer))
-                .entryTtl(Duration.ofHours(3)));
 
         cacheConfigs.put("memberInfo",defaultConfig
                 .serializeValuesWith(RedisSerializationContext.SerializationPair
@@ -155,6 +160,10 @@ public class RedisConfig {
                 .serializeValuesWith(RedisSerializationContext.SerializationPair
                         .fromSerializer(allSessionInfoResponseDtoSerializer))
                 .entryTtl(Duration.ofHours(16)));
+
+        cacheConfigs.put("memberBmiCache",defaultConfig
+                .serializeValuesWith(RedisSerializationContext.SerializationPair
+                        .fromSerializer(memberBmiResponseWrapperDtoSerializer)).entryTtl(Duration.ofHours(4)));
 
         cacheConfigs.put("membersMonthlyBmiCache",defaultConfig
                 .serializeValuesWith(RedisSerializationContext.SerializationPair
@@ -195,10 +204,3 @@ public class RedisConfig {
         return new StringRedisTemplate(factory);
     }
 }
-/*
-cacheConfigs.put("memberCache", defaultConfig
-                .serializeValuesWith(RedisSerializationContext.SerializationPair.fromSerializer(memberDtoSerializer))
-                .entryTtl(Duration.ofHours(3)));
-
-
- */
