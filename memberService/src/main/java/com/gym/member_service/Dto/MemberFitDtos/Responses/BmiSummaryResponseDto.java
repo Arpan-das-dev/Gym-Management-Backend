@@ -16,5 +16,7 @@ public class BmiSummaryResponseDto {
     private double avgWeight;
     private double minWeight;
     private double maxWeight;
+    private int monthValue;
+    private int year;
     private int entryCount;
 }

@@ -12,4 +12,11 @@ import java.util.List;
 @NoArgsConstructor
 public class MemberPrProgressWrapperDto {
     private List<MemberPrProgressResponseDto> responseDtoList;
+
+    private int pageNo;
+    private int pageSize;
+    private long totalElements;
+    private int totalPages;
+    private boolean lastPage;
 }
+

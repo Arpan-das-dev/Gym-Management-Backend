@@ -29,7 +29,8 @@ public class GlobalExceptionHandler {
 
     @ExceptionHandler({
             InvalidImageUrlException.class, InvalidInputDateException.class, InvalidSessionException.class,
-            InvalidTrainerException.class, PlanExpiredException.class, MethodArgumentNotValidException.class
+            InvalidTrainerException.class, PlanExpiredException.class, MethodArgumentNotValidException.class,
+            InvalidInputDateException.class, InvalidPrUpdateException.class
     })
     ResponseEntity<ErrorResponse> handleInvalidExceptions(HttpServletRequest request, Exception ex) {
         return ExceptionUtil.buildErrorResponse(HttpStatus.BAD_REQUEST, ex.getMessage(), request);

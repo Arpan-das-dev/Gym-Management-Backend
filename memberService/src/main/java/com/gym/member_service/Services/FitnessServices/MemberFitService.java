@@ -2,26 +2,21 @@ package com.gym.member_service.Services.FitnessServices;
 
 import com.gym.member_service.Controllers.MemberFitController;
 import com.gym.member_service.Dto.MemberFitDtos.Requests.MemberWeighBmiEntryRequestDto;
-import com.gym.member_service.Dto.MemberFitDtos.Requests.PrProgressRequestDto;
 import com.gym.member_service.Dto.MemberFitDtos.Responses.BmiSummaryResponseDto;
-import com.gym.member_service.Dto.MemberFitDtos.Responses.PrSummaryResponseDto;
 import com.gym.member_service.Dto.MemberFitDtos.Wrappers.BmiSummaryResponseWrapperDto;
 import com.gym.member_service.Dto.MemberFitDtos.Wrappers.MemberBmiResponseWrapperDto;
 import com.gym.member_service.Dto.MemberFitDtos.Responses.MemberWeighBmiEntryResponseDto;
-import com.gym.member_service.Dto.MemberFitDtos.Responses.MemberPrProgressResponseDto;
-import com.gym.member_service.Dto.MemberFitDtos.Wrappers.MemberPrProgressWrapperDto;
 import com.gym.member_service.Dto.MemberFitDtos.Wrappers.PrSummaryResponseWrapperDto;
 import com.gym.member_service.Exception.Exceptions.DuplicateUserFoundException;
-import com.gym.member_service.Exception.Exceptions.InvalidInputDateException;
-import com.gym.member_service.Exception.Exceptions.UserNotFoundException;
 import com.gym.member_service.Model.*;
 import com.gym.member_service.Repositories.*;
+import com.gym.member_service.Services.MemberServices.MemberManagementService;
 import com.gym.member_service.Services.OtherService.SchedulerTaskService;
+import com.gym.member_service.Utils.CustomJavaEvict;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.cache.annotation.CacheEvict;
 import org.springframework.cache.annotation.Cacheable;
-import org.springframework.cache.annotation.Caching;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.PageRequest;
 import org.springframework.data.domain.Pageable;
@@ -30,7 +25,6 @@ import org.springframework.transaction.annotation.Transactional;
 
 import java.time.LocalDate;
 import java.util.*;
-import java.util.stream.Collectors;
 
 /**
  * Service layer for managing member fitness data such as BMI entries,
@@ -77,12 +71,12 @@ import java.util.stream.Collectors;
 @RequiredArgsConstructor
 public class MemberFitService {
 
+    private final MemberManagementService managementService;
     private final MemberRepository memberRepository;
     private final WeightBmiEntryRepository weightBmiEntryRepository;
-    private final PrProgressRepository prProgressRepository;
     private final BmiSummaryRepository bmiSummaryRepository;
-    private final PrSummaryRepository prSummaryRepository;
     private final SchedulerTaskService taskService;
+    private final CustomJavaEvict evict;
     /**
      * Adds a new weight and BMI entry for the specified member.
      *
@@ -102,15 +96,10 @@ public class MemberFitService {
      * @throws DuplicateUserFoundException if the entry already exists (depending on rules)
      */
     @Transactional
-    @CacheEvict(value = "memberBmiCache", key = "#memberId + '*'")
+    @CacheEvict(value = "MemberEntity", key = "#memberId")
     public MemberWeighBmiEntryResponseDto addWeighBmiEntry(String memberId, MemberWeighBmiEntryRequestDto requestDto) {
         log.info("request reached service class to add bmi entry for member {}",memberId);
-        Member member = memberRepository.findById(memberId)
-                .orElseThrow(() -> {
-                    String message = "Member with id " + memberId + " not found";
-                    log.error("🛑 Member Lookup Failed: {}", message);
-                    return new UserNotFoundException("Member with id " + memberId + " not found");
-                });
+        Member member = managementService.cacheMemberDetails(memberId);
         log.debug("Found member with ID: {}", memberId);
         Optional<WeightBmiEntry> existingEntryOpt = weightBmiEntryRepository
                 .findByMemberIdAndDate(memberId, requestDto.getDate());
@@ -137,16 +126,21 @@ public class MemberFitService {
                     memberId, requestDto.getDate());
         }
 
+        LocalDate start = requestDto.getDate().withDayOfMonth(1);
+        log.info("calling schedular's logic to update summaries between range tof start day {} and end day {}",
+                start,requestDto.getDate());
+        taskService.computeWeightBmi(member,start,requestDto.getDate());
         if (!requestDto.getDate().isBefore(LocalDate.now())) {
             log.info("MEMBER UPDATE :: Date {} is today or future. Updating member {}'s current BMI to {}.",
                     requestDto.getDate(), memberId, requestDto.getBmi());
             member.setCurrentBmi(requestDto.getBmi());
-            taskService.computeWeightBmi(member,requestDto.getDate().minusMonths(1),requestDto.getDate());
             memberRepository.save(member);
             log.debug("MEMBER UPDATE :: Member entity saved successfully with new current BMI.");
         }
 
         WeightBmiEntry responseEntry = weightBmiEntryRepository.save(bmiEntry);
+        evict.evictMemberCachePattern("memberBmiCache",memberId);
+        evict.evictMemberCachePattern("membersMonthlyBmiCache",memberId);
         log.info("SUCCESS {} :: BMI entry (ID: {}) for member {} on {} was successfully persisted.",
                 operationType, responseEntry.getId(), memberId, responseEntry.getDate());
         return MemberWeighBmiEntryResponseDto.builder()
@@ -211,184 +205,22 @@ public class MemberFitService {
      * @return success message once deleted
      */
 
-    @CacheEvict(value = "memberBmiCache",  key = "#memberId + '*'")
+
     @Transactional
     public String deleteByDateAndId(String memberId, LocalDate date) {
         int deleted = weightBmiEntryRepository.deleteByMember_IdAndDate(memberId, date);
 
+        Member member = managementService.cacheMemberDetails(memberId);
+        taskService.computeWeightBmi(member,LocalDate.now().minusMonths(1),LocalDate.now());
+        evict.evictMemberCachePattern("memberBmiCache",memberId);
+        evict.evictMemberCachePattern("membersMonthlyBmiCache",memberId);
         return deleted > 0 ? "Successfully deleted a entry of member with id: " + memberId + " on: " + date
                 : "Unable to find member with id: " + memberId + "or with date: " + date;
     }
-    /**
-     * Adds a new PR (personal record) entry for one or more workouts.
-     *
-     * <p>This method stores average weight, reps, and max values for
-     * each workout on the given date. Used for tracking strength progression.</p>
-     *
-     * @param memberId   unique identifier of the member
-     * @param requestDto list of PR request DTOs (for multiple workouts)
-     * @return list of saved PR response DTOs
-     */
-    @Transactional
-    @CacheEvict(value = "memberPrCache", key = "#memberId")
-    public List<MemberPrProgressResponseDto> addANewPr(String memberId, List<PrProgressRequestDto> requestDto) {
-        // Fetch the member entity; throw exception if not found
-        Member member = memberRepository.findById(memberId)
-                .orElseThrow(() -> new UserNotFoundException("Member with id " + memberId + " not found"));
 
-        requestDto.forEach(dto -> {
-            if (dto.getAchievedDate().isBefore(LocalDate.now())) {
-                throw new InvalidInputDateException("Cannot add/update PRs for past dates: " + dto.getAchievedDate());
-            }
-        });
-        List<String> exerciseNames = requestDto.stream()
-                .map(PrProgressRequestDto::getWorkoutName)
-                .toList();
-        List<LocalDate> achievementDates = requestDto.stream()
-                .map(PrProgressRequestDto::getAchievedDate)
-                .toList();
 
-        List<PrProgresses> existingPrs = prProgressRepository
-                .findByMemberIdAndWorkoutNameInAndAchievedDateIn(memberId, exerciseNames, achievementDates);
 
-        Map<String, PrProgresses> existingMap = existingPrs.stream()
-                .collect(Collectors.toMap(
-                        pr -> pr.getWorkoutName() + "_" + pr.getAchievedDate(),
-                        pr -> pr));
-        // 6. Build or update PRs
-        List<PrProgresses> toSave = new ArrayList<>();
 
-        for (PrProgressRequestDto dto : requestDto) {
-            String key = dto.getWorkoutName() + "_" + dto.getAchievedDate();
-
-            PrProgresses pr = existingMap.getOrDefault(key,
-                    new PrProgresses());
-
-            pr.setMember(member);
-            pr.setWorkoutName(dto.getWorkoutName());
-            pr.setAchievedDate(dto.getAchievedDate());
-            pr.setWeight(dto.getWeight());
-            pr.setRepetitions(dto.getRepetitions());
-
-            toSave.add(pr);
-        }
-        // 7. Save in batch
-        List<PrProgresses> saved = prProgressRepository.saveAll(toSave);
-        // 8. Build response
-        return saved.stream()
-                .map(pr -> {
-                    MemberPrProgressResponseDto dto = new MemberPrProgressResponseDto();
-                    dto.setWorkoutName(pr.getWorkoutName());
-                    dto.setAchievedDate(pr.getAchievedDate());
-                    dto.setWeight(pr.getWeight());
-                    dto.setRepetitions(pr.getRepetitions());
-                    return dto;
-                })
-                .toList();
-    }
-    /**
-     * Retrieves all Personal Record (PR) progress entries for the given member
-     * within the specified number of past days.
-     *
-     * <p>This method queries the database for PR entries, aggregates them,
-     * and returns them as a wrapped response. Results are useful for
-     * displaying workout performance trends in graphs or reports.</p>
-     *
-     * <h2>Caching:</h2>
-     * <ul>
-     *   <li>Data may be cached (via Redis) to reduce repeated database calls.</li>
-     * </ul>
-     *
-     * @param memberId unique identifier of the member
-     * @param days     number of days of history to fetch (e.g., last 7, 30)
-     * @return wrapper DTO containing list of PR progress records
-     */
-    @Transactional(readOnly = true)
-    @Cacheable(value = "memberPrCache", key = "#memberId")
-    public MemberPrProgressWrapperDto getAllPrProgress(String memberId, int days) {
-        LocalDate startDate = LocalDate.now(); //set the starting date as current date
-        LocalDate endDate = startDate.minusDays(days-1); // set the end date as desired
-        List<PrProgresses> prProgresses = prProgressRepository // a custom method defined in repository
-                .findByMemberIdAndDateRange(memberId, endDate, startDate);
-        // using stream and builder to return the required data
-        return MemberPrProgressWrapperDto.builder()
-                .responseDtoList(prProgresses.stream().map(pr -> MemberPrProgressResponseDto.builder()
-                        .workoutName(pr.getWorkoutName())
-                        .weight(pr.getWeight())
-                        .repetitions(pr.getRepetitions())
-                        .achievedDate(pr.getAchievedDate())
-                        .build()).toList())
-                .build();
-    }
-    /**
-     * Deletes all Personal Record (PR) entries for a given member
-     * on a specific date.
-     *
-     * <p>If no records exist for the provided date, the method
-     * performs no action. This operation is useful for correcting
-     * incorrectly logged workout sessions.</p>
-     *
-     * <h2>Caching:</h2>
-     * <ul>
-     *   <li>Evicts related cache entries in {@code memberPrCache} to keep data consistent.</li>
-     * </ul>
-     *
-     * @param memberId unique identifier of the member
-     * @param date     date of the PR entries to delete
-     * @return success message once deletion is completed
-     */
-    @Transactional
-    @CacheEvict(value = "memberPrCache", key = "#memberId")
-    public String deleteByIdAndDate(String memberId, LocalDate date) {
-        // custom method in repository returns how many rows are effected for this method(db query operation)
-        int noOfRowsEffected = prProgressRepository.deleteByMemberIdAndDate(memberId, date);
-        return noOfRowsEffected > 0
-                ? "Successfully deleted " + noOfRowsEffected + " entries of member of id: " + memberId + " on " + date
-                : "Unable to found member by id: " + memberId + " or " + "date on: " + date;
-        // if no member found or no data on specific date so output will be zero
-        // if the effected rows > 0 then out put will be before ':' or else after the ':'
-    }
-    /**
-     * Deletes a specific Personal Record (PR) entry for a given workout,
-     * member, and date.
-     *
-     * <p>This method is used when a member has multiple workouts on the same
-     * date, but only one workout entry (e.g., "Bench Press") needs to be
-     * removed without affecting others.</p>
-     *
-     * <h2>Caching:</h2>
-     * <ul>
-     *   <li>Evicts related cache entries in {@code memberPrCache} to ensure consistency.</li>
-     * </ul>
-     *
-     * @param memberId     unique identifier of the member
-     * @param date         date of the workout entry
-     * @param workoutName  name of the workout (e.g., "Squat", "Deadlift")
-     * @return success message once deletion is completed
-     */
-    @Transactional
-    @CacheEvict(value = "memberPrCache", key = "#memberId")
-    public String deleteByWorkoutNameWIthMemberIdAndDate(String memberId, LocalDate date, String workoutName)
-    {
-        // custom method from repository responsible to return how many rows are effected
-        // for this method
-        int rowsEffected = prProgressRepository
-                .deletePrByMemberIdWithDateAndName(memberId, date, workoutName);
-
-        if (rowsEffected > 0) {  // if operation is successfully completed then
-            return "Successfully deleted \n" +
-                    rowsEffected + " no of entries of " + workoutName +
-                    "\nof member id: " + memberId + "\n on: " + date;
-        } else {  // if operation is failed due to any reason then
-            return "Unable to found member by id: " + memberId +
-                    "\nor \n the " + workoutName + " on: " + date;
-        }
-        /*
-         * using if else to
-         * return the desired responses
-         * as per output for a valid response
-         */
-    }
     /**
      * Fetches all monthly BMI summaries for a given member.
      * <p>
@@ -401,89 +233,31 @@ public class MemberFitService {
      * @param memberId ID of the member whose BMI report is requested.
      * @return Wrapped DTO containing the list of BMI monthly summaries.
      */
-    @Cacheable(value = "membersMonthlyBmiCache",key = "#memberId")
+    @Cacheable(value = "membersMonthlyBmiCache", key = "#memberId + ':' + #pageNo + ':' + #pageSize")
     @Transactional(readOnly = true)
-    public BmiSummaryResponseWrapperDto getBmiReportByMonth(String memberId,int pageNo, int pageSize) {
+    public BmiSummaryResponseWrapperDto getBmiReportByMonth(String memberId, int pageNo, int pageSize) {
+        log.info("request reached service class to get member's bmi summary from {} to {}",
+                LocalDate.now(),LocalDate.now().minusMonths(pageSize));
         // Fetch raw BMI summaries for this member from DB
-        Pageable pageable = PageRequest.of(pageNo,pageSize);
-        // Map entity -> DTO
-        List<BmiSummaryResponseDto> responseDto = bmiSummaryRepository.findByMemberId(memberId,pageable)
-                .stream().map(response-> BmiSummaryResponseDto.builder()
-                .avgBmi(response.getAvgBmi())
-                .avgWeight(response.getAvgWeight())
-                .maxBmi(response.getMaxBmi())
-                .minBmi(response.getMinBmi())
-                .entryCount(response.getEntryCount())
-                .build())
-                .collect(Collectors.toList());
-
-        // Wrap the list to fix serialization issues & standardize response format
+        Pageable pageable = PageRequest.of(pageNo, pageSize);
+        log.info("processing request to get member's summary for last {} months of year from {} to  {}",pageSize,
+              LocalDate.now(),  LocalDate.now().minusYears(pageNo+1));
+        Page<BmiSummary> summaries = bmiSummaryRepository.findByMemberId(memberId,pageable);
         return BmiSummaryResponseWrapperDto.builder()
-               .summaryResponseDto(responseDto)
-               .build();
-    }
-
-    /**
-     * Fetches all monthly PR summaries (personal records) for a given member.
-     * <p>
-     * Uses Redis caching to reduce DB load. Cache key is the memberId.
-     * <p>
-     * Data is wrapped in {@link PrSummaryResponseWrapperDto} to avoid
-     * Redis serialization issues with plain lists.
-     *
-     * @param memberId ID of the member whose PR report is requested.
-     * @return Wrapped DTO containing the list of PR monthly summaries.
-     */
-    @Cacheable(value = "membersMonthlyPrCache", key = "#memberId")
-    @Transactional(readOnly = true)
-    public PrSummaryResponseWrapperDto getPrReportByMonth(String memberId) {
-        // Fetch raw PR summaries for this member from DB
-        List<PrSummary> summaries = prSummaryRepository.findByMemberId(memberId);
-        // Map entity -> DTO
-        List<PrSummaryResponseDto> responseDtoList = summaries.stream()
-                .map(response-> PrSummaryResponseDto.builder()
-                .workoutName(response.getWorkoutName())
-                .avgWeight(response.getAvgWeight())
-                .avgReps(response.getAvgReps())
-                .maxReps(response.getMaxReps())
-                .maxWeight(response.getMaxWeight())
-                .entryCount(response.getEntryCount())
-                .build())
-                .collect(Collectors.toList());
-        // Wrap the list to fix serialization issues & standardize response format
-        return PrSummaryResponseWrapperDto.builder()
-                .responseDtoList(responseDtoList)
+                .summaryResponseDto(summaries.stream()
+                        .map(bmiSummary -> BmiSummaryResponseDto.builder()
+                                .maxBmi(bmiSummary.getMaxBmi())
+                                .avgBmi(bmiSummary.getAvgBmi())
+                                .minBmi(bmiSummary.getMinBmi())
+                                .maxWeight(bmiSummary.getMaxWeight())
+                                .avgWeight(bmiSummary.getAvgWeight())
+                                .minWeight(bmiSummary.getMinWeight())
+                                .entryCount(bmiSummary.getEntryCount())
+                                .monthValue(bmiSummary.getMonth())
+                                .year(bmiSummary.getYear())
+                                .build()).toList())
                 .build();
     }
 
 
-
 }
-
-/*
- * ============================================================================
- *  MemberFitService
- *  ---------------------------------------------------------------------------
- *  This service acts as the business logic layer for managing:
- *   - Member BMI & weight entries
- *   - Personal Record (PR) progress
- *   - Monthly summary reports for BMI and PR
- *
- *  Key Features:
- *   • Uses Spring Caching (backed by Redis) to reduce DB load.
- *   • Employs wrapper DTOs to avoid Redis serialization issues.
- *   • Ensures transactional consistency across DB operations.
- *   • Provides fine-grained cache eviction for member-specific updates.
- *
- *  Design Notes:
- *   • Caching is short-lived (6h) to balance performance & freshness.
- *   • Wrapper DTOs (instead of raw lists) standardize responses
- *     and future-proof serialization.
- *
- *  Future Enhancements:
- *   • Add pagination for large historical queries.
- *   • Introduce analytics aggregation (e.g., trends, streaks).
- *   • Integrate with notification service (alerts on PR milestones).
- *
- * ============================================================================
- */

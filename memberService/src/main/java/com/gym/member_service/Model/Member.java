@@ -1,10 +1,13 @@
 package com.gym.member_service.Model;
 
+import java.io.Serial;
+import java.io.Serializable;
 import java.time.LocalDate;
 import java.time.LocalDateTime;
 import java.util.Set;
 
 import com.fasterxml.jackson.annotation.JsonFormat;
+import com.fasterxml.jackson.annotation.JsonIgnore;
 import jakarta.persistence.*;
 import jakarta.validation.constraints.Email;
 import lombok.*;
@@ -22,7 +25,12 @@ import lombok.*;
 @AllArgsConstructor
 @NoArgsConstructor
 @Builder
-public class Member {
+// 1. IMPORTANT: Implement Serializable
+public class Member implements Serializable {
+    // Generated serialVersionUID (optional but recommended)
+    @Serial
+    private static final long serialVersionUID = 1L;
+
     @Id
     private String id;
 
@@ -54,19 +62,23 @@ public class Member {
     @Transient
     private boolean activeInGym;
 
+    // 2. CRITICAL FIX: Add @JsonIgnore to break the loop and prevent LIE.
+    @JsonIgnore
     @EqualsAndHashCode.Exclude
-    @OneToMany(mappedBy = "member", cascade = CascadeType.ALL, orphanRemoval = true)
+    @OneToMany(mappedBy = "member", cascade = CascadeType.ALL, orphanRemoval = true, fetch = FetchType.LAZY) // Ensure fetch is LAZY
     private Set<WeightBmiEntry> weightBmiEntries ;
 
+    // 3. CRITICAL FIX: Add @JsonIgnore to break the loop and prevent LIE.
+    @JsonIgnore
     @EqualsAndHashCode.Exclude
-    @OneToMany(mappedBy = "member", cascade = CascadeType.ALL, orphanRemoval = true)
+    @OneToMany(mappedBy = "member", cascade = CascadeType.ALL, orphanRemoval = true, fetch = FetchType.LAZY) // Ensure fetch is LAZY
     private Set<PrProgresses> prProgresses ;
 
     @Column(name = "login_streak")
     private Integer loginStreak;
 
     private Integer MaxLoginStreak;
-    @JsonFormat(shape = JsonFormat.Shape.STRING, pattern = "yyyy-MM-dd")
+    @JsonFormat(shape = JsonFormat.Shape.STRING, pattern = "yyyy-MM-dd HH:mm:ss") // Added Time to match log pattern
     @Column(name = "plan_expiration")
     private LocalDateTime planExpiration;
     private String planID;

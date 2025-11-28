@@ -22,7 +22,6 @@ import org.springframework.data.domain.Page;
 import org.springframework.data.domain.PageRequest;
 import org.springframework.data.domain.Pageable;
 import org.springframework.data.domain.Sort;
-import org.springframework.data.redis.core.StringRedisTemplate;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 import reactor.core.publisher.Mono;
@@ -64,7 +63,6 @@ public class MemberManagementService {
     private final MemberRepository memberRepository;
     private final WebClientServices webClientService;
     private final MembersCountService countService;
-    private final StringRedisTemplate redisTemplate;
 
     DateTimeFormatter formatter = DateTimeFormatter.ofPattern("yyyy-MM-dd HH:mm:ss");
     /**
@@ -232,7 +230,10 @@ public class MemberManagementService {
      @throws UserNotFoundException if member not found by given ID
      */
 
-    @CacheEvict(value = "memberListCache", allEntries = true)
+    @Caching(evict = {
+            @CacheEvict(value = "MemberEntity", key = "#memberId"),
+            @CacheEvict(value = "memberListCache", allEntries = true)
+    })
     @Transactional
     public String deleteMemberById(String id) {
         if (!memberRepository.existsById(id)) {
@@ -260,17 +261,10 @@ public class MemberManagementService {
      */
     @CachePut(value = "loginStreak", key = "#id")
     @Transactional
-    @CacheEvict(value = "loginStreak", key = "#id")
     public LoginStreakResponseDto setLoginStreak(String id) {
         log.info("Attempting to set login streak for member id :: {}", id);
         LocalDateTime now = LocalDateTime.now();
         LocalDate today = now.toLocalDate();
-        boolean loggedInAgain = Boolean.TRUE
-                .equals(redisTemplate.opsForSet().isMember("memberCountCache", id));
-        if(loggedInAgain) {
-            log.warn("Member {} has already logged in today ({}). No change to streak.", id, today);
-            return this.getLoginStreak(id);
-        }
 
         // 1. Find the member
         Member member = memberRepository.findById(id)
@@ -389,7 +383,8 @@ public class MemberManagementService {
     @Transactional
     @Caching(evict = {
             @CacheEvict(value = "memberListCache", allEntries = true),
-            @CacheEvict(value = "memberCache", key = "#requestDto.id")
+            @CacheEvict(value = "memberCache", key = "#requestDto.id"),
+            @CacheEvict(value = "MemberEntity", key = "#requestDto.id"),
     })
     public String freezeOrUnFrozen(FreezeRequestDto requestDto) {
         String time = LocalDateTime.now().format(formatter);
@@ -417,5 +412,11 @@ public class MemberManagementService {
     private String profileImageMapper(String imageUrl) {
         if(imageUrl == null || imageUrl.isBlank()) return "";
         return imageUrl;
+    }
+
+    @Cacheable(value = "MemberEntity", key = "#memberId")
+    public  Member cacheMemberDetails(String memberId) {
+        return memberRepository.findById(memberId)
+                .orElseThrow(() -> new UserNotFoundException("Member with this id does not exist"));
     }
 }
