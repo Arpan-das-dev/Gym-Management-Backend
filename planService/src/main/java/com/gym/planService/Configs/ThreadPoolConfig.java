@@ -14,7 +14,7 @@ public class ThreadPoolConfig {
     public Executor pdfExecutor(){
         ThreadPoolTaskExecutor executor = new ThreadPoolTaskExecutor();
         executor.setCorePoolSize(4); // no-of always active core
-        executor.setMaxPoolSize(8); // no of max thread core can active
+        executor.setMaxPoolSize(8); // no of max thread core can activate
         executor.setQueueCapacity(50); // setting max queue capacity of the tread
         executor.setThreadNamePrefix("PDF-EXEC-"); // defining the name of the thread
         executor.setWaitForTasksToCompleteOnShutdown(true);  // don't shut down system while it's busy

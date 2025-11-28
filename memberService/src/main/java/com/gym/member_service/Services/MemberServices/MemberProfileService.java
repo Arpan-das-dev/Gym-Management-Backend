@@ -11,6 +11,7 @@ import lombok.extern.slf4j.Slf4j;
 import org.springframework.cache.annotation.CacheEvict;
 import org.springframework.cache.annotation.CachePut;
 import org.springframework.cache.annotation.Cacheable;
+import org.springframework.cache.annotation.Caching;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 import org.springframework.web.multipart.MultipartFile;
@@ -44,6 +45,7 @@ public class MemberProfileService {
 
     private final AWSS3service awss3service;
     private final MemberRepository memberRepository;
+    private final MemberManagementService managementService;
 
     DateTimeFormatter formatter = DateTimeFormatter.ofPattern("yyyy-MM-dd HH:mm:ss");
     /**
@@ -64,11 +66,11 @@ public class MemberProfileService {
      @throws UserNotFoundException if no member is found with the given id
      */
     @CachePut(value = "profileImageUrl", key = "#id")
+    @CacheEvict(value = "MemberEntity", key = "#id")
     @Transactional
     public GenericResponse uploadImage(String id, MultipartFile image) {
         System.out.println("⌛⌛ Request received to upload Profile image Url at: " + LocalDateTime.now().format(formatter));
-        Member member = memberRepository.findById(id)
-                .orElseThrow(() -> new UserNotFoundException("No member found with this id: " + id));
+        Member member = managementService.cacheMemberDetails(id);
         String url = awss3service.uploadImage(id, image);
         member.setProfileImageUrl(url);
         memberRepository.save(member);
@@ -94,8 +96,7 @@ public class MemberProfileService {
         long start = System.currentTimeMillis();
         System.out.println("⌛⌛ Request received to get profile image Url at: " + LocalDateTime.now().format(formatter));
         log.info("Request reached to get profile image URL by member id: {}", id);
-        Member member = memberRepository.findById(id)
-                .orElseThrow(() -> new UserNotFoundException("No member found with this id: " + id));
+        Member member = managementService.cacheMemberDetails(id);
         log.info("Member fetched from DB: {} {} with id {}", member.getFirstName(), member.getLastName(), member.getId());
         long end = System.currentTimeMillis();
         String url = (member.getProfileImageUrl() == null || member.getProfileImageUrl().isEmpty()) ? "empty" : member.getProfileImageUrl();
@@ -121,7 +122,10 @@ public class MemberProfileService {
 
      @throws InvalidImageUrlException if no valid image URL is associated
      */
-    @CacheEvict(value = "profileImageUrl", key = "#id")
+    @Caching (evict = {
+            @CacheEvict(value = "profileImageUrl", key = "#id"),
+            @CacheEvict(value = "MemberEntity", key = "#id")
+    })
     @Transactional
     public void deleteImage(String id) {
         Member member = memberRepository.findById(id)

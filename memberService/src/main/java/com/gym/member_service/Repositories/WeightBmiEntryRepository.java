@@ -37,7 +37,7 @@ public interface WeightBmiEntryRepository extends JpaRepository<WeightBmiEntry, 
             "WHERE member_id = :memberId " +
             "AND date BETWEEN :endDate AND :startDate",
             nativeQuery = true)
-    List<WeightBmiEntry> findAllByMemberIdAndWeek(@Param("memberId") String memberId,
-                                                  @Param("endDate") LocalDate endDate,
-                                                  @Param("startDate") LocalDate startDate);
+    List<WeightBmiEntry> findAllByMemberIdAndDateBetween(@Param("memberId") String memberId,
+                                                         @Param("endDate") LocalDate endDate,
+                                                         @Param("startDate") LocalDate startDate);
 }

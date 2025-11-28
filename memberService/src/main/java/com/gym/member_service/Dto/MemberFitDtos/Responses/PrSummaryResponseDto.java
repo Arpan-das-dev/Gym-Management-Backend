@@ -16,4 +16,6 @@ public class PrSummaryResponseDto {
     private double maxWeight;
     private int maxReps;
     private int entryCount;
+    private int monthValue;
+    private int year;
 }
