@@ -3,6 +3,7 @@ package com.gym.member_service.Services.FitnessServices;
 import com.gym.member_service.Controllers.MemberAllFitController;
 import com.gym.member_service.Dto.MemberFitDtos.Requests.MemberWeighBmiEntryRequestDto;
 import com.gym.member_service.Dto.MemberFitDtos.Responses.BmiSummaryResponseDto;
+import com.gym.member_service.Dto.MemberFitDtos.Responses.BmiWeightInfoResponseDto;
 import com.gym.member_service.Dto.MemberFitDtos.Wrappers.BmiSummaryResponseWrapperDto;
 import com.gym.member_service.Dto.MemberFitDtos.Wrappers.MemberBmiResponseWrapperDto;
 import com.gym.member_service.Dto.MemberFitDtos.Responses.MemberWeighBmiEntryResponseDto;
@@ -17,6 +18,7 @@ import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.cache.annotation.CacheEvict;
 import org.springframework.cache.annotation.Cacheable;
+import org.springframework.cache.annotation.Caching;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.PageRequest;
 import org.springframework.data.domain.Pageable;
@@ -96,7 +98,10 @@ public class MemberFitService {
      * @throws DuplicateUserFoundException if the entry already exists (depending on rules)
      */
     @Transactional
-    @CacheEvict(value = "MemberEntity", key = "#memberId")
+    @Caching(evict = {
+            @CacheEvict(value = "BmiWeight", key = "#memberId"),
+            @CacheEvict(value = "MemberEntity", key = "#memberId")
+    })
     public MemberWeighBmiEntryResponseDto addWeighBmiEntry(String memberId, MemberWeighBmiEntryRequestDto requestDto) {
         log.info("request reached service class to add bmi entry for member {}",memberId);
         Member member = managementService.cacheMemberDetails(memberId);
@@ -190,6 +195,79 @@ public class MemberFitService {
                 .totalPages(bmiEntries.getTotalPages())
                 .build();
     }
+
+    @Cacheable(value = "BmiWeight", key = "#memberId")
+    public BmiWeightInfoResponseDto getBmiWeightInfo(String memberId) {
+        LocalDate current = LocalDate.now();
+        LocalDate comparisonDate = current.withDayOfMonth(1).minusDays(1);
+
+        log.info("🗓️ Calculating BMI/Weight Info for Member: {}. Current Date: {}. Comparison Boundary: {}",
+                memberId, current, comparisonDate);
+        WeightBmiEntry latestEntry = weightBmiEntryRepository.findLatestDataByMonthAndId(memberId, current)
+                .orElse(null);
+        log.info("🔎 Latest Entry (up to {}): {}", current, latestEntry != null ? latestEntry.getDate() : "NULL");
+
+        WeightBmiEntry oldEntry = weightBmiEntryRepository.findLatestDataByMonthAndId(memberId, comparisonDate)
+                .orElse(null);
+        log.info("🔎 Old Entry (up to {}): {}", comparisonDate, oldEntry != null ? oldEntry.getDate() : "NULL");
+
+
+        // Case A: Data exists for both (calculate change)
+        if(latestEntry != null && oldEntry != null) {
+            log.info("✅ Case A: Found data for both periods. Calculating change.");
+            // We must check if the two entries are actually different records.
+            // If latestEntry == oldEntry, it means no new data was logged in the current month.
+            if (latestEntry.equals(oldEntry)) {
+                log.warn("⚠️ Latest Entry is the same as Old Entry. No change calculated (Result: 0.00).");
+                return BmiWeightInfoResponseDto.builder()
+                        .currentBmi(latestEntry.getBmi())
+                        .currentBodyWeight(latestEntry.getWeight())
+                        .changedBmiFromLastMonth(0.00)
+                        .changedBodyWeightFromLastMonth(0.00)
+                        .latestDate(latestEntry.getDate())
+                        .oldDateTime(latestEntry.getDate())
+                        .build();
+            }
+            return BmiWeightInfoResponseDto.builder()
+                    .currentBmi(latestEntry.getBmi())
+                    .currentBodyWeight(latestEntry.getWeight())
+                    .changedBmiFromLastMonth(latestEntry.getBmi() - oldEntry.getBmi())
+                    .changedBodyWeightFromLastMonth(latestEntry.getWeight() - oldEntry.getWeight())
+                    .latestDate(latestEntry.getDate())
+                    .oldDateTime(oldEntry.getDate())
+                    .build();
+            // Case B: Current data is missing, but historical data exists.
+        } else if (latestEntry == null && oldEntry != null) {
+            // NOTE: The original code contained a bug here (setting currentBodyWeight twice).
+            // It has been corrected to use the historical data as the 'current' view, with 0.00 change.
+            log.info("➡️ Case B: Current entry is missing. Returning historical data as current status (No change).");
+            return BmiWeightInfoResponseDto.builder()
+                    .currentBmi(oldEntry.getBmi())
+                    .currentBodyWeight(oldEntry.getWeight())
+                    .changedBmiFromLastMonth(0.00)
+                    .changedBodyWeightFromLastMonth(0.00)
+                    .latestDate(null)
+                    .oldDateTime(oldEntry.getDate())
+                    .build();
+
+            // Case C: Only latest data exists (old data is null). This should only happen
+            // if the member's first ever entry occurred after the comparisonDate.
+        } else if (latestEntry != null) {
+            log.info("⭐ Case C: Only latest entry found. Treating as initial record (No change).");
+            return BmiWeightInfoResponseDto.builder()
+                    .currentBodyWeight(latestEntry.getWeight())
+                    .currentBmi(latestEntry.getBmi())
+                    .changedBmiFromLastMonth(0.00)
+                    .changedBodyWeightFromLastMonth(0.00)
+                    .latestDate(latestEntry.getDate())
+                    .oldDateTime(null)
+                    .build();
+        }
+
+        // Case D: No data found at all.
+        log.info("❌ Case D: No weight/BMI data found for member {}.", memberId);
+        return null;
+    }
     /**
      * Deletes a member's BMI entry for a specific date.
      *
@@ -206,6 +284,10 @@ public class MemberFitService {
      */
 
     @Transactional
+    @Caching(evict = {
+            @CacheEvict(value = "BmiWeight", key = "#memberId"),
+            @CacheEvict(value = "MemberEntity", key = "#memberId")
+    })
     public String deleteByDateAndId(String memberId, LocalDate date) {
         int deleted = weightBmiEntryRepository.deleteByMember_IdAndDate(memberId, date);
 
