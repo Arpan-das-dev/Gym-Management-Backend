@@ -4,12 +4,16 @@ import com.gym.member_service.Exception.Exceptions.*;
 import com.gym.member_service.Exception.Model.ErrorResponse;
 import com.gym.member_service.Exception.Util.ExceptionUtil;
 import jakarta.servlet.http.HttpServletRequest;
+import lombok.extern.slf4j.Slf4j;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.MethodArgumentNotValidException;
 import org.springframework.web.bind.annotation.ControllerAdvice;
 import org.springframework.web.bind.annotation.ExceptionHandler;
+import software.amazon.awssdk.core.exception.SdkClientException;
+import software.amazon.awssdk.services.s3.model.S3Exception;
 
+@Slf4j
 @ControllerAdvice
 public class GlobalExceptionHandler {
     @ExceptionHandler({
@@ -37,9 +41,22 @@ public class GlobalExceptionHandler {
     }
 
     @ExceptionHandler({
+            S3Exception.class, SdkClientException.class,
+    })
+    ResponseEntity<ErrorResponse> handleAwsException(HttpServletRequest request, Exception ex) {
+        log.info("an exception 💀💀 occurred due to {}", ex.getLocalizedMessage());
+        String message = "Failed To Process The Request Due to AWS Client Error";
+        return ExceptionUtil.buildErrorResponse(HttpStatus.BAD_REQUEST,message,request);
+    }
+
+    @ExceptionHandler({
             Exception.class
     })
     ResponseEntity<ErrorResponse> handleDefaultExceptions (HttpServletRequest request, Exception ex) {
-        return ExceptionUtil.buildErrorResponse(HttpStatus.INTERNAL_SERVER_ERROR,ex.getLocalizedMessage(),request);
+        String message = "Failed To Process Current Request Due to Internal Issue";
+        log.info("💀💀 Exception occurred due to {}",ex.getLocalizedMessage());
+        return ExceptionUtil.buildErrorResponse(HttpStatus.INTERNAL_SERVER_ERROR,message,request);
     }
+
+
 }
