@@ -2,6 +2,7 @@ package com.gym.member_service.Services.OtherService;
 
 import com.gym.member_service.Model.MembersActive;
 import com.gym.member_service.Repositories.MemberActiveRepository;
+import com.gym.member_service.Repositories.MemberRepository;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.data.redis.core.RedisTemplate;
@@ -24,6 +25,7 @@ public class MembersCountService {
     // we will use redis set to store the active members
     private final RedisTemplate<String, String> redisTemplate;
     private final MemberActiveRepository memberActiveRepository;
+    private final MemberRepository memberRepository;
     private final SimpMessagingTemplate template;
     // the name of the set
     private final String ACTIVE_MEMBER_SET = "memberCountCache";
@@ -37,7 +39,8 @@ public class MembersCountService {
         if (!isActive(id)) { // check if the member is already active if not then add the member to the set
                              // to prevent duplicate entries
             redisTemplate.opsForSet().add(ACTIVE_MEMBER_SET, id);
-            System.out.println("Marking active: " + id + ", broadcasting count...");// add the member to the set
+            System.out.println(" 🤸🏻🤸🏻 Marking active: " + id + ", broadcasting count...");// add the member to the set
+            memberRepository.setLasLogin(id, LocalDateTime.now());
             broadCastLiveCount();
         }
     }
@@ -45,7 +48,8 @@ public class MembersCountService {
     public void markAsInactive(String id) {
         if(isActive(id)) {
             redisTemplate.opsForSet().remove(ACTIVE_MEMBER_SET, id);// remove the member from the set if he is
-            System.out.println("Marking inactive: " + id + ", broadcasting count...");
+            System.out.println(" 🀄🀄 Marking inactive: " + id + ", broadcasting count...");
+            memberRepository.setLasLogin(id,LocalDateTime.now());
             broadCastLiveCount();
         }                                 // inactive(response form frontend)
     }
@@ -64,7 +68,7 @@ public class MembersCountService {
     public void broadCastLiveCount(){
         Long currentActive = getActiveMembersCount();
         template.convertAndSend("/topic/activeMembers", currentActive);
-        log.info("current member's active count is {}",currentActive);
+        log.info("👥👥 current member's active count is ==> {}",currentActive);
     }
 
     /*
