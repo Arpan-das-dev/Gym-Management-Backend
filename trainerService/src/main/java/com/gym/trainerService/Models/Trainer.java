@@ -16,7 +16,9 @@ import java.util.List;
 @Builder
 @NoArgsConstructor
 @Entity
-@Table(name = "trainer")
+@Table(name = "trainer", indexes = {
+        @Index(name = "idx_rating", columnList = "average_rating")
+})
 public class Trainer {
     @Id
     private String trainerId;
@@ -55,4 +57,8 @@ public class Trainer {
 
     @OneToMany(mappedBy = "trainer",cascade = CascadeType.ALL, orphanRemoval = true)
     private List<Review> reviews;
+
+    @Builder.Default
+    @Column(name = "about")
+    private String about = "";
 }
