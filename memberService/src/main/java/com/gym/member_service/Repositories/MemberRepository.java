@@ -92,6 +92,8 @@ public interface MemberRepository extends JpaRepository<Member, String> {
             Pageable pageable
     );
 
+    @Modifying
+    @Transactional
     @Query("UPDATE Member SET lastLogin =:now WHERE id =:id")
     void setLasLogin(@Param("id") String id, @Param("now") LocalDateTime now);
 }
