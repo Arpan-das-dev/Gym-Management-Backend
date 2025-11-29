@@ -1,6 +1,6 @@
 package com.gym.member_service.Services.FitnessServices;
 
-import com.gym.member_service.Controllers.MemberFitController;
+import com.gym.member_service.Controllers.MemberAllFitController;
 import com.gym.member_service.Dto.MemberFitDtos.Requests.MemberWeighBmiEntryRequestDto;
 import com.gym.member_service.Dto.MemberFitDtos.Responses.BmiSummaryResponseDto;
 import com.gym.member_service.Dto.MemberFitDtos.Wrappers.BmiSummaryResponseWrapperDto;
@@ -31,7 +31,7 @@ import java.util.*;
  * weight progress, PR (personal record) tracking, and monthly summaries.
  *
  * <p>This service acts as the business logic layer between the controller
- * ({@link MemberFitController}) and the persistence layer
+ * ({@link MemberAllFitController}) and the persistence layer
  * (repositories). It ensures validation, transactional safety, and
  * cache consistency for all fitness-related operations.
  *
@@ -205,7 +205,6 @@ public class MemberFitService {
      * @return success message once deleted
      */
 
-
     @Transactional
     public String deleteByDateAndId(String memberId, LocalDate date) {
         int deleted = weightBmiEntryRepository.deleteByMember_IdAndDate(memberId, date);
@@ -217,9 +216,6 @@ public class MemberFitService {
         return deleted > 0 ? "Successfully deleted a entry of member with id: " + memberId + " on: " + date
                 : "Unable to find member with id: " + memberId + "or with date: " + date;
     }
-
-
-
 
     /**
      * Fetches all monthly BMI summaries for a given member.
@@ -258,6 +254,5 @@ public class MemberFitService {
                                 .build()).toList())
                 .build();
     }
-
 
 }
