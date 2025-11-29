@@ -40,4 +40,10 @@ public interface WeightBmiEntryRepository extends JpaRepository<WeightBmiEntry, 
     List<WeightBmiEntry> findAllByMemberIdAndDateBetween(@Param("memberId") String memberId,
                                                          @Param("endDate") LocalDate endDate,
                                                          @Param("startDate") LocalDate startDate);
+
+    @Query("SELECT w FROM WeightBmiEntry w WHERE w.member.id = :memberId " +
+            "AND w.date <= :date ORDER BY w.date DESC LIMIT 1")
+    Optional<WeightBmiEntry> findLatestDataByMonthAndId( @Param("memberId") String memberId,
+                                                         @Param("date") LocalDate date);
+
 }
