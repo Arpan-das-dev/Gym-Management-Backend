@@ -5,6 +5,7 @@ import com.fasterxml.jackson.databind.DeserializationFeature;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.fasterxml.jackson.databind.SerializationFeature;
 import com.fasterxml.jackson.datatype.jsr310.JavaTimeModule;
+import com.gym.member_service.Dto.MemberFitDtos.Responses.BmiWeightInfoResponseDto;
 import com.gym.member_service.Dto.MemberFitDtos.Wrappers.BmiSummaryResponseWrapperDto;
 import com.gym.member_service.Dto.MemberFitDtos.Wrappers.MemberBmiResponseWrapperDto;
 import com.gym.member_service.Dto.MemberFitDtos.Wrappers.MemberPrProgressWrapperDto;
@@ -131,6 +132,12 @@ public class RedisConfig {
     }
 
     @Bean
+    public TypedJsonRedisSerializer<BmiWeightInfoResponseDto> bmiWeightInfoResponseDtoRedisSerializer
+            (ObjectMapper redisObjectMapper) {
+        return new TypedJsonRedisSerializer<>(redisObjectMapper,BmiWeightInfoResponseDto.class);
+    }
+
+    @Bean
     public CacheManager cacheManager(RedisConnectionFactory connectionFactory,
                                      TypedJsonRedisSerializer<Member> memberTypedJsonRedisSerializer,
                                      TypedJsonRedisSerializer<AllMemberResponseDto> memberDtoSerializer,
@@ -145,6 +152,7 @@ public class RedisConfig {
                                      TypedJsonRedisSerializer<MemberPlanInfoResponseDto> memberPlanInfoResponseDtoSerializer,
                                      TypedJsonRedisSerializer<MemberBmiResponseWrapperDto> memberBmiResponseWrapperDtoSerializer,
                                      TypedJsonRedisSerializer<MemberPrProgressWrapperDto> memberPrProgressWrapperDtoSerializer,
+                                     TypedJsonRedisSerializer<BmiWeightInfoResponseDto> bmiWeightInfoResponseDtoRedisSerializer,
                                      GenericJackson2JsonRedisSerializer genericSerializer) {
 
         RedisCacheConfiguration defaultConfig = RedisCacheConfiguration.defaultCacheConfig()
@@ -178,6 +186,11 @@ public class RedisConfig {
                 .serializeValuesWith(RedisSerializationContext.SerializationPair
                         .fromSerializer(allSessionInfoResponseDtoSerializer))
                 .entryTtl(Duration.ofHours(16)));
+
+        cacheConfigs.put("BmiWeight",defaultConfig
+                .serializeValuesWith(RedisSerializationContext.SerializationPair
+                        .fromSerializer(bmiWeightInfoResponseDtoRedisSerializer))
+                .entryTtl(Duration.ofHours(6)));
 
         cacheConfigs.put("memberBmiCache",defaultConfig
                 .serializeValuesWith(RedisSerializationContext.SerializationPair
