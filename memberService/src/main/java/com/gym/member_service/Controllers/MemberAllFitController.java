@@ -3,6 +3,7 @@ package com.gym.member_service.Controllers;
 import com.gym.member_service.Dto.MemberFitDtos.Requests.MemberWeighBmiEntryRequestDto;
 import com.gym.member_service.Dto.MemberFitDtos.Requests.PrProgressRequestDto;
 import com.gym.member_service.Dto.MemberFitDtos.Requests.UpdatePrRequestDto;
+import com.gym.member_service.Dto.MemberFitDtos.Responses.BmiWeightInfoResponseDto;
 import com.gym.member_service.Dto.MemberFitDtos.Wrappers.BmiSummaryResponseWrapperDto;
 import com.gym.member_service.Dto.MemberFitDtos.Wrappers.MemberBmiResponseWrapperDto;
 import com.gym.member_service.Dto.MemberFitDtos.Responses.MemberWeighBmiEntryResponseDto;
@@ -89,7 +90,19 @@ public class MemberAllFitController {
         MemberBmiResponseWrapperDto responseDtoList = fitService.getAllBmiEntry(memberId, pageNo,pageSize);
         return ResponseEntity.status(HttpStatus.ACCEPTED).body(responseDtoList);
     }
-    /**
+
+    @LogExecutionTime
+    @GetMapping("/getBmi/WeightInfo")
+    ResponseEntity<BmiWeightInfoResponseDto> getBmiInfoByMember(
+            @RequestParam @NotBlank(message = "please verify your identity before accessing")  String memberId) {
+        log.info("Request received to get bmi weight monthly change for member {}",memberId);
+        BmiWeightInfoResponseDto responseDto = fitService.getBmiWeightInfo(memberId);
+        log.info("Built response ::=> current B.W::-> {} current B.M.I::-> {} B.W changed::-> {} B.M.I changed::-> {}",
+                responseDto.getCurrentBodyWeight(),responseDto.getCurrentBmi()
+                ,responseDto.getChangedBodyWeightFromLastMonth(),responseDto.getChangedBmiFromLastMonth());
+        return ResponseEntity.status(HttpStatus.ACCEPTED).body(responseDto);
+    }
+    /**::->
      * Delete a BMI/weight entry for a given member on a specific date.
      *
      * @param memberId member identifier
