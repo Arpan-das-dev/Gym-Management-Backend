@@ -93,9 +93,11 @@ public class SchedulerTaskService {
      * @see MemberRepository#expirePlan(LocalDateTime)
      * @see MemberRepository#freezeExpiredAccounts()
      */
-    @Scheduled(cron = "0 0 0 * * *")
+    @LogExecutionTime
+    @Scheduled(cron = "0 27 3 * * *")
     @Transactional
     public void checkAndDecrementPlans() {
+        log.info("cron triggered to decrement works");
         int decrementedMembersPlansCount = memberRepository.decrementDurationForAllMembers();
         int expiredPlanMembersCount = memberRepository.expirePlan(LocalDateTime.now());
         int frozenMembersCount = memberRepository.freezeExpiredAccounts();
@@ -132,7 +134,8 @@ public class SchedulerTaskService {
      * @see WebClientServices#sendExpiredMessage(Member)
      * @see WebClientServices#sendFrozenMessage(Member)
      */
-    @Scheduled(cron = "0 0 7 * * *")
+    @LogExecutionTime
+    @Scheduled(cron = "0 27 3 * * *")
     public void sendAlertMails() {
         List<Member> membersListByDurationLeft3 = memberRepository.getMemberListByDuration(3);
         membersListByDurationLeft3.forEach(webClientService::sendAlertMessage);
@@ -145,7 +148,11 @@ public class SchedulerTaskService {
             if (member.getPlanDurationLeft() == -10 &&
                     member.getPlanExpiration().isAfter(LocalDateTime.now().plusDays(10))) {
                 if(!member.getEmail().contains("@example.com")){
-                    webClientService.sendFrozenMessage(member);
+                    try {
+                        webClientService.sendFrozenMessage(member);
+                    } catch (Exception e) {
+                        log.info("failed due to {}",e.getLocalizedMessage());
+                    }
                 }
             }
         }
@@ -187,7 +194,8 @@ public class SchedulerTaskService {
      * @see PrProgresses
      */
 //    @Scheduled(cron = "32 30 * * * *")
-    @Scheduled(cron = "0 0 0 * * *")
+    @LogExecutionTime
+    @Scheduled(cron = "0 27 3 * * *")
     @Transactional
     public void computeSummary() {
         log.info("schedular task triggered to compute summaries");
