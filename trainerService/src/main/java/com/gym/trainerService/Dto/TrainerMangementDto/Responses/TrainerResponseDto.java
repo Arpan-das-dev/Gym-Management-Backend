@@ -33,7 +33,6 @@ public class TrainerResponseDto {
     private String emailId;
     private String phone;
     private String gender;
-    private List<Specialities> specialities;
     private LocalDateTime lastLoginTime;
     private boolean available;
     private double averageRating;
