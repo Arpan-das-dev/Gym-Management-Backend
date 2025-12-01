@@ -1,4 +1,4 @@
-package com.gym.trainerService.Utils.CustomAnnotations;
+package com.gym.trainerService.Utils.CustomAnnotations.Annotations;
 
 import java.lang.annotation.ElementType;
 import java.lang.annotation.Retention;
