@@ -4,11 +4,13 @@ import com.gym.trainerService.Dto.TrainerMangementDto.Requests.SpecialityRequest
 import com.gym.trainerService.Dto.TrainerMangementDto.Requests.TrainerCreateRequestDto;
 import com.gym.trainerService.Dto.TrainerMangementDto.Responses.AllTrainerResponseDto;
 import com.gym.trainerService.Dto.TrainerMangementDto.Responses.TrainerResponseDto;
+import com.gym.trainerService.Dto.TrainerMangementDto.Wrappers.AllPublicTrainerInfoResponseWrapperDto;
 import com.gym.trainerService.Dto.TrainerMangementDto.Wrappers.AllTrainerResponseDtoWrapper;
 import com.gym.trainerService.Exception.Custom.DuplicateSpecialtyFoundException;
 import com.gym.trainerService.Exception.Custom.NoSpecialityFoundException;
 import com.gym.trainerService.Exception.Custom.NoTrainerFoundException;
 import com.gym.trainerService.Services.TrainerServices.TrainerManagementService;
+import com.gym.trainerService.Utils.CustomAnnotations.Annotations.LogExecutionTime;
 import jakarta.validation.Valid;
 import jakarta.validation.constraints.NotBlank;
 import lombok.RequiredArgsConstructor;
@@ -62,8 +64,9 @@ public class TrainerManagementController {
      * @return {@link AllTrainerResponseDto} with the created trainer information
      * @see TrainerManagementService#createTrainer(TrainerCreateRequestDto)
      */
+    @LogExecutionTime
     @PostMapping("/create")
-    public ResponseEntity<AllTrainerResponseDto> createTrainer(@Valid @RequestBody TrainerCreateRequestDto requestDto) {
+    public ResponseEntity<AllTrainerResponseDto> createTrainer( @RequestBody TrainerCreateRequestDto requestDto) {
         log.info("Request received to create trainer with id {}", requestDto.getId());
         AllTrainerResponseDto responseDto = trainerManagementService.createTrainer(requestDto);
         return ResponseEntity.status(HttpStatus.CREATED).body(responseDto);
@@ -77,13 +80,31 @@ public class TrainerManagementController {
      * @throws NoTrainerFoundException if no trainer exists with the provided ID
      * @see TrainerManagementService#getTrainerById(String)
      */
-    @GetMapping("/all/get")
+    @LogExecutionTime
+    @GetMapping("/trainer/get")
     public ResponseEntity<TrainerResponseDto> getTrainerById(@RequestParam String trainerId) {
         log.info("Request received to get info of trainer with id {}", trainerId);
         TrainerResponseDto responseDto = trainerManagementService.getTrainerById(trainerId);
         return ResponseEntity.status(HttpStatus.OK).body(responseDto);
     }
+    /**
+     * Retrieves basic information for all trainers
+     *
+     * @return {@link  AllPublicTrainerInfoResponseWrapperDto} containing a list of all trainer's basic details
+     * @see com.gym.trainerService.Dto.TrainerMangementDto.Responses.PublicTrainerInfoResponseDto
+     *
+     */
 
+    @LogExecutionTime
+    @GetMapping("/all/getTrainers")
+    public  ResponseEntity<AllPublicTrainerInfoResponseWrapperDto> getAllBasicTrainerInfo() {
+        log.info("ℹ️ℹ️ Request received to get all trainer's basic info for HomePage");
+        AllPublicTrainerInfoResponseWrapperDto responseWrapperDto = trainerManagementService
+                .getAllTrainerBasicInfo();
+        log.info("Sending response of {} no of trainer"
+                ,responseWrapperDto.getPublicTrainerInfoResponseDtoList().size());
+        return ResponseEntity.status(HttpStatus.OK).body(responseWrapperDto);
+    }
     /**
      * Retrieves all trainers from the system.
      * <p>
@@ -94,6 +115,7 @@ public class TrainerManagementController {
      * @return {@link AllTrainerResponseDtoWrapper} containing all trainers
      * @see TrainerManagementService#getAllTrainer()
      */
+    @LogExecutionTime
     @GetMapping("/admin/getAll")
     public ResponseEntity<AllTrainerResponseDtoWrapper> getAllTrainer() {
         log.info("RequestReceived to get all trainerInfo");
@@ -109,6 +131,7 @@ public class TrainerManagementController {
      * @throws NoTrainerFoundException if the trainer does not exist
      * @see TrainerManagementService#deleteTrainerById(String)
      */
+    @LogExecutionTime
     @DeleteMapping("/delete")
     public ResponseEntity<String> deleteTrainerById(@RequestParam String trainerId) {
         log.info("Request received to delete trainer by id---> {}", trainerId);
@@ -130,6 +153,7 @@ public class TrainerManagementController {
      * @throws DuplicateSpecialtyFoundException if a speciality already exists
      * @see TrainerManagementService#addSpecialityForTrainer(String, SpecialityRequestDto)
      */
+    @LogExecutionTime
     @PostMapping("/trainer/speciality")
     public ResponseEntity<TrainerResponseDto> addSpecialization(@RequestParam String trainerId,
                                                                 @Valid @RequestBody SpecialityRequestDto requestDto) {
@@ -148,6 +172,7 @@ public class TrainerManagementController {
      * @throws NoSpecialityFoundException  if the old speciality name is not found
      * @see TrainerManagementService#changeSpecialityFromOldNameToNewName(String, String, String)
      */
+    @LogExecutionTime
     @PutMapping("/trainer/update")
     public ResponseEntity<TrainerResponseDto> updateSpecializationByName(@RequestParam @NotBlank String trainerId,
                                                                          @RequestParam @NotBlank String oldSpecialityName,
@@ -167,6 +192,7 @@ public class TrainerManagementController {
      * @throws NoTrainerFoundException if the trainer does not exist
      * @see TrainerManagementService#deleteSpecializationByName(String, String)
      */
+    @LogExecutionTime
     @DeleteMapping("/trainer/delete")
     public ResponseEntity<String> deleteSpecializationByName(@RequestParam @NotBlank String trainerId,
                                                              @RequestParam @NotBlank String specialityName)
