@@ -1,6 +1,8 @@
 package com.gym.trainerService.Controllers;
 
+import com.gym.trainerService.Dto.MemberDtos.Responses.GenericResponse;
 import com.gym.trainerService.Services.TrainerServices.TrainerProfileService;
+import com.gym.trainerService.Utils.CustomAnnotations.Annotations.LogExecutionTime;
 import jakarta.validation.constraints.NotBlank;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
@@ -46,12 +48,15 @@ public class TrainerProfileController {
      * @return a {@link ResponseEntity} with HTTP status {@code 201 Created} and an upload response message
      */
 
+    @LogExecutionTime
     @PostMapping("/trainer/upload")
-    public ResponseEntity<String> uploadTrainerImage(@RequestParam @NotBlank String trainerId,
-                                                     @RequestParam("image") MultipartFile image) {
+    public ResponseEntity<GenericResponse> uploadTrainerImage(
+            @RequestParam
+            @NotBlank (message = "Only Valid Trainers Can Upload Image Please Login And try Again") String trainerId,
+            @RequestParam("image") MultipartFile image) {
         log.info("Request received to upload image for the trainer :: {}",trainerId);
         String response = profileService.uploadImage(trainerId,image);
-        return ResponseEntity.status(HttpStatus.CREATED).body(response);
+        return ResponseEntity.status(HttpStatus.CREATED).body(new GenericResponse(response));
     }
 
     /**
@@ -63,10 +68,10 @@ public class TrainerProfileController {
      * @return a {@link ResponseEntity} with HTTP status {@code 200 OK} and the profile image URL as the body
      */
     @GetMapping("/all/image")
-    public ResponseEntity<String> getProfileImage(@RequestParam @NotBlank String trainerId) {
+    public ResponseEntity<GenericResponse> getProfileImage(@RequestParam @NotBlank String trainerId) {
         log.info("Request received to get profile image url for trainer :: {}",trainerId);
         String response = profileService.getProfileImageUrl(trainerId);
-        return ResponseEntity.status(HttpStatus.OK).body(response);
+        return ResponseEntity.status(HttpStatus.OK).body(new GenericResponse(response));
     }
 
     /**
@@ -79,9 +84,9 @@ public class TrainerProfileController {
      * @return a {@link ResponseEntity} with HTTP status {@code 202 Accepted} and deletion confirmation message
      */
     @DeleteMapping("/trainer/delete")
-    public ResponseEntity<String> deleteTrainerImage(@RequestParam @NotBlank String trainerId) {
+    public ResponseEntity<GenericResponse> deleteTrainerImage(@RequestParam @NotBlank String trainerId) {
         log.info("Request received to delete profile image url for trainer :: {}",trainerId);
         String response = profileService.deleteProfileImageUrl(trainerId);
-        return ResponseEntity.status(HttpStatus.ACCEPTED).body(response);
+        return ResponseEntity.status(HttpStatus.ACCEPTED).body(new GenericResponse(response));
     }
 }
