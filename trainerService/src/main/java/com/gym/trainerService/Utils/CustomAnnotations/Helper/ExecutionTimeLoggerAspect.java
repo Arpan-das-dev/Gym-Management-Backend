@@ -1,4 +1,4 @@
-package com.gym.trainerService.Utils.CustomAnnotations;
+package com.gym.trainerService.Utils.CustomAnnotations.Helper;
 
 import org.aspectj.lang.ProceedingJoinPoint;
 import org.aspectj.lang.annotation.Around;
