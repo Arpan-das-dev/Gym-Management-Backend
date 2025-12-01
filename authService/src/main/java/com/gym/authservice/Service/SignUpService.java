@@ -45,7 +45,8 @@ public class SignUpService {
 
     @Transactional
     public Mono<SignUpResponseDto> signUp(SignupRequestDto requestDto) {
-        log.info("Starting signup process for email: {}", requestDto.getEmail());
+        log.info("Starting signup process for email: {} and role is {}" ,
+                requestDto.getEmail(),requestDto.getRole());
 
         return validateUserUniqueness(requestDto.getEmail(), requestDto.getPhone())
                 .doOnSuccess(v -> log.info("User uniqueness validated for email: {}", requestDto.getEmail()))
@@ -84,7 +85,8 @@ public class SignUpService {
 
                         case TRAINER -> {
                             signedUps.setRole(RoleType.TRAINER_PENDING);
-                            log.info("Sending approval request for TRAINER: {}", signedUps.getEmail());
+                            log.info("Sending approval request for TRAINER: {} till then role is {}",
+                                    signedUps.getEmail(),signedUps.getRole().name());
                             approvalFlow = sendApprovalRequestReactive(approveUrl, approvalDto)
                                     .doOnNext(resp -> log.info("Approval response for TRAINER {}: {}", signedUps.getEmail(), resp))
                                     .then();
@@ -93,7 +95,8 @@ public class SignUpService {
                         case TRAINER_ADMIN -> {
                             signedUps.setRole(RoleType.TRAINER);
                             signedUps.setApproved(true);
-                            log.info("Auto-approved TRAINER_ADMIN: {}", signedUps.getEmail());
+                            log.info("Auto-approved TRAINER_ADMIN: {} and keeping the role as {}",
+                                    signedUps.getEmail(),signedUps.getRole().name());
                             approvalFlow = Mono.empty();
                         }
 
