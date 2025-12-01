@@ -230,4 +230,6 @@ public class UserManagementService {
         log.info("Evicting cache for user id {}", id);
         Objects.requireNonNull(cacheManager.getCache("userInfo")).evict(id);
     }
+
+
 }
