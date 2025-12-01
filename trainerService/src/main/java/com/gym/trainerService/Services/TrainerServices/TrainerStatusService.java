@@ -4,29 +4,30 @@ package com.gym.trainerService.Services.TrainerServices;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.data.redis.core.StringRedisTemplate;
+import org.springframework.messaging.simp.SimpMessagingTemplate;
 import org.springframework.stereotype.Service;
 
 import java.time.Duration;
-
 /**
- * Service class responsible for managing trainer availability statuses in Redis.
- * <p>
- * This service provides operations to create, retrieve, and delete a trainer's
- * working or availability status. The statuses are stored in Redis using a predefined
- * key prefix for high-performance lookup and temporary caching.
- * </p>
+ * Service responsible for managing trainer availability statuses in Redis.
  *
- * <p><b>Storage Details:</b></p>
+ * <p>This service provides high-performance status handling for trainers:
  * <ul>
- *   <li>Uses Redis string values to store trainer statuses.</li>
- *   <li>Each record expires automatically after 18 hours to ensure data freshness.</li>
- *   <li>Keys follow the format: <code>STATUS::[trainerId]</code>.</li>
+ *     <li>Stores status in Redis with TTL</li>
+ *     <li>Maintains a Redis Set of active trainers (no duplicates)</li>
+ *     <li>Broadcasts real-time active trainer count via WebSocket</li>
  * </ul>
  *
- * <p>This service is typically invoked through the {@link com.gym.trainerService.Controllers.TrainerStatusController}
- * to respond to REST API requests.</p>
+ * <p><b>Key Storage:</b></p>
+ * <ul>
+ *     <li>Status key format: {@code STATUS::<trainerId>}</li>
+ *     <li>Active trainer set key: {@code trainerCountCache}</li>
+ *     <li>Status TTL: 18 hours</li>
+ * </ul>
  *
- * @author Arpan Das
+ * <p>Controller is responsible for validating allowed status values.</p>
+ *
+ * @author Arpan
  * @since 1.0
  */
 @Slf4j
@@ -34,66 +35,137 @@ import java.time.Duration;
 @RequiredArgsConstructor
 public class TrainerStatusService {
 
-    private final StringRedisTemplate redisTemplate;
+    private final StringRedisTemplate redis;
+    private final SimpMessagingTemplate ws;
+
+    /** Prefix for trainer status keys in Redis. */
+    private static final String STATUS_KEY_PREFIX = "STATUS::";
+
+    /** Redis set that stores active trainers (AVAILABLE). */
+    private static final String ACTIVE_SET_KEY = "trainerCountCache";
+
+    /** TTL for each trainer's status record. */
+    private static final Duration STATUS_TTL = Duration.ofHours(18);
 
     /**
-     * Prefix used for all trainer status keys in Redis storage.
-     * <p>
-     * Ensures consistent naming convention and easy filtering during retrieval or cleanup.
-     * </p>
-     */
-    private final String RedisKEY_PRE_FIX = "STATUS::";
-
-    /**
-     * Stores a trainer's availability status in Redis with an 18-hour time-to-live (TTL).
-     * <p>
-     * Each new status overwrites the previous entry for the given trainer ID.
-     * </p>
+     * Stores a trainer's availability status in Redis.
      *
-     * @param status    the status to assign to the trainer (e.g., "AVAILABLE", "UNAVAILABLE")
-     * @param trainerId the unique identifier of the trainer
-     * @return the stored status value
+     * <p>Automatic behaviors:
+     * <ul>
+     *     <li>Overwrites previous status</li>
+     *     <li>Expires after 18 hours</li>
+     *     <li>Updates active-trainer set (AVAILABLE vs UNAVAILABLE)</li>
+     * </ul>
      *
+     * @param status    trainer status (validated upstream)
+     * @param trainerId trainer unique identifier
+     * @return stored status
      */
     public String setStatus(String status, String trainerId) {
-        redisTemplate.opsForValue().set(RedisKEY_PRE_FIX + trainerId, status, Duration.ofHours(18));
-        log.info("Status is set as :: {} for trainer :: {}", status, trainerId);
+
+        String redisKey = STATUS_KEY_PREFIX + trainerId;
+
+        redis.opsForValue().set(redisKey, status, STATUS_TTL);
+
+        // ACTIVE → add to set, UNAVAILABLE → remove
+        if ("UNAVAILABLE".equalsIgnoreCase(status) || "BUSY".equalsIgnoreCase(status)) {
+            markAsInactive(trainerId);
+        } else {
+            markAsActive(trainerId);
+        }
+
+        log.info("📝 Status updated: trainer={} → {}", trainerId, status);
         return status;
     }
 
     /**
-     * Retrieves the current status of a specific trainer from Redis.
-     * <p>
-     * If no value is found in Redis (expired or not set), this method defaults
-     * the return status to "UNAVAILABLE".
-     * </p>
+     * Retrieves a trainer's current status from Redis.
      *
-     * @param trainerId the unique identifier of the trainer
-     * @return the trainer's status, or "UNAVAILABLE" if not present in Redis
+     * <p>If no status exists (expired or never set), defaults to {@code UNAVAILABLE}.
      *
+     * @param trainerId trainer identifier
+     * @return status or {@code UNAVAILABLE}
      */
     public String getStatus(String trainerId) {
-        String value = redisTemplate.opsForValue().get(RedisKEY_PRE_FIX + trainerId);
-        log.info("Fetched status as :: {} from database for trainer :: {}", value, trainerId);
-        if (value == null) {
-            return "UNAVAILABLE";
-        }
-        return value;
+        String value = redis.opsForValue().get(STATUS_KEY_PREFIX + trainerId);
+
+        log.info("📥 Status fetched: trainer={} → {}", trainerId, value);
+
+        return value == null ? "UNAVAILABLE" : value;
     }
 
     /**
-     * Deletes a trainer's status record from Redis.
-     * <p>
-     * After deletion, the trainer is implicitly marked as "UNAVAILABLE".
-     * </p>
+     * Deletes the trainer's status from Redis.
      *
-     * @param trainerId the unique identifier of the trainer whose status will be removed
-     * @return always returns "UNAVAILABLE" indicating post-deletion state
+     * <p>After deletion, the trainer is considered UNAVAILABLE.
      *
+     * @param trainerId trainer identifier
+     * @return always {@code UNAVAILABLE}
      */
     public String deleteStatus(String trainerId) {
-        redisTemplate.delete(RedisKEY_PRE_FIX + trainerId);
-        log.info("Deleted status for trainer :: {} and marked as :: {}", trainerId, "UNAVAILABLE");
+        redis.delete(STATUS_KEY_PREFIX + trainerId);
+        markAsInactive(trainerId); // ensures count updates
+        log.info("🗑 Deleted status for trainer={}, defaulting to UNAVAILABLE", trainerId);
         return "UNAVAILABLE";
+    }
+
+
+    /**
+     * Checks whether the given trainer ID belongs to the active (AVAILABLE) set.
+     *
+     * @param trainerId trainer identifier
+     * @return true if active, false otherwise
+     */
+    public boolean isActive(String trainerId) {
+        return Boolean.TRUE.equals(redis.opsForSet().isMember(ACTIVE_SET_KEY, trainerId));
+    }
+
+    /**
+     * Returns the number of trainers currently marked as AVAILABLE.
+     *
+     * @return active trainer count
+     */
+    public Long getActiveTrainersCount() {
+        Long count = redis.opsForSet().size(ACTIVE_SET_KEY);
+        return count == null ? 0L : count;
+    }
+
+    /**
+     * Broadcasts the current number of active trainers over a WebSocket topic.
+     */
+    public void broadcastLiveCount() {
+        Long currentActive = getActiveTrainersCount();
+        ws.convertAndSend("/topic/activeTrainers", currentActive);
+        log.info("📢 Live Active Count Broadcast → {}", currentActive);
+    }
+
+    /**
+     * Marks a trainer as active by adding them to the active set.
+     *
+     * <p>Prevents duplicates by checking membership first.</p>
+     *
+     * @param trainerId trainer identifier
+     */
+    public void markAsActive(String trainerId) {
+        if (!isActive(trainerId)) {
+            redis.opsForSet().add(ACTIVE_SET_KEY, trainerId);
+            setStatus("AVAILABLE",trainerId);
+            log.info("🤸 Trainer ACTIVE: {} (broadcasting new count…)", trainerId);
+            broadcastLiveCount();
+        }
+    }
+
+    /**
+     * Marks a trainer as inactive by removing them from the active set.
+     *
+     * @param trainerId trainer identifier
+     */
+    public void markAsInactive(String trainerId) {
+        if (isActive(trainerId)) {
+            redis.opsForSet().remove(ACTIVE_SET_KEY, trainerId);
+            setStatus("UNAVAILABLE",trainerId);
+            log.info("🛑 Trainer INACTIVE: {} (broadcasting new count…)", trainerId);
+            broadcastLiveCount();
+        }
     }
 }
