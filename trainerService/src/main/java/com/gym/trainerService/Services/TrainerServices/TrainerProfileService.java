@@ -5,12 +5,14 @@ import com.gym.trainerService.Exception.Custom.NoTrainerFoundException;
 import com.gym.trainerService.Models.Trainer;
 import com.gym.trainerService.Repositories.TrainerRepository;
 import com.gym.trainerService.Services.OtherServices.AwsService;
+import com.gym.trainerService.Utils.CustomAnnotations.Annotations.LogRequestTime;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.cache.annotation.CacheEvict;
 import org.springframework.cache.annotation.CachePut;
 import org.springframework.cache.annotation.Cacheable;
 import org.springframework.stereotype.Service;
+import org.springframework.transaction.annotation.Transactional;
 import org.springframework.web.multipart.MultipartFile;
 
 /**
@@ -66,6 +68,8 @@ public class TrainerProfileService {
      * @return the public S3 URL of the uploaded image
      * @throws NoTrainerFoundException if no trainer exists with the given ID
      */
+    @LogRequestTime
+    @Transactional
     @CachePut(value = "profileImageCache", key = "#trainerId")
     public String uploadImage(String trainerId, MultipartFile image) {
         Trainer trainer = trainerRepository.findById(trainerId)
@@ -89,6 +93,7 @@ public class TrainerProfileService {
      * @return the profile image URL
      * @throws NoTrainerFoundException if no trainer exists with the given ID
      */
+    @LogRequestTime
     @Cacheable(value = "profileImageCache", key = "#trainerId")
     public String getProfileImageUrl(String trainerId) {
         Trainer trainer = trainerRepository.findById(trainerId)
@@ -107,6 +112,8 @@ public class TrainerProfileService {
      * @throws NoTrainerFoundException   if the trainer does not exist
      * @throws InvalidImageUrlException  if the stored image URL is invalid or empty
      */
+    @LogRequestTime
+    @Transactional
     @CacheEvict(value = "profileImageCache", key = "#trainerId")
     public String deleteProfileImageUrl(String trainerId) {
         Trainer trainer = trainerRepository.findById(trainerId)
