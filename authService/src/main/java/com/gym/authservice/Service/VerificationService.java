@@ -61,7 +61,7 @@ public class VerificationService {
      */
     public void StoreEmailOtp(String key, String otp, long ttlSeconds) {
         redisTemplate.opsForValue().set("OTP:EMAIL:" + key, otp, ttlSeconds, TimeUnit.SECONDS);
-        log.debug("Stored email OTP in Redis with key OTP:EMAIL:{} (value hidden for security)", key);
+        log.debug("Stored email OTP in Redis with key OTP:EMAIL:{} (value {})", key,otp);
     }
 
     /**
@@ -73,7 +73,7 @@ public class VerificationService {
      */
     public void StorePhoneOtp(String key, String otp, long ttlSeconds) {
         redisTemplate.opsForValue().set("OTP:PHONE:" + key, otp, ttlSeconds, TimeUnit.SECONDS);
-        log.debug("Stored phone OTP in Redis with key OTP:PHONE:{} (value hidden for security)", key);
+        log.debug("Stored phone OTP in Redis with key OTP:PHONE:{} (value {})", key,otp);
     }
 
     /**

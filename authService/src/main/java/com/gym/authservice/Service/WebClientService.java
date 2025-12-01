@@ -1,5 +1,6 @@
 package com.gym.authservice.Service;
 
+import com.gym.authservice.Dto.Request.TrainerCreateRequestDto;
 import com.gym.authservice.Dto.Response.MemberCreationResponseDto;
 import com.gym.authservice.Dto.Response.TrainerCreationResponseDto;
 import com.gym.authservice.Entity.SignedUps;
@@ -8,6 +9,8 @@ import org.springframework.beans.factory.annotation.Value;
 import org.springframework.scheduling.annotation.Async;
 import org.springframework.stereotype.Service;
 import org.springframework.web.reactive.function.client.WebClient;
+
+import java.time.LocalDate;
 
 @Slf4j
 @Service
@@ -70,21 +73,36 @@ public class WebClientService {
 
     @Async
     public void sendTrainerServiceToCreateNewTrainer(SignedUps user) {
-        TrainerCreationResponseDto responseDto = TrainerCreationResponseDto.builder()
-                .id(user.getId())
-                .firstName(user.getFirstName()).lastName(user.getLastName())
-                .email(user.getLastName()).phone(user.getLastName())
-                .gender(user.getGender())
-                .joinDate(user.getJoinDate())
-                .build();
+        TrainerCreateRequestDto dto = mapToTrainerDto(user);
         webClient.build().post()
                 .uri(trainerService_CREATE_URL)
-                .bodyValue(responseDto)
+                .bodyValue(dto)
                 .retrieve().toBodilessEntity()
                 .subscribe(
                         success-> log.info("{} Successfully sent dto to {} ",success.getStatusCode(), trainerService_CREATE_URL),
                         error-> log.error("unable to send {} {}",trainerService_CREATE_URL,error.getMessage())
                 );
+    }
+    private TrainerCreateRequestDto mapToTrainerDto(SignedUps user) {
+        return TrainerCreateRequestDto.builder()
+                .id(user.getId())
+                .firstName(user.getFirstName())
+                .lastName(user.getLastName())
+                .email(user.getEmail())
+                .phone(user.getPhone())
+                .gender(capitalizeGender(user.getGender()))
+                .joinDate(LocalDate.now())   // REQUIRED FIELD
+                .build();
+    }
+
+    private String capitalizeGender(String gender) {
+        if (gender == null) return "Other";
+        String g = gender.trim().toLowerCase();
+        return switch (g) {
+            case "male" -> "Male";
+            case "female" -> "Female";
+            default -> "Other";
+        };
     }
 
     @Async
