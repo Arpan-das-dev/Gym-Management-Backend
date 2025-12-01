@@ -3,7 +3,9 @@ package com.gym.trainerService.Services.TrainerServices;
 import com.gym.trainerService.Dto.TrainerMangementDto.Requests.SpecialityRequestDto;
 import com.gym.trainerService.Dto.TrainerMangementDto.Requests.TrainerCreateRequestDto;
 import com.gym.trainerService.Dto.TrainerMangementDto.Responses.AllTrainerResponseDto;
+import com.gym.trainerService.Dto.TrainerMangementDto.Responses.PublicTrainerInfoResponseDto;
 import com.gym.trainerService.Dto.TrainerMangementDto.Responses.TrainerResponseDto;
+import com.gym.trainerService.Dto.TrainerMangementDto.Wrappers.AllPublicTrainerInfoResponseWrapperDto;
 import com.gym.trainerService.Dto.TrainerMangementDto.Wrappers.AllTrainerResponseDtoWrapper;
 import com.gym.trainerService.Exception.Custom.DuplicateSpecialtyFoundException;
 import com.gym.trainerService.Exception.Custom.DuplicateTrainerFoundException;
@@ -13,6 +15,7 @@ import com.gym.trainerService.Models.Specialities;
 import com.gym.trainerService.Models.Trainer;
 import com.gym.trainerService.Repositories.SpecialityRepository;
 import com.gym.trainerService.Repositories.TrainerRepository;
+import com.gym.trainerService.Utils.CustomAnnotations.Annotations.LogRequestTime;
 import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
@@ -59,7 +62,11 @@ public class TrainerManagementService {
      * @see TrainerCreateRequestDto
      */
     @Transactional
-    @CacheEvict(value = "AllTrainerCache", key = "'All'")
+    @Caching( evict = {
+            @CacheEvict(value = "AllTrainerCache", key = "'All'"),
+            @CacheEvict (value = "trainerBasic", key = "'allTrainers'")
+    }
+    )
     public AllTrainerResponseDto createTrainer(TrainerCreateRequestDto requestDto) {
         boolean condition1 = trainerRepository.existsById(requestDto.getId()); // checking if any trainer exists
                                                                                // with same id
@@ -162,7 +169,8 @@ public class TrainerManagementService {
     @Transactional
     @Caching(evict = {
             @CacheEvict(value = "trainerCache", key = "#trainerId"),
-            @CacheEvict(value = "AllTrainerCache", key = "'All'")
+            @CacheEvict(value = "AllTrainerCache", key = "'All'"),
+            @CacheEvict(value = "trainerBasic", key = "'allTrainers'")
     })
     public String deleteTrainerById(String trainerId) {
         log.info("Request received in service layer");
@@ -276,7 +284,6 @@ public class TrainerManagementService {
      * @see Trainer
      */
     private TrainerResponseDto trainerResponseDtoBuilder(Trainer trainer) {
-        List<Specialities> specialities = specialityRepository.findByTrainerId(trainer.getTrainerId());
         return TrainerResponseDto.builder()
                 .trainerId(trainer.getTrainerId())
                 .trainerProfileImageUrl(trainer.getTrainerProfileImageUrl())
@@ -285,10 +292,32 @@ public class TrainerManagementService {
                 .emailId(trainer.getEmail())
                 .phone(trainer.getPhone())
                 .gender(trainer.getGender())
-                .specialities(specialities)
                 .lastLoginTime(trainer.getLastLogin())
                 .averageRating(trainer.getAverageRating())
                 .build();
     }
 
+    /**
+     * This method is responsible to show trainer's all basic details in home page
+     * to show users basic details of every trainer
+     * @return {@link AllPublicTrainerInfoResponseWrapperDto} which is contains a List of
+     * @see PublicTrainerInfoResponseDto
+     * which has basic information of trainer {@link Trainer}
+     * used java stream with make to build readable code and easy to understand
+     * */
+    @LogRequestTime
+    @Cacheable(value = "trainerBasic", key = "'allTrainers'")
+    public AllPublicTrainerInfoResponseWrapperDto getAllTrainerBasicInfo() {
+        List<Trainer> trainerList = trainerRepository.findAll();
+        return AllPublicTrainerInfoResponseWrapperDto.builder()
+                .publicTrainerInfoResponseDtoList(trainerList.stream()
+                        .map(t-> PublicTrainerInfoResponseDto.builder()
+                                .id(t.getTrainerId())
+                                .averageRating(t.getAverageRating())
+                                .firstName(t.getFirstName())
+                                .lastName(t.getLastName())
+                                .averageRating(t.getAverageRating())
+                                .build()).toList())
+                .build();
+    }
 }
