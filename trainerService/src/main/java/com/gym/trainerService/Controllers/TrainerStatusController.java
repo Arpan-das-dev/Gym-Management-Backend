@@ -94,4 +94,39 @@ public class TrainerStatusController {
         String response = trainerStatusService.deleteStatus(trainerId);
         return ResponseEntity.status(HttpStatus.ACCEPTED).body(response);
     }
+
+    /*
+     * if a successful login then the auth service send
+     * here a request to increase the current member count
+     */
+    @PostMapping("trainer/increment")
+    public ResponseEntity<?> markAsActive(@RequestParam String id) {
+        trainerStatusService.markAsActive(id);
+        return ResponseEntity.accepted().build();
+        // returning response as ACCEPTED http status
+    }
+
+    /*
+     * opens an endpoint to decrease the current member count
+     * when the account is deactivated for some time
+     */
+    @PostMapping("trainer/decrement")
+    public ResponseEntity<?> markAsInactive(@RequestParam String id) {
+        trainerStatusService.markAsInactive(id);
+        return ResponseEntity.accepted().build();
+        // returning response as ACCEPTED http status
+    }
+
+    /*
+     * this endpoint to get current live count
+     * of active members in gym
+     * as of now it's returning but near future
+     * it will return using websocket
+     */
+    @GetMapping("all/active-count")
+    public ResponseEntity<Long> getActiveMemberCount() {
+        return ResponseEntity.status(HttpStatus.OK).body(trainerStatusService.getActiveTrainersCount());
+        // returning member count as OK http status
+    }
+
 }
