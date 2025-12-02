@@ -35,7 +35,8 @@ public class AuthManagementController {
      */
 
     @PostMapping("addMember")
-    public ResponseEntity<UserCreationResponseDto> createMember(@Valid @RequestBody CreateMemberRequestDto requestDto) {
+    public ResponseEntity<UserCreationResponseDto> createMember(
+            @Valid @RequestBody CreateMemberRequestDto requestDto) {
         UserCreationResponseDto response = managementService.createMember(requestDto);
         return ResponseEntity.status(HttpStatus.CREATED).body(response);
     }
@@ -93,14 +94,5 @@ public class AuthManagementController {
         }
     }
 
-    /*
-     * Endpoint to freeze a user (member/trainer) account temporarily so that
-     * the user can access the system but cannot user their dashboard and other features
-     * but still can log in and view basic info and contact admin for more info and also do shopping
-     */
 
-     /*
-      * Endpoint to unfreeze a user (member/trainer) account so that
-      * the user can access their dashboard and other features again.
-      */
 }
