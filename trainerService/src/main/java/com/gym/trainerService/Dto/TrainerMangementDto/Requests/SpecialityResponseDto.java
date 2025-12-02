@@ -19,6 +19,6 @@ import java.util.List;
 @Builder
 @AllArgsConstructor
 @NoArgsConstructor
-public class SpecialityRequestDto {
+public class SpecialityResponseDto {
     List<String> specialityList;
 }
