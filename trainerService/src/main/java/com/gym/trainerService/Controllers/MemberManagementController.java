@@ -79,4 +79,7 @@ public class MemberManagementController {
         String response = memberManagementService.deleteMemberByIds(trainerId,memberId);
         return  ResponseEntity.status(HttpStatus.ACCEPTED).body(response);
     }
+
+
+
 }
