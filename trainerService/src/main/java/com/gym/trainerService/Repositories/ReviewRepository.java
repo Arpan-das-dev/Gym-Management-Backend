@@ -6,6 +6,9 @@ import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
 import org.springframework.data.jpa.repository.JpaRepository;
 import org.springframework.data.jpa.repository.Query;
+
+import java.util.List;
+
 /**
  * Repository interface for managing {@link Review} entities.
  * <p>
@@ -61,4 +64,8 @@ public interface ReviewRepository extends JpaRepository<Review, String> {
      */
     @Query("SELECT avg(r.review) FROM Review r WHERE r.trainer.id = :trainerId")
     Double getReviewsByTrainerId(@Param("trainerId") String trainerId);
+
+
+    @Query("SELECT r.trainer.id, COUNT(r) FROM Review r GROUP BY r.trainer.id")
+    List<Object[]> getReviewCountsForAllTrainers();
 }
