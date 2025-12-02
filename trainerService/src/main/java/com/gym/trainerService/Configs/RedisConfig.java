@@ -4,12 +4,15 @@ import com.fasterxml.jackson.databind.DeserializationFeature;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.fasterxml.jackson.databind.SerializationFeature;
 import com.fasterxml.jackson.datatype.jsr310.JavaTimeModule;
+import com.gym.trainerService.Dto.MemberDtos.Responses.GenericResponse;
 import com.gym.trainerService.Dto.MemberDtos.Wrappers.AllMemberResponseWrapperDto;
 import com.gym.trainerService.Dto.SessionDtos.Wrappers.AllSessionsWrapperDto;
+import com.gym.trainerService.Dto.TrainerMangementDto.Requests.SpecialityResponseDto;
 import com.gym.trainerService.Dto.TrainerMangementDto.Responses.TrainerResponseDto;
 import com.gym.trainerService.Dto.TrainerMangementDto.Wrappers.AllPublicTrainerInfoResponseWrapperDto;
 import com.gym.trainerService.Dto.TrainerMangementDto.Wrappers.AllTrainerResponseDtoWrapper;
 import com.gym.trainerService.Dto.TrainerReviewDto.Wrapper.AllReviewResponseWrapperDto;
+import com.gym.trainerService.Models.Trainer;
 import org.springframework.cache.CacheManager;
 import org.springframework.cache.annotation.EnableCaching;
 import org.springframework.context.annotation.Bean;
@@ -83,6 +86,17 @@ public class RedisConfig {
     }
 
     /**
+     * Defines a custom serializer for caching trainer {@link Trainer} by their id
+     *
+     * @param redisObjectMapper the shared {@link ObjectMapper} used for JSON serialization
+     * @return serializer for {@link Trainer}
+     * */
+    @Bean
+    public TypedJsonRedisSerializer<Trainer> trainerTypedJsonRedisSerializer(ObjectMapper redisObjectMapper) {
+        return  new TypedJsonRedisSerializer<>(redisObjectMapper,Trainer.class);
+    }
+
+    /**
      * Defines a custom Redis serializer for caching trainer lists.
      *
      * @param redisObjectMapper the shared {@link ObjectMapper} used for JSON serialization
@@ -153,6 +167,17 @@ public class RedisConfig {
             (ObjectMapper redisObjectMapper) {
         return new TypedJsonRedisSerializer<>(redisObjectMapper, AllPublicTrainerInfoResponseWrapperDto.class);
     }
+    /**
+     * Defines a custom Redis Serialize for all Specialites written in the
+     * {@link com.gym.trainerService.Enums.TrainerSpeciality}
+     * @param redisObjectMapper the shared {@link ObjectMapper}
+     * @return serializer for {@code SpecialityResponseDto}
+     */
+    @Bean
+    public TypedJsonRedisSerializer<SpecialityResponseDto> specialityResponseDtoTypedJsonRedisSerializer
+    (ObjectMapper redisObjectMapper) {
+        return new TypedJsonRedisSerializer<>(redisObjectMapper,SpecialityResponseDto.class);
+    }
 
     /**
      * Defines a fallback generic serializer for miscellaneous or untyped caches (e.g., profile images).
@@ -164,6 +189,7 @@ public class RedisConfig {
     public GenericJackson2JsonRedisSerializer genericSerializer(ObjectMapper redisObjectMapper) {
         return new GenericJackson2JsonRedisSerializer(redisObjectMapper);
     }
+
 
 
     /**
@@ -180,6 +206,8 @@ public class RedisConfig {
      * @param allSessionsWrapperDtoRedisSerializer session list cache serializer
      * @param genericRedisSerializer fallback serializer for untyped use cases
      * @param allPublicTrainerInfoResponseWrapperDtoRedisSerializer trainer's basic info list cache serializer
+     * @param specialityResponseDtoTypedJsonRedisSerializer for all trainer's speciality and all possible speciality
+     * @param trainerTypedJsonRedisSerializer serializer for trainer entity
      * @return configured {@link RedisCacheManager} with specific TTLs and serializers
      */
     @Bean
@@ -191,6 +219,8 @@ public class RedisConfig {
             TypedJsonRedisSerializer<AllMemberResponseWrapperDto> allMemberResponseWrapperDtoRedisSerializer,
             TypedJsonRedisSerializer<AllSessionsWrapperDto> allSessionsWrapperDtoRedisSerializer,
             TypedJsonRedisSerializer<AllPublicTrainerInfoResponseWrapperDto> allPublicTrainerInfoResponseWrapperDtoRedisSerializer,
+            TypedJsonRedisSerializer<Trainer> trainerTypedJsonRedisSerializer,
+            TypedJsonRedisSerializer<SpecialityResponseDto> specialityResponseDtoTypedJsonRedisSerializer,
             GenericJackson2JsonRedisSerializer genericRedisSerializer) {
 
         RedisCacheConfiguration defaultConfig = RedisCacheConfiguration.defaultCacheConfig()
@@ -199,6 +229,25 @@ public class RedisConfig {
                 .disableCachingNullValues();
 
         Map<String, RedisCacheConfiguration> cacheConfigs = new HashMap<>();
+
+        cacheConfigs.put("trainer",defaultConfig
+                .serializeValuesWith(RedisSerializationContext.SerializationPair.
+                        fromSerializer(trainerTypedJsonRedisSerializer))
+                .entryTtl(Duration.ofHours(4)));
+
+        cacheConfigs.put("about",defaultConfig
+                .serializeValuesWith(RedisSerializationContext.SerializationPair.fromSerializer(genericRedisSerializer))
+                .entryTtl(Duration.ofHours(6)));
+
+        cacheConfigs.put("speciality",defaultConfig
+                .serializeValuesWith(RedisSerializationContext.SerializationPair
+                        .fromSerializer(specialityResponseDtoTypedJsonRedisSerializer))
+                .entryTtl(Duration.ofHours(6)));
+
+        cacheConfigs.put("allSpeciality",defaultConfig
+                .serializeValuesWith(RedisSerializationContext.SerializationPair
+                        .fromSerializer(specialityResponseDtoTypedJsonRedisSerializer))
+                .entryTtl(Duration.ofDays(7)));
 
         cacheConfigs.put("trainerBasic",defaultConfig
                 .serializeValuesWith(RedisSerializationContext.SerializationPair
