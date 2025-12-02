@@ -40,18 +40,13 @@ public class AuthManagementService {
                 .joinDate(memberRequestDto.getJoinDate())
                 .password(memberRequestDto.getPassword())
                 .build();
-        // create the member dto to send to the member service but
-        // as we don't have member service yet so we will comment it out
         MemberResponseDto memberResponseDto = MemberResponseDto.builder()
                 .firstName(memberRequestDto.getFirstName()).lastName(memberRequestDto.getLastName())
                 .gender(memberRequestDto.getGender())
                 .joinDate(memberRequestDto.getJoinDate())
                 .email(memberRequestDto.getEmail()).phone(memberRequestDto.getPhone())
                 .build();
-        // send the request to the auth service via webclient
         webClientService.sendSignupDetailsMember(responseDto);
-        // as we don't have member service yet so we will comment it out
-        //webClientMemberService.sendMemberDetails(memberResponseDto)
 
         return new UserCreationResponseDto("Member created successfully");
     }
