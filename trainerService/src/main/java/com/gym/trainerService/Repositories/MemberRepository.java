@@ -53,4 +53,7 @@ public interface MemberRepository extends JpaRepository<Member, String> {
     @Query("SELECT m FROM Member m WHERE m.trainerId = :trainerId AND m.memberId = :memberId")
     Optional<Member> findByTrainerIdMemberId(@Param("trainerId") String trainerId,
                                      @Param("memberId") String memberId);
+
+    @Query("SELECT c.trainerId, COUNT(c) FROM Member c GROUP BY c.trainerId")
+    List<Object[]> getClientCountForAllTrainers();
 }
