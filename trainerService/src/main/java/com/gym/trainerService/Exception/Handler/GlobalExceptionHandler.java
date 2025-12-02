@@ -84,7 +84,9 @@ public class GlobalExceptionHandler {
             InvalidImageUrlException.class,
             InvalidMemberException.class,
             InvalidReviewException.class,
-            InvalidSessionException.class
+            InvalidSessionException.class,
+            InvalidSpecialityException.class,
+            MaxiMumSpecialityAchivedException.class
     })
     public ResponseEntity<ErrorResponse> handleBadRequest(Exception ex, HttpServletRequest request) {
         return ExceptionUtil.buildErrorResponse(HttpStatus.BAD_REQUEST, ex.getMessage(), request);
