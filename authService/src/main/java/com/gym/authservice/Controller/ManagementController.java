@@ -4,7 +4,6 @@ import com.gym.authservice.Dto.Request.AdminCreationRequestDto;
 import com.gym.authservice.Dto.Request.ApprovalRequestDto;
 import com.gym.authservice.Dto.Request.SignupRequestDto;
 import com.gym.authservice.Dto.Response.SignUpResponseDto;
-import com.gym.authservice.Dto.Response.SignupDetailsInfoDto;
 import com.gym.authservice.Service.UserManagementService;
 import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
