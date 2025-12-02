@@ -1,25 +1,26 @@
 package com.gym.trainerService.Services.TrainerServices;
 
-import com.gym.trainerService.Dto.TrainerMangementDto.Requests.SpecialityRequestDto;
+import com.gym.trainerService.Dto.TrainerMangementDto.Requests.SpecialityResponseDto;
+import com.gym.trainerService.Dto.TrainerMangementDto.Requests.TrainerAboutRequestDto;
 import com.gym.trainerService.Dto.TrainerMangementDto.Requests.TrainerCreateRequestDto;
 import com.gym.trainerService.Dto.TrainerMangementDto.Responses.AllTrainerResponseDto;
 import com.gym.trainerService.Dto.TrainerMangementDto.Responses.PublicTrainerInfoResponseDto;
 import com.gym.trainerService.Dto.TrainerMangementDto.Responses.TrainerResponseDto;
 import com.gym.trainerService.Dto.TrainerMangementDto.Wrappers.AllPublicTrainerInfoResponseWrapperDto;
 import com.gym.trainerService.Dto.TrainerMangementDto.Wrappers.AllTrainerResponseDtoWrapper;
-import com.gym.trainerService.Exception.Custom.DuplicateSpecialtyFoundException;
-import com.gym.trainerService.Exception.Custom.DuplicateTrainerFoundException;
-import com.gym.trainerService.Exception.Custom.NoSpecialityFoundException;
-import com.gym.trainerService.Exception.Custom.NoTrainerFoundException;
+import com.gym.trainerService.Exception.Custom.*;
 import com.gym.trainerService.Models.Specialities;
 import com.gym.trainerService.Models.Trainer;
+import com.gym.trainerService.Repositories.MemberRepository;
+import com.gym.trainerService.Repositories.ReviewRepository;
 import com.gym.trainerService.Repositories.SpecialityRepository;
 import com.gym.trainerService.Repositories.TrainerRepository;
+import com.gym.trainerService.Services.OtherServices.SpecialityService;
 import com.gym.trainerService.Utils.CustomAnnotations.Annotations.LogRequestTime;
-import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.cache.annotation.CacheEvict;
+import org.springframework.cache.annotation.CachePut;
 import org.springframework.cache.annotation.Cacheable;
 import org.springframework.cache.annotation.Caching;
 import org.springframework.dao.DataAccessException;
@@ -27,6 +28,8 @@ import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
 import java.util.List;
+import java.util.Map;
+import java.util.stream.Collectors;
 
 /**
  * Service layer for Trainer Management.
@@ -44,8 +47,11 @@ import java.util.List;
 @RequiredArgsConstructor
 public class TrainerManagementService {
 
+    private final SpecialityService specialityService;
     private final TrainerRepository trainerRepository;
     private final SpecialityRepository specialityRepository;
+    private final ReviewRepository reviewRepository;
+    private final MemberRepository memberRepository;
 
     /**
      * Creates a new trainer in the system with validation and cache eviction.
@@ -187,36 +193,67 @@ public class TrainerManagementService {
      * to ensure fresh data on subsequent retrievals.
      *
      * @param trainerId  the unique identifier of the trainer to update
-     * @param requestDto the request containing a list of new specialities to add
-     * @return {@link TrainerResponseDto} containing the updated trainer information
+     * @param speciality the request containing a string of a  new speciality to add
+     * @return {@link SpecialityResponseDto} containing the updated trainer information
      * including the newly added specialities
      * @throws NoTrainerFoundException          if no trainer exists with the specified ID
      * @throws DuplicateSpecialtyFoundException if any of the specialities already exist for the trainer
      * @throws javax                            validation if the request DTO fails validation
-     * @see SpecialityRequestDto
-     * @see TrainerResponseDto
+     * @see SpecialityResponseDto
      */
+    @LogRequestTime
     @Transactional
-    @CacheEvict(value = "trainerCache", key = "#trainerId")
-    public TrainerResponseDto addSpecialityForTrainer(String trainerId, @Valid SpecialityRequestDto requestDto) {
-        Trainer trainer = trainerRepository.findById(trainerId)
-                .orElseThrow(() -> new NoTrainerFoundException(
-                        "No trainer found with the id: " + trainerId));
-        log.info("trainer fetched from db with id: {}", trainer.getTrainerId());
-        List<Specialities> specialitiesList = specialityRepository.findByTrainerId(trainer.getTrainerId());
-        for (Specialities specialities : specialitiesList) {
-            if (requestDto.getSpecialityList().contains(specialities.getSpeciality())) {
-                throw new DuplicateSpecialtyFoundException(
-                        "A speciality already found named: " + specialities.getSpeciality());
-            }
+    @CachePut(value = "speciality", key = "#trainerId")
+    public SpecialityResponseDto addSpecialityForTrainer(String trainerId, String speciality) {
+        log.info("Request received to add speciality '{}' for trainerId {}", speciality, trainerId);
+        int count = specialityRepository.getSpecialityCount(trainerId);
+        if(count>=5) throw new MaxiMumSpecialityAchivedException("You Can Not Have More Specialites than 5");
+        String normalized = specialityService.normalize(speciality);
+        log.debug("Normalized speciality: {}", normalized);
+
+        if (!specialityService.isValidSpeciality(normalized)) {
+            log.error("Invalid speciality '{}' provided for trainer {}", speciality, trainerId);
+            throw new InvalidSpecialityException("No Such Speciality Found. Kindly Provide a Valid Speciality");
         }
-        requestDto.getSpecialityList().forEach(speciality -> specialityRepository.save(
-                Specialities.builder()
-                        .speciality(speciality)
-                        .trainerId(trainer.getTrainerId())
-                        .build()));
-        return trainerResponseDtoBuilder(trainer);
+        Trainer trainer = getById(trainerId);
+        log.info("Trainer fetched successfully: {}", trainer.getTrainerId());
+
+        List<Specialities> existingSpecs = specialityRepository.findAllTrainerId(trainerId);
+        log.debug("Existing specialities count for trainer {}: {}", trainerId, existingSpecs.size());
+
+        boolean alreadyExists = existingSpecs.stream()
+                .anyMatch(s -> s.getSpeciality().equalsIgnoreCase(normalized));
+
+        if (alreadyExists) {
+            log.warn("Duplicate speciality '{}' found for trainer {}", normalized, trainerId);
+            throw new DuplicateSpecialtyFoundException(
+                    "This speciality is already associated with your ID. Please choose another one."
+            );
+        }
+
+        Specialities newSpeciality = Specialities.builder()
+                .trainerId(trainerId)
+                .speciality(normalized)
+                .build();
+
+        specialityRepository.save(newSpeciality);
+        log.info("Successfully added speciality '{}' for trainer {}", normalized, trainerId);
+
+        SpecialityResponseDto response = getSpecialityByTrainerId(trainer.getTrainerId());
+
+        log.debug("Response prepared: {}", response);
+
+        return response;
     }
+
+    @Cacheable(value = "speciality",key = "#trainerId")
+    public SpecialityResponseDto getSpecialityByTrainerId(String trainerId) {
+        List<Specialities> specialities = specialityRepository.findAllTrainerId(trainerId);
+        return SpecialityResponseDto.builder()
+                .specialityList(specialities.stream().map(Specialities::getSpeciality).toList())
+                .build();
+    }
+
     /**
      * Updates an existing speciality name for a specific trainer.
      * This method allows renaming a trainer's speciality from an old name to a new name.
@@ -225,20 +262,18 @@ public class TrainerManagementService {
      * @param trainerId the unique identifier of the trainer whose speciality is being updated
      * @param oldSpecialityName the current name of the speciality to be changed
      * @param newSpecialityName the new name for the speciality
-     * @return {@link TrainerResponseDto} containing the updated trainer information
+     * @return {@link SpecialityResponseDto} containing the updated trainer information
      *         with the renamed speciality
      * @throws NoTrainerFoundException if no trainer exists with the specified ID
      * @throws NoSpecialityFoundException if the old speciality name doesn't exist for the trainer
-     * @see TrainerResponseDto
+     * @see SpecialityResponseDto
      */
     @Transactional
-    @CacheEvict(value = "trainerCache", key = "#trainerId")
-    public TrainerResponseDto changeSpecialityFromOldNameToNewName(String trainerId,
+    @CachePut(value = "speciality", key = "#trainerId")
+    public SpecialityResponseDto changeSpecialityFromOldNameToNewName(String trainerId,
                                                                    String oldSpecialityName,
                                                                    String newSpecialityName) {
-        Trainer trainer = trainerRepository.findById(trainerId)
-                .orElseThrow(() -> new NoTrainerFoundException(
-                        "No trainer found with the id: " + trainerId));
+        Trainer trainer = getById(trainerId);
         log.info("Successfully fetched trainer from db with name {} {}", trainer.getFirstName(),
                 trainer.getLastName());
         Specialities specialities = specialityRepository.findSpecialityByTrainerIdAndName(trainerId,
@@ -247,10 +282,14 @@ public class TrainerManagementService {
             throw new NoSpecialityFoundException("No speciality found with name " + oldSpecialityName);
         }
         log.info("Successfully fetched specialityName {}", specialities.getSpeciality());
-        specialities.setSpeciality(newSpecialityName);
+        String normalize = specialityService.normalize(newSpecialityName);
+        if(!specialityService.isValidSpeciality(newSpecialityName)){
+            throw new InvalidSpecialityException("No Such Speciality Found. Kindly Provide a Valid Speciality");
+        }
+        specialities.setSpeciality(normalize);
         specialityRepository.save(specialities);
         log.info("Successfully saved speciality with name {} ", specialities.getSpeciality());
-        return trainerResponseDtoBuilder(trainer);
+        return getSpecialityByTrainerId(trainer.getTrainerId());
     }
     /**
      * Deletes a specific speciality from a trainer's profile by speciality name.
@@ -308,16 +347,96 @@ public class TrainerManagementService {
     @LogRequestTime
     @Cacheable(value = "trainerBasic", key = "'allTrainers'")
     public AllPublicTrainerInfoResponseWrapperDto getAllTrainerBasicInfo() {
+        log.info("🚀 Starting getAllTrainerBasicInfo method. Checking cache for 'allTrainers'.");
+
         List<Trainer> trainerList = trainerRepository.findAll();
+        log.info("📚 Fetched {} trainers from the database.", trainerList.size());
+
+        List<Object[]> reviewCounts = reviewRepository.getReviewCountsForAllTrainers();
+        log.info("📊 Fetched review counts for {} distinct trainers via GROUP BY query.", reviewCounts.size());
+
+        Map<String, Long> reviewMap = reviewCounts.stream()
+                .collect(Collectors.toMap(
+                        r -> (String) r[0],
+                        r -> (Long) r[1]));
+        log.debug("🗺️ Review counts mapped for fast lookup. Map size: {}", reviewMap.size());
+
+        List<Object[]> clientCount = memberRepository.getClientCountForAllTrainers();
+        log.info("👥 Fetched client counts for {} distinct trainers via GROUP BY query.", clientCount.size());
+
+        Map<String, Long> clientCountMap = clientCount.stream()
+                .collect(Collectors.toMap(
+                        c -> (String) c[0],
+                        c -> (Long) c[1]));
+        log.debug("🗺️ Client counts mapped for fast lookup. Map size: {}", clientCountMap.size());
+
+        List<Specialities> specialities = specialityRepository.findAll();
+        log.info("Fetched {} no of specialites for all trainers",specialities.size());
+
+        Map<String ,List<Specialities>> specialitiesMap = specialities.stream()
+                .collect(Collectors.groupingBy(Specialities::getTrainerId));
+
+        List<PublicTrainerInfoResponseDto> resultList = trainerList.stream()
+                        .map(t->{
+                            List<Specialities> trainerSpecialization = specialitiesMap
+                                    .getOrDefault(t.getTrainerId(), List.of());
+                            List<String> specialityNames = trainerSpecialization.stream()
+                                    .map(Specialities::getTrainerId).toList();
+                            log.info("Collect {} specialites for trainer {} {}"
+                                    ,specialityNames.size(),t.getFirstName(),t.getLastName());
+
+                            return PublicTrainerInfoResponseDto.builder()
+                                    .id(t.getTrainerId())
+                                    .firstName(t.getFirstName())
+                                    .lastName(t.getLastName())
+                                    .about(t.getAbout())
+                                    .clientCount(clientCountMap
+                                            .getOrDefault(t.getTrainerId(),0L).intValue())
+                                    .email(t.getEmail())
+                                    .gender(t.getGender())
+                                    .averageRating(t.getAverageRating())
+                                    .reviewCount(reviewMap
+                                            .getOrDefault(t.getTrainerId(),0L).intValue())
+                                    .specialities(specialityNames)
+                                    .build();
+                        }).toList();
+
+        log.info("✅ Successfully mapped {} Trainer entities to DTOs with aggregated counts.", resultList.size());
+
         return AllPublicTrainerInfoResponseWrapperDto.builder()
-                .publicTrainerInfoResponseDtoList(trainerList.stream()
-                        .map(t-> PublicTrainerInfoResponseDto.builder()
-                                .id(t.getTrainerId())
-                                .averageRating(t.getAverageRating())
-                                .firstName(t.getFirstName())
-                                .lastName(t.getLastName())
-                                .averageRating(t.getAverageRating())
-                                .build()).toList())
+                .publicTrainerInfoResponseDtoList(resultList)
                 .build();
+    }
+
+    @Transactional
+    @LogRequestTime
+    @Caching(evict = {
+           @CacheEvict(value = "trainer",key = "#requestDto.trainerId")
+    }, put = {
+            @CachePut(value = "about", key = "#requestDto.trainerId")
+    })
+    public String setTrainerAbout(TrainerAboutRequestDto requestDto) {
+        Trainer trainer = getById(requestDto.getTrainerId());
+        log.info("Successfully fetched 👟👟 trainer from db/cache {} {}",
+                trainer.getFirstName(),trainer.getLastName());
+        trainer.setAbout(requestDto.getAbout());
+        trainerRepository.save(trainer);
+        log.info("Successfully saved about for trainer {}",requestDto.getTrainerId());
+        return trainer.getAbout();
+    }
+
+    @LogRequestTime
+    @Cacheable(value = "about", key = "#trainerId")
+    public String getTrainerAboutById(String trainerId) {
+        String response = getById(trainerId).getAbout();
+        log.info("Retrieved about for trainer {} of length {}",trainerId,response.length());
+        return response;
+    }
+
+    @Cacheable(value = "trainer",key = "#id")
+    private Trainer getById(String id) {
+        return trainerRepository.findById(id)
+                .orElseThrow(() -> new NoTrainerFoundException(
+                "No trainer found with the id: " + id));
     }
 }
