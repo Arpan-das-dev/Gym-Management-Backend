@@ -61,7 +61,6 @@ public class UserManagementService {
      * @param requestDto member signup request containing user details
      * @return Mono emitting sign-up response data including confirmation info
      */
-    @PreAuthorize("hasRole('ADMIN')")
     public Mono<SignUpResponseDto> createMemberByAdmin(SignupRequestDto requestDto){
         log.info("Admin requested member creation for email: {}", requestDto.getEmail());
         Mono<SignUpResponseDto> responseDto = signUpService.signUp(requestDto);
