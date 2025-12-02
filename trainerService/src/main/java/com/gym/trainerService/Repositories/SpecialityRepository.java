@@ -7,6 +7,7 @@ import org.springframework.data.jpa.repository.Modifying;
 import org.springframework.data.jpa.repository.Query;
 
 import java.util.List;
+import java.util.Optional;
 
 /**
  * Repository interface for managing Trainer Specialities.
@@ -70,4 +71,11 @@ public interface SpecialityRepository extends JpaRepository<Specialities,String 
     @Query("DELETE FROM Specialities s WHERE s.trainerId = :trainerId AND s.speciality = :specialityName")
     int deleteByTrainerIdWithName(@Param("trainerId") String trainerId,
                                   @Param("specialityName") String specialityName);
+
+
+    @Query("SELECT s FROM Specialities s WHERE s.trainerId =:trainerId")
+    List<Specialities> findAllTrainerId(@Param("trainerId") String trainerId);
+
+    @Query("SELECT COUNT(s) FROM Specialities s WHERE s.trainerId = :trainerId")
+    int getSpecialityCount(@Param("trainerId") String trainerId);
 }
