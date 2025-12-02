@@ -1,6 +1,9 @@
 package com.gym.trainerService.Controllers;
 
-import com.gym.trainerService.Dto.TrainerMangementDto.Requests.SpecialityRequestDto;
+import com.gym.trainerService.Dto.MemberDtos.Responses.GenericResponse;
+
+import com.gym.trainerService.Dto.TrainerMangementDto.Requests.SpecialityResponseDto;
+import com.gym.trainerService.Dto.TrainerMangementDto.Requests.TrainerAboutRequestDto;
 import com.gym.trainerService.Dto.TrainerMangementDto.Requests.TrainerCreateRequestDto;
 import com.gym.trainerService.Dto.TrainerMangementDto.Responses.AllTrainerResponseDto;
 import com.gym.trainerService.Dto.TrainerMangementDto.Responses.TrainerResponseDto;
@@ -9,9 +12,10 @@ import com.gym.trainerService.Dto.TrainerMangementDto.Wrappers.AllTrainerRespons
 import com.gym.trainerService.Exception.Custom.DuplicateSpecialtyFoundException;
 import com.gym.trainerService.Exception.Custom.NoSpecialityFoundException;
 import com.gym.trainerService.Exception.Custom.NoTrainerFoundException;
+import com.gym.trainerService.Services.OtherServices.SpecialityService;
 import com.gym.trainerService.Services.TrainerServices.TrainerManagementService;
 import com.gym.trainerService.Utils.CustomAnnotations.Annotations.LogExecutionTime;
-import jakarta.validation.Valid;
+import com.gym.trainerService.Utils.CustomAnnotations.Annotations.LogRequestTime;
 import jakarta.validation.constraints.NotBlank;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
@@ -52,6 +56,7 @@ import org.springframework.web.bind.annotation.*;
 public class TrainerManagementController {
 
     private final TrainerManagementService trainerManagementService;
+    private final SpecialityService specialityService;
 
     /**
      * Creates a new trainer in the system.
@@ -140,6 +145,17 @@ public class TrainerManagementController {
     }
 
     /**
+     *
+     * */
+    @LogRequestTime
+    @GetMapping("/trainer/getSpecialites")
+    public ResponseEntity<SpecialityResponseDto> getAllSpecialites() {
+        log.info("Request received to get All Specialities");
+        SpecialityResponseDto responseDto = specialityService.getAllSpecialites();
+        log.info("Returning total {} no of specialities ",responseDto.getSpecialityList().size());
+        return ResponseEntity.status(HttpStatus.OK).body(responseDto);
+    }
+    /**
      * Adds one or more specialities to a trainer.
      * <p>
      * Validates the request and ensures no duplicate specialities
@@ -147,18 +163,20 @@ public class TrainerManagementController {
      * </p>
      *
      * @param trainerId  the unique identifier of the trainer
-     * @param requestDto {@link SpecialityRequestDto} containing the new specialities
-     * @return {@link TrainerResponseDto} with updated trainer information
+     * @param speciality the new speciality
+     * @return {@link SpecialityResponseDto} with updated trainer information
      * @throws NoTrainerFoundException          if the trainer does not exist
+     * @throws IllegalArgumentException when the validation fails for parameter
      * @throws DuplicateSpecialtyFoundException if a speciality already exists
-     * @see TrainerManagementService#addSpecialityForTrainer(String, SpecialityRequestDto)
+     * @see TrainerManagementService#addSpecialityForTrainer(String, String)
      */
     @LogExecutionTime
     @PostMapping("/trainer/speciality")
-    public ResponseEntity<TrainerResponseDto> addSpecialization(@RequestParam String trainerId,
-                                                                @Valid @RequestBody SpecialityRequestDto requestDto) {
-        log.info("Request received to add a specialization for trainer id ---> {}", trainerId);
-        TrainerResponseDto responseDto = trainerManagementService.addSpecialityForTrainer(trainerId, requestDto);
+    public ResponseEntity<SpecialityResponseDto> addSpecialization(
+            @RequestParam @NotBlank(message = "Can not Proceed With Blank Input") String trainerId,
+            @RequestParam @NotBlank(message = "Can not Proceed With Blank Input") String speciality) {
+        log.info("Request received to add SpecialityResponseDto specialization for trainer id ---> {}", trainerId);
+        SpecialityResponseDto responseDto = trainerManagementService.addSpecialityForTrainer(trainerId, speciality);
         return ResponseEntity.status(HttpStatus.CREATED).body(responseDto);
     }
     /**
@@ -167,21 +185,42 @@ public class TrainerManagementController {
      * @param trainerId         the unique identifier of the trainer
      * @param oldSpecialityName the current name of the speciality to update
      * @param newSpecialityName the new name for the speciality
-     * @return {@link TrainerResponseDto} with updated trainer details
+     * @return {@link SpecialityResponseDto} with updated trainer details
      * @throws NoTrainerFoundException     if the trainer does not exist
      * @throws NoSpecialityFoundException  if the old speciality name is not found
      * @see TrainerManagementService#changeSpecialityFromOldNameToNewName(String, String, String)
      */
     @LogExecutionTime
     @PutMapping("/trainer/update")
-    public ResponseEntity<TrainerResponseDto> updateSpecializationByName(@RequestParam @NotBlank String trainerId,
-                                                                         @RequestParam @NotBlank String oldSpecialityName,
-                                                                         @RequestParam @NotBlank String newSpecialityName)
+    public ResponseEntity<SpecialityResponseDto> updateSpecializationByName(
+            @RequestParam
+            @NotBlank(message = "Can not Proceed with Empty Input Kindly Enter a Valid Data to Proceed") String trainerId,
+            @RequestParam @NotBlank(message = "Old Speciality Can not Be Empty") String oldSpecialityName,
+            @RequestParam @NotBlank(message = "New Specialty Can not Be Empty") String newSpecialityName)
     {
         log.info("Successfully received to change speciality name from {} to {}", oldSpecialityName, newSpecialityName);
-        TrainerResponseDto responseDto = trainerManagementService
+        SpecialityResponseDto responseDto = trainerManagementService
                 .changeSpecialityFromOldNameToNewName(trainerId, oldSpecialityName, newSpecialityName);
         return ResponseEntity.status(HttpStatus.ACCEPTED).body(responseDto);
+    }
+    /**
+     * Get Speciality for a trainer
+     * @param trainerId the unique identifier of the trainer
+     * @throws org.springframework.messaging.handler.annotation.support.MethodArgumentNotValidException if the validation of the parameter fails
+     * @throws NoTrainerFoundException if the trainer does not exist
+     * @return {@link SpecialityResponseDto} contains all the speciality a trainer can have
+     * @see TrainerManagementService#getSpecialityByTrainerId(String)
+     * */
+    @LogRequestTime
+    @GetMapping("/all/getSpeciality")
+    public ResponseEntity<SpecialityResponseDto> getSpecialityByTrainerId(
+            @RequestParam
+            @NotBlank(message = "Can not Proceed with Empty Input Kindly Enter a Valid Data to Proceed")
+            String trainerId) {
+        log.info("Request received to get specialties for trainer {}",trainerId);
+        SpecialityResponseDto response = trainerManagementService.getSpecialityByTrainerId(trainerId);
+        log.info("sending {} no of specialties for trainer {}",response.getSpecialityList().size(),trainerId);
+        return ResponseEntity.status(HttpStatus.OK).body(response);
     }
     /**
      * Deletes a speciality from a trainer's profile.
@@ -194,11 +233,27 @@ public class TrainerManagementController {
      */
     @LogExecutionTime
     @DeleteMapping("/trainer/delete")
-    public ResponseEntity<String> deleteSpecializationByName(@RequestParam @NotBlank String trainerId,
+    public ResponseEntity<GenericResponse> deleteSpecializationByName(@RequestParam @NotBlank String trainerId,
                                                              @RequestParam @NotBlank String specialityName)
     {
         log.info("Request received to delete speciality {} for trainer {} ", specialityName, trainerId);
         String response = trainerManagementService.deleteSpecializationByName(trainerId, specialityName);
-        return ResponseEntity.status(HttpStatus.ACCEPTED).body(response);
+        return ResponseEntity.status(HttpStatus.ACCEPTED).body(new GenericResponse(response));
+    }
+
+    @LogExecutionTime
+    @PostMapping("/trainer/setAbout")
+    public ResponseEntity<GenericResponse> setAboutForTrainer(@RequestBody TrainerAboutRequestDto requestDto){
+        log.info("Request reached for set trainer's about for trainer {}",requestDto.getTrainerId());
+        String response = trainerManagementService.setTrainerAbout(requestDto);
+        return ResponseEntity.status(HttpStatus.CREATED).body(new GenericResponse(response));
+    }
+
+    @LogExecutionTime
+    @GetMapping("/all/getAbout")
+    public ResponseEntity<GenericResponse> getTrainerAboutById(String trainerId) {
+        log.info("Request reached for get about for trainer {}",trainerId);
+        String response = trainerManagementService.getTrainerAboutById(trainerId);
+        return ResponseEntity.status(HttpStatus.OK).body(new GenericResponse(response));
     }
 }
