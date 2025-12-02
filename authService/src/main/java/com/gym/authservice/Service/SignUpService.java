@@ -28,19 +28,22 @@ public class SignUpService {
     private final WebClientService notificationService;
     private final WebClient.Builder webClient;
     private final String approveUrl ;
+    private final WebClientService webClientService;
 
     public SignUpService(SignedUpsRepository signedUpsRepository,
                          PasswordEncoder encoder,
                          IdGenerationUtil idGenerationUtil,
                          WebClientService notificationService,
                          WebClient.Builder webClient,
-                         @Value("${admin.approval.url}") String approveUrl) {
+                         @Value("${admin.approval.url}") String approveUrl,
+                         WebClientService webClientService) {
         this.signedUpsRepository = signedUpsRepository;
         this.encoder = encoder;
         this.idGenerationUtil = idGenerationUtil;
         this.notificationService = notificationService;
         this.webClient = webClient;
         this.approveUrl = approveUrl;
+        this.webClientService = webClientService;
     }
 
     @Transactional
@@ -98,6 +101,7 @@ public class SignUpService {
                             log.info("Auto-approved TRAINER_ADMIN: {} and keeping the role as {}",
                                     signedUps.getEmail(),signedUps.getRole().name());
                             approvalFlow = Mono.empty();
+                            webClientService.sendTrainerServiceToCreateNewTrainer(signedUps);
                         }
 
                         case ADMIN_ADMIN -> {
@@ -112,6 +116,7 @@ public class SignUpService {
                             signedUps.setApproved(true);
                             log.info("Auto-approved MEMBER_ADMIN: {}", signedUps.getEmail());
                             approvalFlow = Mono.empty();
+                            webClientService.sendMemberServiceToCreateNewMember(signedUps);
                         }
 
                         default -> {
