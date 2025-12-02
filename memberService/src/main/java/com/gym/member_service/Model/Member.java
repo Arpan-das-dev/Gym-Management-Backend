@@ -62,13 +62,11 @@ public class Member implements Serializable {
     @Transient
     private boolean activeInGym;
 
-    // 2. CRITICAL FIX: Add @JsonIgnore to break the loop and prevent LIE.
     @JsonIgnore
     @EqualsAndHashCode.Exclude
     @OneToMany(mappedBy = "member", cascade = CascadeType.ALL, orphanRemoval = true, fetch = FetchType.LAZY) // Ensure fetch is LAZY
     private Set<WeightBmiEntry> weightBmiEntries ;
 
-    // 3. CRITICAL FIX: Add @JsonIgnore to break the loop and prevent LIE.
     @JsonIgnore
     @EqualsAndHashCode.Exclude
     @OneToMany(mappedBy = "member", cascade = CascadeType.ALL, orphanRemoval = true, fetch = FetchType.LAZY) // Ensure fetch is LAZY
