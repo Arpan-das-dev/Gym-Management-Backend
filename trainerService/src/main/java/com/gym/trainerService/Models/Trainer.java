@@ -7,6 +7,7 @@ import lombok.Builder;
 import lombok.Data;
 import lombok.NoArgsConstructor;
 
+import java.io.Serializable;
 import java.time.LocalDate;
 import java.time.LocalDateTime;
 import java.util.List;
@@ -19,7 +20,7 @@ import java.util.List;
 @Table(name = "trainer", indexes = {
         @Index(name = "idx_rating", columnList = "average_rating")
 })
-public class Trainer {
+public class Trainer implements Serializable {
     @Id
     private String trainerId;
 
@@ -59,6 +60,7 @@ public class Trainer {
     private List<Review> reviews;
 
     @Builder.Default
-    @Column(name = "about")
+    @Column(name = "about",columnDefinition = "TEXT")
     private String about = "";
+
 }
