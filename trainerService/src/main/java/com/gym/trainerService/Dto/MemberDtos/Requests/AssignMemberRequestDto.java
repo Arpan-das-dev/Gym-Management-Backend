@@ -3,7 +3,6 @@ package com.gym.trainerService.Dto.MemberDtos.Requests;
 import jakarta.validation.constraints.FutureOrPresent;
 import jakarta.validation.constraints.NotBlank;
 import jakarta.validation.constraints.NotNull;
-import jakarta.validation.constraints.PastOrPresent;
 import lombok.AllArgsConstructor;
 import lombok.Builder;
 import lombok.Data;
@@ -26,9 +25,9 @@ public class AssignMemberRequestDto {
     private String memberName;
 
     @NotBlank(message = "Trainer profile image URL must be a valid URL")
-    private String trainerProfileImageUrl;
+    private String memberProfileImageUrl;
 
     @NotNull(message = "Request date must not be null")
     @FutureOrPresent(message = "Request date cannot be in the future")
-    private LocalDate requestDate;
+    private LocalDate eligibilityEnd;
 }
