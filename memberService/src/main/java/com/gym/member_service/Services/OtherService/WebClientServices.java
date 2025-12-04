@@ -8,8 +8,10 @@ import com.gym.member_service.Dto.NotificationDto.PlanActivationNotificationDto;
 import com.gym.member_service.Exception.Exceptions.PlanNotFounException;
 import com.gym.member_service.Exception.Model.ErrorResponse;
 import com.gym.member_service.Model.Member;
+import com.sun.jdi.request.DuplicateRequestException;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.beans.factory.annotation.Value;
+import org.springframework.http.HttpStatusCode;
 import org.springframework.http.MediaType;
 import org.springframework.scheduling.annotation.Async;
 import org.springframework.stereotype.Service;
@@ -301,18 +303,39 @@ public class WebClientServices {
      *
      * @see TrainerAssignResponseDto
      */
-    @Async
-    public void sendTrainerRequestToAdmin(TrainerAssignResponseDto responseDto) {
-        webClient.build().post()
+
+    public Mono<String> sendTrainerRequestToAdmin(TrainerAssignResponseDto responseDto) {
+
+        return webClient.build()
+                .post()
                 .uri(Admin_ApprovalService_URL)
                 .contentType(MediaType.APPLICATION_JSON)
                 .bodyValue(responseDto)
-                .retrieve().toBodilessEntity().subscribe(
-                        success-> log.info("Send dto to url: {} {}",
-                                Admin_ApprovalService_URL,success.getStatusCode()),
-                error->log.error("Failed to send dto {}",error.getMessage())
-                );
+                .exchangeToMono(clientResponse -> {
+
+                    HttpStatusCode status = clientResponse.statusCode();
+
+                    // SUCCESS CASE
+                    if (status.is2xxSuccessful()) {
+                        return clientResponse.bodyToMono(String.class)
+                                .defaultIfEmpty("Admin service responded successfully.")
+                                .doOnNext(msg ->
+                                        log.info("Admin service success: {}", msg)
+                                );
+                    }
+
+                    // ERROR CASE — handles ALL response types
+                    return clientResponse.bodyToMono(String.class)
+                            .defaultIfEmpty("Unknown admin service error")
+                            .flatMap(errorMessage -> {
+                                log.error("Admin service error: {}", errorMessage);
+                                return Mono.error(
+                                        new DuplicateRequestException(errorMessage)
+                                );
+                            });
+                });
     }
+
 
     public CompletableFuture<String> sendPlanServiceToDecrementMembersCount(String planID) {
         String endpoint = Plan_Management_URL+"all/memberCount?planId="+planID;
