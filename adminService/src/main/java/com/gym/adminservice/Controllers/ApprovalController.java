@@ -2,9 +2,7 @@ package com.gym.adminservice.Controllers;
 
 import com.gym.adminservice.Dto.Requests.ApprovalRequestDto;
 import com.gym.adminservice.Dto.Requests.TrainerAssignRequestDto;
-import com.gym.adminservice.Dto.Responses.AllMemberRequestDtoList;
-import com.gym.adminservice.Dto.Responses.ApprovalResponseDto;
-import com.gym.adminservice.Dto.Responses.TrainerAssignmentResponseDto;
+import com.gym.adminservice.Dto.Responses.*;
 import com.gym.adminservice.Dto.Wrappers.AllPendingRequestResponseWrapperDto;
 import com.gym.adminservice.Models.PendingRequest;
 import com.gym.adminservice.Services.AuthService.ApprovalService;
@@ -15,6 +13,7 @@ import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.validation.annotation.Validated;
 import org.springframework.web.bind.annotation.*;
+import reactor.core.publisher.Mono;
 
 import java.time.LocalDate;
 import java.util.List;
@@ -84,15 +83,27 @@ public class ApprovalController {
     }
 
     @PostMapping("/approve-memberRequest")
-    public ResponseEntity<TrainerAssignmentResponseDto> assignTrainerToMember(@RequestParam String requestId,
-                                                                              @RequestParam
+    public Mono<ResponseEntity<GenericResponseDto>> assignTrainerToMember(@RequestParam String requestId,
+                                                                          @RequestParam
                                                                               @DateTimeFormat(
                                                                                       iso = DateTimeFormat.ISO.DATE)
                                                                               LocalDate eligibleDate)
     {
         log.info("Received requestId={} eligibleDate={}", requestId, eligibleDate);
-        TrainerAssignmentResponseDto response = approvalService.assignTrainerToMember(requestId, eligibleDate);
-        return ResponseEntity.status(HttpStatus.OK).body(response);
+        return approvalService.assignTrainerToMember(requestId, eligibleDate)
+                .map(msg->
+                        ResponseEntity.status(HttpStatus.CREATED)
+                        .body(new GenericResponseDto(msg)))
+                .onErrorResume(ex -> {
+                    // ERROR HANDLING
+                    log.error("Error occurred while processing trainer request: {}", ex.getMessage());
+
+                    return Mono.just(
+                            ResponseEntity.status(HttpStatus.BAD_REQUEST)
+                                    .body(new GenericResponseDto(ex.getMessage()))
+                    );
+                });
+
     }
 
     @DeleteMapping("/delete-request")
