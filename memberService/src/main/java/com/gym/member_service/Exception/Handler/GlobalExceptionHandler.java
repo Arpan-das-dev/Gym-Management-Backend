@@ -3,6 +3,7 @@ package com.gym.member_service.Exception.Handler;
 import com.gym.member_service.Exception.Exceptions.*;
 import com.gym.member_service.Exception.Model.ErrorResponse;
 import com.gym.member_service.Exception.Util.ExceptionUtil;
+import com.sun.jdi.request.DuplicateRequestException;
 import jakarta.servlet.http.HttpServletRequest;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.http.HttpStatus;
@@ -25,7 +26,8 @@ public class GlobalExceptionHandler {
     }
 
     @ExceptionHandler({
-            DuplicateUserFoundException.class, TrainerAlreadyExistsException.class
+            DuplicateUserFoundException.class, TrainerAlreadyExistsException.class,
+            DuplicateRequestException.class
     })
     ResponseEntity<ErrorResponse> handleDuplicateExceptions(HttpServletRequest request, Exception ex) {
         return ExceptionUtil.buildErrorResponse(HttpStatus.CONFLICT, ex.getMessage(), request);
@@ -34,7 +36,7 @@ public class GlobalExceptionHandler {
     @ExceptionHandler({
             InvalidImageUrlException.class, InvalidInputDateException.class, InvalidSessionException.class,
             InvalidTrainerException.class, PlanExpiredException.class, MethodArgumentNotValidException.class,
-            InvalidInputDateException.class, InvalidPrUpdateException.class
+            InvalidInputDateException.class, InvalidPrUpdateException.class, UnAuthorizedRequestException.class,
     })
     ResponseEntity<ErrorResponse> handleInvalidExceptions(HttpServletRequest request, Exception ex) {
         return ExceptionUtil.buildErrorResponse(HttpStatus.BAD_REQUEST, ex.getMessage(), request);
