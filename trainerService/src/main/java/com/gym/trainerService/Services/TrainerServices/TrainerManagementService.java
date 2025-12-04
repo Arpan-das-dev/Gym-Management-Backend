@@ -381,7 +381,7 @@ public class TrainerManagementService {
                             List<Specialities> trainerSpecialization = specialitiesMap
                                     .getOrDefault(t.getTrainerId(), List.of());
                             List<String> specialityNames = trainerSpecialization.stream()
-                                    .map(Specialities::getTrainerId).toList();
+                                    .map(Specialities::getSpeciality).toList();
                             log.info("Collect {} specialites for trainer {} {}"
                                     ,specialityNames.size(),t.getFirstName(),t.getLastName());
 
