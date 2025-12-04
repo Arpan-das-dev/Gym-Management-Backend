@@ -95,8 +95,8 @@ public class MemberManagementService {
                 .memberId(requestDto.getMemberId())
                 .trainerId(trainer.getTrainerId())
                 .memberName(requestDto.getMemberName())
-                .memberProfileImageUrl(requestDto.getTrainerProfileImageUrl())
-                .eligibilityEnd(requestDto.getRequestDate())
+                .memberProfileImageUrl(requestDto.getMemberProfileImageUrl())
+                .eligibilityEnd(requestDto.getEligibilityEnd())
                 .build();
 
         memberRepository.save(newMember);
@@ -151,7 +151,7 @@ public class MemberManagementService {
      */
     private MemberResponseDto updateMember(String trainerId, Member member, AssignMemberRequestDto requestDto) {
         member.setTrainerId(trainerId);
-        member.setEligibilityEnd(requestDto.getRequestDate());
+        member.setEligibilityEnd(requestDto.getEligibilityEnd());
         memberRepository.save(member);
         return memberResponseDtoBuilder(member);
     }
@@ -164,7 +164,7 @@ public class MemberManagementService {
      * @return updated {@link MemberResponseDto}
      */
     private MemberResponseDto incrementEligibility(AssignMemberRequestDto requestDto, Member member) {
-        long additionalDays = requestDto.getRequestDate().toEpochDay() - LocalDate.now().toEpochDay();
+        long additionalDays = requestDto.getEligibilityEnd().toEpochDay() - LocalDate.now().toEpochDay();
         member.setEligibilityEnd(member.getEligibilityEnd().plusDays(additionalDays));
         memberRepository.save(member);
         return memberResponseDtoBuilder(member);
