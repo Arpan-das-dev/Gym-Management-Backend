@@ -28,6 +28,7 @@ import org.springframework.data.domain.PageRequest;
 import org.springframework.data.domain.Pageable;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.TransactionSystemException;
+import reactor.core.publisher.Mono;
 
 import java.time.LocalDate;
 import java.time.LocalDateTime;
@@ -104,11 +105,22 @@ public class MemberTrainerService {
      * @see TrainerAssignRequestDto
      * @see TrainerAssignResponseDto
      */
-    public TrainerAssignResponseDto requestAdminForTrainer(TrainerAssignRequestDto requestDto) {
+    public Mono<String> requestAdminForTrainer(TrainerAssignRequestDto requestDto) {
         // 1. Validate member existence
         Member member = memberRepository.findById(requestDto.getMemberId())
-                .orElseThrow(() -> new UserNotFoundException(
-                        "No member found with this id: " + requestDto.getMemberId()));
+                .orElseThrow(() -> {
+                    log.info("Trainer assignment failed: Member not found for ID: {}", requestDto.getMemberId());
+                    return new UserNotFoundException("We couldn’t process your request because the member information could not be verified");
+                });
+        if (member.isFrozen()) {
+            log.info("💀💀 Trainer assignment rejected: Member account is frozen. Member ID: {}",member.getId());
+            throw new UnAuthorizedRequestException("Your account is temporarily restricted. Please contact the administrator for assistance.");
+        }
+        if (member.getPlanDurationLeft() <= 0 || member.getPlanID() == null) {
+            log.info("Trainer request blocked: {} {} does not have an active plan or plan has expired. Member ID: {}"
+            ,member.getFirstName(),member.getLastName(),member.getId());
+            throw new PlanNotFounException("You need an active membership plan to request a trainer. Please purchase or renew your plan to continue.");
+        }
 
         // 2. Check if trainer already exists for this member
         Optional<Trainer> existingTrainerOpt = trainerRepository.findTrainerByMemberId(requestDto.getMemberId());
@@ -121,8 +133,8 @@ public class MemberTrainerService {
                 // Case 2: Different trainer → check eligibility
                 if (currentTrainer.getEligibilityEnd().isAfter(LocalDate.now())) {
                     throw new TrainerAlreadyExistsException(
-                            "You are already assigned to trainer " + currentTrainer.getTrainerName()
-                                    + " until " + currentTrainer.getEligibilityEnd());
+                            "You already have an assigned trainer." +
+                                    " You can request a new trainer once your current eligibility period ends.");
                 }
             }
         }
@@ -140,8 +152,8 @@ public class MemberTrainerService {
                 .build();
 
         // 4. Send request to Admin Service for approval
-        webClientServices.sendTrainerRequestToAdmin(responseDto);
-        return responseDto;
+        return  webClientServices.sendTrainerRequestToAdmin(responseDto);
+
     }
 
     /**
