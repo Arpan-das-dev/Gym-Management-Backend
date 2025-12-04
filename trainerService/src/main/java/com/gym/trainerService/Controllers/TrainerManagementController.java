@@ -6,6 +6,7 @@ import com.gym.trainerService.Dto.TrainerMangementDto.Requests.SpecialityRespons
 import com.gym.trainerService.Dto.TrainerMangementDto.Requests.TrainerAboutRequestDto;
 import com.gym.trainerService.Dto.TrainerMangementDto.Requests.TrainerCreateRequestDto;
 import com.gym.trainerService.Dto.TrainerMangementDto.Responses.AllTrainerResponseDto;
+import com.gym.trainerService.Dto.TrainerMangementDto.Responses.PublicTrainerInfoResponseDto;
 import com.gym.trainerService.Dto.TrainerMangementDto.Responses.TrainerResponseDto;
 import com.gym.trainerService.Dto.TrainerMangementDto.Wrappers.AllPublicTrainerInfoResponseWrapperDto;
 import com.gym.trainerService.Dto.TrainerMangementDto.Wrappers.AllTrainerResponseDtoWrapper;
@@ -92,6 +93,8 @@ public class TrainerManagementController {
         TrainerResponseDto responseDto = trainerManagementService.getTrainerById(trainerId);
         return ResponseEntity.status(HttpStatus.OK).body(responseDto);
     }
+
+
     /**
      * Retrieves basic information for all trainers
      *
