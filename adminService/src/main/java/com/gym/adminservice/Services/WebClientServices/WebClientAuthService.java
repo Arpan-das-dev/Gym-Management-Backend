@@ -2,10 +2,11 @@ package com.gym.adminservice.Services.WebClientServices;
 
 import com.gym.adminservice.Dto.Responses.*;
 
-import com.gym.adminservice.Exceptions.Custom.interServiceCommunicationException;
+import com.sun.jdi.request.DuplicateRequestException;
 import lombok.extern.slf4j.Slf4j;
 
 import org.springframework.beans.factory.annotation.Value;
+import org.springframework.cache.annotation.Cacheable;
 import org.springframework.scheduling.annotation.Async;
 import org.springframework.stereotype.Service;
 import org.springframework.web.reactive.function.client.WebClient;
@@ -27,13 +28,19 @@ public class WebClientAuthService {
     private final String authServiceAdmin_URL;
     @Value("${app.memberService.assign_url}")
     private final String memberServiceAssignTrainer_URL;
+    private final String trainerServiceAssignMember_URL;
+    private final String trainerServiceRollBackMember_URL;
     private final WebClient.Builder webClient;
 
     public WebClientAuthService(@Value("${app.authService.url}") String authServiceAdmin_URL,
                                 @Value("${app.memberService.assign_url}") String memberServiceAssignTrainer_URL,
+                                @Value("${app.trainerService.assign_url}") String trainerServiceAssignMember_URL,
+                                @Value("${app.trainerService.rollBack_url}") String  trainerServiceRollBackMember_URL,
                                 WebClient.Builder webClient) {
         this.authServiceAdmin_URL = authServiceAdmin_URL;
         this.memberServiceAssignTrainer_URL = memberServiceAssignTrainer_URL;
+        this.trainerServiceAssignMember_URL = trainerServiceAssignMember_URL;
+        this.trainerServiceRollBackMember_URL = trainerServiceRollBackMember_URL;
         this.webClient = webClient;
     }
 
@@ -143,19 +150,58 @@ public class WebClientAuthService {
                 );
     }
 
-    @Async
-    public void sendDtoForAssignTrainerToMember(TrainerAssignmentResponseDto responseDto) {
-        webClient.build().post()
+    public Mono<Void> sendDtoForAssignTrainerToMember(TrainerAssignmentResponseDto responseDto) {
+
+        return webClient.build()
+                .post()
                 .uri(memberServiceAssignTrainer_URL)
                 .bodyValue(responseDto)
                 .retrieve()
                 .toBodilessEntity()
-                .subscribe(success -> log.info("Dto send to {}", "MemberService"),
-                        error -> log.error("Unable to send dto to {} {}", "MemberService", error.getMessage()));
+                .doOnSuccess(res ->
+                        log.info("✔️ Successfully forwarded trainer-assignment DTO to Member-Service"))
+                .doOnError(err ->
+                        log.error("❌ Failed to send trainer-assignment DTO to Member-Service : {}", err.getMessage()))
+                .then();  // convert Mono<ResponseEntity<Void>> to Mono<Void>
     }
 
-    public void sendDtoForAssignMemberToTrainer(MemberAssignmentToTrainerResponseDto memberResponseDto) { 
-        /** * this method will be defined later when the trainer service will be created */
 
+
+    public Mono<String> sendDtoForAssignMemberToTrainer(MemberAssignmentToTrainerResponseDto memberResponseDto) {
+        String url = trainerServiceAssignMember_URL+"?trainerId="+memberResponseDto.getTrainerId();
+        return webClient.build().post()
+                .uri(url)
+                .bodyValue(memberResponseDto)
+                .exchangeToMono(clientResponse -> {
+                    if(clientResponse.statusCode().is2xxSuccessful()){
+                        return clientResponse.bodyToMono(String.class)
+                                .defaultIfEmpty("Member Successfully Assigned to trainer")
+                                .doOnNext(msg-> log.info("✔️ Trainer service success response: {}", msg));
+                    }else {
+                        return clientResponse.bodyToMono(String.class)
+                                .defaultIfEmpty("Admin service returned an error")
+                                .flatMap(errorMsg -> {
+                                    log.error("Admin-Service error response: {}", errorMsg);
+                                    return Mono.error(new DuplicateRequestException(errorMsg));
+                                });
+                    }
+                });
+
+
+    }
+    public Mono<String> RollBackMemberFromTrainerService(String trainerId, String memberId){
+        String url = trainerServiceRollBackMember_URL+"?trainerId="+trainerId+"&memberId="+memberId;
+        return webClient.build().delete()
+                .uri(url)
+                .exchangeToMono(clientResponse -> {
+                    if(clientResponse.statusCode().is2xxSuccessful()){
+                        return clientResponse.bodyToMono(String.class)
+                                .defaultIfEmpty("Member Successfully Deleted From Trainer Service")
+                                .doOnNext(msg-> log.info("✔️ Trainer service's response is ::->{}",msg));
+                    } else {
+                        return clientResponse.bodyToMono(String.class)
+                                .defaultIfEmpty("Failed To Delete From Trainer Please Delete the member From your Dashboard");
+                    }
+                });
     }
 }
