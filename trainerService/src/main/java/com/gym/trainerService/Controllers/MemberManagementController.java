@@ -44,13 +44,15 @@ public class MemberManagementController {
      * @param requestDto request body containing member assignment details
      * @return {@link MemberResponseDto} with assigned member details
      */
-    @PostMapping("/all/addMember")
-    public ResponseEntity<MemberResponseDto> assignMembersToTrainer(@RequestParam String trainerId,
+    @PostMapping("/admin/addMember")
+    public ResponseEntity<String> assignMembersToTrainer(@RequestParam String trainerId,
                                                                     @Valid @RequestBody AssignMemberRequestDto requestDto)
     {
         log.info("Request received to assign member for trainer with id: {}",trainerId);
         MemberResponseDto response = memberManagementService.addMember(trainerId,requestDto);
-        return ResponseEntity.status(HttpStatus.CREATED).body(response);
+        log.info("member {} saved for trainer {}",response.getMemberName(),response.getTrainerId());
+        String res = "Assigned Member In Trainer Service Successfully";
+        return ResponseEntity.status(HttpStatus.CREATED).body(res);
     }
 
     /**
