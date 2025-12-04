@@ -13,7 +13,8 @@ import lombok.NoArgsConstructor;
 
 public class MemberAssignmentToTrainerResponseDto {
     private String memberId;
+    private String trainerId;
     private String memberName;
     private String memberProfileImageUrl;
-    private LocalDate elidgibilityDate;
+    private LocalDate eligibilityEnd;
 }
