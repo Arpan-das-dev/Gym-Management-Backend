@@ -26,6 +26,5 @@ public class TrainerAssignRequestDto {
     private String trainerProfileImageUrl;
 
     @NotNull(message = "Request date must not be null")
-    @PastOrPresent(message = "Request date cannot be in the future")
     private LocalDate requestDate;
 }
