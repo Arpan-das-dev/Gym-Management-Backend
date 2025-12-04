@@ -12,19 +12,25 @@ import com.gym.adminservice.Repository.MemberRequestRepository;
 import com.gym.adminservice.Repository.PendingRequestRepository;
 import com.gym.adminservice.Services.WebClientServices.WebClientAuthService;
 import com.gym.adminservice.Services.WebClientServices.WebClientNotificationService;
+import com.sun.jdi.request.DuplicateRequestException;
 import lombok.RequiredArgsConstructor;
 
+import lombok.extern.slf4j.Slf4j;
 import org.springframework.cache.annotation.CacheEvict;
 import org.springframework.cache.annotation.Cacheable;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
+import reactor.core.publisher.Mono;
+import reactor.core.scheduler.Schedulers;
 
 import java.time.LocalDate;
 import java.time.format.DateTimeFormatter;
 import java.util.List;
 
+import java.util.Optional;
 import java.util.UUID;
 
+@Slf4j
 @Service
 @RequiredArgsConstructor
 
@@ -157,6 +163,11 @@ public class ApprovalService {
     }
 
     public void addMemberRequestForTrainer(TrainerAssignRequestDto requestDto) {
+        Optional<MemberRequest> inComingReq = memberRequestRepository.findBYMemberId(requestDto.getMemberId());
+        if(inComingReq.isPresent()) {
+            throw  new DuplicateRequestException("Your Request is already Present Please Wait for Admin or Contact Admin");
+        }
+
         String requestId = requestIdGen(requestDto.getMemberId(), requestDto.getTrainerId(),
                 requestDto.getRequestDate());
         MemberRequest request = MemberRequest.builder()
@@ -194,31 +205,75 @@ public class ApprovalService {
                 .build();
     }
 
-    public TrainerAssignmentResponseDto assignTrainerToMember(String requestId, LocalDate eligiblyDate) {
+    public Mono<String> assignTrainerToMember(String requestId, LocalDate eligiblyDate) {
+
+        log.info("➡ Starting assignTrainerToMember(requestId={}, eligibleDate={})", requestId, eligiblyDate);
+
         MemberRequest request = memberRequestRepository.findById(requestId)
                 .orElseThrow(() -> new RequestNotFoundException("No request found with this id :" + requestId));
-        TrainerAssignmentResponseDto responseDto = TrainerAssignmentResponseDto.builder()
+
+        log.info("✔ Retrieved MemberRequest from DB for requestId={} and memberId={}", requestId, request.getMemberId());
+
+        TrainerAssignmentResponseDto trainerAssignmentResponseDto = TrainerAssignmentResponseDto.builder()
                 .memberId(request.getMemberId())
                 .trainerId(request.getTrainerId())
                 .trainerName(request.getTrainerName())
                 .trainerProfileImageUrl(request.getTrainerProfileImageUrl())
                 .eligibilityEnd(eligiblyDate)
                 .build();
+
         MemberAssignmentToTrainerResponseDto memberResponseDto = MemberAssignmentToTrainerResponseDto.builder()
                 .memberId(request.getMemberId())
+                .trainerId(request.getTrainerId())
                 .memberName(request.getMemberName())
                 .memberProfileImageUrl(request.getMemberProfileImageUrl())
-                .elidgibilityDate(eligiblyDate)
+                .eligibilityEnd(eligiblyDate)
                 .build();
 
-        webAuthClientService.sendDtoForAssignTrainerToMember(responseDto);
-        webAuthClientService.sendDtoForAssignMemberToTrainer(memberResponseDto);
-        return responseDto;
+        log.info("📤 Sending DTO to Trainer-Service AssignMember endpoint...");
+        log.debug("TrainerAssignmentResponseDto: {}", trainerAssignmentResponseDto);
+
+        return webAuthClientService.sendDtoForAssignMemberToTrainer(memberResponseDto)
+                .doOnSuccess(msg -> log.info("✔ Member sent to Trainer-Service: {}", msg))
+                .doOnError(err -> log.error("❌ Failed sending member to Trainer-Service: {}", err.getMessage()))
+
+                .then(webAuthClientService.sendDtoForAssignTrainerToMember(trainerAssignmentResponseDto)
+                        .doOnSuccess(msg -> log.info("✔ Trainer sent to Member-Service: {}", msg))
+                        .doOnError(err -> log.error("❌ Failed sending trainer to Member-Service: {}", err.getMessage()))
+                )
+                .then(deleteRequest(requestId))
+                .thenReturn("Trainer successfully assigned to member.")
+                .onErrorResume(ex -> {
+                    log.error("❌ Error during assignment pipeline for requestId={} : {}", requestId, ex.getMessage());
+
+                    log.warn("🔄 Executing rollback in Trainer-Service...");
+                    return webAuthClientService.RollBackMemberFromTrainerService(
+                                    trainerAssignmentResponseDto.getTrainerId(),
+                                    trainerAssignmentResponseDto.getMemberId()
+                            )
+                            .doOnSuccess(msg -> log.warn("⚠ Rollback completed in Trainer-Service: {}", msg))
+                            .doOnError(err -> log.error("❌ Rollback failed: {}", err.getMessage()))
+                            .then(Mono.error(ex));
+                });
     }
 
-    public void deleteRequest(String requestId){
-       memberRequestRepository.deleteById(requestId);
+
+    public Mono<Void> deleteRequest(String requestId) {
+
+        log.info("➡ deleteRequest triggered for requestId={}", requestId);
+
+        return Mono.fromRunnable(() -> {
+                    log.info("🗑 JPA deleting requestId={} ...", requestId);
+                    memberRequestRepository.deleteById(requestId);
+                    log.info("✔ JPA deleteById completed for {}", requestId);
+                })
+                .subscribeOn(Schedulers.boundedElastic())
+                .doOnSubscribe(sub -> log.debug("🔧 deleteRequest subscribed for requestId={}", requestId))
+                .doOnSuccess(v -> log.info("✔ deleteRequest finished successfully for requestId={}", requestId))
+                .doOnError(err -> log.error("❌ deleteRequest error for requestId={} : {}", requestId, err.getMessage()))
+                .then();
     }
+
 
 
     /**
