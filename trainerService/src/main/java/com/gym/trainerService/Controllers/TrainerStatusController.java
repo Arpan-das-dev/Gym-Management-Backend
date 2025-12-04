@@ -1,5 +1,6 @@
 package com.gym.trainerService.Controllers;
 
+import com.gym.trainerService.Dto.MemberDtos.Responses.GenericResponse;
 import com.gym.trainerService.Services.TrainerServices.TrainerStatusService;
 import jakarta.validation.constraints.NotBlank;
 import lombok.RequiredArgsConstructor;
@@ -71,10 +72,10 @@ public class TrainerStatusController {
      * @see TrainerStatusService#getStatus(String)
      */
     @GetMapping("/all/status")
-    public ResponseEntity<String> getStatusForTrainer(@RequestParam @NotBlank String trainerId) {
+    public ResponseEntity<GenericResponse> getStatusForTrainer(@RequestParam @NotBlank String trainerId) {
         log.info("Request received to get status for trainer :: {}", trainerId);
         String response = trainerStatusService.getStatus(trainerId);
-        return ResponseEntity.status(HttpStatus.OK).body(response);
+        return ResponseEntity.status(HttpStatus.OK).body(new GenericResponse(response));
     }
 
     /**
