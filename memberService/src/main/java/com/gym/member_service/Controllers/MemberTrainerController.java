@@ -4,10 +4,12 @@ import com.gym.member_service.Dto.MemberTrainerDtos.Requests.AddSessionsRequestD
 import com.gym.member_service.Dto.MemberTrainerDtos.Requests.AddTrainerRequestDto;
 import com.gym.member_service.Dto.MemberTrainerDtos.Requests.TrainerAssignRequestDto;
 import com.gym.member_service.Dto.MemberTrainerDtos.Requests.UpdateSessionRequestDto;
+import com.gym.member_service.Dto.MemberTrainerDtos.Responses.GenericAsyncResponseDto;
 import com.gym.member_service.Dto.MemberTrainerDtos.Responses.SessionsResponseDto;
 import com.gym.member_service.Dto.MemberTrainerDtos.Responses.TrainerAssignResponseDto;
 import com.gym.member_service.Dto.MemberTrainerDtos.Responses.TrainerInfoResponseDto;
 import com.gym.member_service.Dto.MemberTrainerDtos.Wrapper.AllSessionInfoResponseDto;
+import com.gym.member_service.Dto.NotificationDto.GenericResponse;
 import com.gym.member_service.Services.FeatureServices.MemberTrainerService;
 import jakarta.persistence.EntityNotFoundException;
 import jakarta.validation.Valid;
@@ -20,6 +22,7 @@ import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.validation.annotation.Validated;
 import org.springframework.web.bind.annotation.*;
+import reactor.core.publisher.Mono;
 
 /**
  * REST Controller for managing member-trainer relationships and training sessions.
@@ -72,11 +75,27 @@ public class MemberTrainerController {
      * @see TrainerAssignRequestDto
      * @see TrainerAssignResponseDto
      */
-    @PostMapping("/request")
-    public ResponseEntity<TrainerAssignResponseDto> sendTrainerRequestToAdmin(@RequestBody @Valid TrainerAssignRequestDto requestDto) {
+    @PostMapping("/member/request")
+    public Mono<ResponseEntity<GenericResponse>> sendTrainerRequestToAdmin(
+            @RequestBody @Valid TrainerAssignRequestDto requestDto) {
+
         log.info("Request received to send admin service by member id: {}", requestDto.getMemberId());
-        TrainerAssignResponseDto responseDto = trainerService.requestAdminForTrainer(requestDto);
-        return ResponseEntity.status(HttpStatus.ACCEPTED).body(responseDto);
+
+        return trainerService.requestAdminForTrainer(requestDto)
+                .map(msg -> {
+                    // SUCCESS
+                    return ResponseEntity.status(HttpStatus.ACCEPTED)
+                            .body(new GenericResponse(msg));
+                })
+                .onErrorResume(ex -> {
+                    // ERROR HANDLING
+                    log.error("Error occurred while processing trainer request: {}", ex.getMessage());
+
+                    return Mono.just(
+                            ResponseEntity.status(HttpStatus.BAD_REQUEST)
+                                    .body(new GenericResponse(ex.getMessage()))
+                    );
+                });
     }
     /**
      * Assigns a trainer to a member.
@@ -98,10 +117,12 @@ public class MemberTrainerController {
      * @see TrainerInfoResponseDto
      */
     @PostMapping("/addTrainer")
-    public ResponseEntity<TrainerInfoResponseDto> assignTrainerForMember(@RequestBody @Valid AddTrainerRequestDto requestDto) {
+    public ResponseEntity<String> assignTrainerForMember(@RequestBody @Valid AddTrainerRequestDto requestDto) {
         log.info("Request received in the controller to assign trainer {}", requestDto.getTrainerName());
         TrainerInfoResponseDto response = trainerService.assignTrainerToMember(requestDto);
-        return ResponseEntity.status(HttpStatus.ACCEPTED).body(response);
+        log.info("Saved trainer {} for member {}",response.getTrainerName(),requestDto.getMemberId());
+        String res = "Assigned Trainer In the MemberService Successfully";
+        return ResponseEntity.status(HttpStatus.ACCEPTED).body(res);
     }
     /**
      * Retrieves trainer information for a specific member.
@@ -119,7 +140,7 @@ public class MemberTrainerController {
      *
      * @see TrainerInfoResponseDto
      */
-    @GetMapping("/getTrainer")
+    @GetMapping("/member/getTrainer")
     public ResponseEntity<TrainerInfoResponseDto> getTrainerInfoByMemberId(@RequestParam String memberId) {
         log.info("Request received to get trainer info by member by id: {}", memberId);
         TrainerInfoResponseDto response = trainerService.getTrainerInfo(memberId);
