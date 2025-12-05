@@ -72,7 +72,8 @@ public class GlobalExceptionHandler {
     /**
      * Handles authorization-related exceptions, such as expired plans.
      */
-    @ExceptionHandler(PlanExpirationException.class)
+    @ExceptionHandler({PlanExpirationException.class,
+    UnAuthorizedRequestException.class})
     public ResponseEntity<ErrorResponse> handleUnauthorized(PlanExpirationException ex, HttpServletRequest request) {
         return ExceptionUtil.buildErrorResponse(HttpStatus.UNAUTHORIZED, ex.getMessage(), request);
     }
