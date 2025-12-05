@@ -1,13 +1,13 @@
 package com.gym.trainerService.Services.TrainerServices;
 
+import com.gym.trainerService.Dto.MemberDtos.Responses.SessionMatrixInfo;
 import com.gym.trainerService.Dto.TrainerMangementDto.Requests.SpecialityResponseDto;
 import com.gym.trainerService.Dto.TrainerMangementDto.Requests.TrainerAboutRequestDto;
 import com.gym.trainerService.Dto.TrainerMangementDto.Requests.TrainerCreateRequestDto;
-import com.gym.trainerService.Dto.TrainerMangementDto.Responses.AllTrainerResponseDto;
-import com.gym.trainerService.Dto.TrainerMangementDto.Responses.PublicTrainerInfoResponseDto;
-import com.gym.trainerService.Dto.TrainerMangementDto.Responses.TrainerResponseDto;
+import com.gym.trainerService.Dto.TrainerMangementDto.Responses.*;
 import com.gym.trainerService.Dto.TrainerMangementDto.Wrappers.AllPublicTrainerInfoResponseWrapperDto;
 import com.gym.trainerService.Dto.TrainerMangementDto.Wrappers.AllTrainerResponseDtoWrapper;
+import com.gym.trainerService.Dto.TrainerReviewDto.Responses.RatingMatrixInfo;
 import com.gym.trainerService.Exception.Custom.*;
 import com.gym.trainerService.Models.Specialities;
 import com.gym.trainerService.Models.Trainer;
@@ -15,6 +15,7 @@ import com.gym.trainerService.Repositories.MemberRepository;
 import com.gym.trainerService.Repositories.ReviewRepository;
 import com.gym.trainerService.Repositories.SpecialityRepository;
 import com.gym.trainerService.Repositories.TrainerRepository;
+import com.gym.trainerService.Services.MemberServices.SessionManagementService;
 import com.gym.trainerService.Services.OtherServices.SpecialityService;
 import com.gym.trainerService.Utils.CustomAnnotations.Annotations.LogRequestTime;
 import lombok.RequiredArgsConstructor;
@@ -27,6 +28,7 @@ import org.springframework.dao.DataAccessException;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
+import java.time.LocalDate;
 import java.util.List;
 import java.util.Map;
 import java.util.stream.Collectors;
@@ -48,11 +50,12 @@ import java.util.stream.Collectors;
 public class TrainerManagementService {
 
     private final SpecialityService specialityService;
+    private final SessionManagementService sessionManagementService;
+    private final TrainerReviewService reviewService;
     private final TrainerRepository trainerRepository;
     private final SpecialityRepository specialityRepository;
     private final ReviewRepository reviewRepository;
     private final MemberRepository memberRepository;
-
     /**
      * Creates a new trainer in the system with validation and cache eviction.
      * This method performs duplicate validation by checking both trainer ID and email
@@ -439,4 +442,47 @@ public class TrainerManagementService {
                 .orElseThrow(() -> new NoTrainerFoundException(
                 "No trainer found with the id: " + id));
     }
+
+    @LogRequestTime
+    @Cacheable(value = "DashboardInfo",key = "#trainerId")
+    public TrainerDashBoardInfoResponseDto getTrainerDashBoardInfo(String trainerId) {
+        Trainer trainer = getById(trainerId);
+        if(trainer.isFrozen()) {
+            log.info("🥶🥶 Can not Proceed Request because account of {} {} is frozen",
+                    trainer.getFirstName(),trainer.getLastName());
+            throw new UnAuthorizedRequestException("Your Account Is Frozen Can not Proceed Request");
+        }
+        LocalDate current = LocalDate.now().withDayOfMonth(1);
+        LocalDate previous = current.minusDays(1);
+        ClientMatrixInfo clientMatrixInfo = getClientMatricesInfo(current,previous,trainer.getTrainerId());
+        SessionMatrixInfo sessionMatrixInfo = sessionManagementService.getSessionMatrix(trainer.getTrainerId());
+        RatingMatrixInfo ratingMatrixInfo = reviewService.getRatingMatrix(trainer.getTrainerId());
+        log.info("🗃️🗃️🗃️ Sending response for {} {} for trainer dashboard info",
+                trainer.getFirstName(),trainer.getLastName());
+        return TrainerDashBoardInfoResponseDto.builder()
+                .clientMatrixInfo(clientMatrixInfo)
+                .sessionMatrixInfo(sessionMatrixInfo)
+                .ratingMatrixInfo(ratingMatrixInfo)
+                .build();
+    }
+
+    @Cacheable(value = "ClientMatrix",key = "#trainerId")
+    private ClientMatrixInfo getClientMatricesInfo(LocalDate current, LocalDate previous, String trainerId) {
+        log.info("📊📊 Request received to get client matrix for trainer {}",trainerId);
+        int currentClientCount = memberRepository.countCurrentMembers(current).intValue();
+        int previousClientCount = memberRepository.countMembersEligibleAtLastMonthEnd(previous).intValue();
+
+        int change = (currentClientCount-previousClientCount);
+        double percentage = ((double) change /currentClientCount)*100;
+        log.info("current client count in {} and last month's was {} and the change is {}%",
+                currentClientCount,previousClientCount,percentage);
+
+        return ClientMatrixInfo.builder()
+                .currentMonthClientCount(currentClientCount)
+                .previousMonthClientCount(previousClientCount)
+                .change(percentage)
+                .build();
+    }
+
+
 }
