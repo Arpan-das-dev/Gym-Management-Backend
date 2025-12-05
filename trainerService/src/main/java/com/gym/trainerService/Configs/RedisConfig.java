@@ -5,12 +5,16 @@ import com.fasterxml.jackson.databind.ObjectMapper;
 import com.fasterxml.jackson.databind.SerializationFeature;
 import com.fasterxml.jackson.datatype.jsr310.JavaTimeModule;
 import com.gym.trainerService.Dto.MemberDtos.Responses.GenericResponse;
+import com.gym.trainerService.Dto.MemberDtos.Responses.SessionMatrixInfo;
 import com.gym.trainerService.Dto.MemberDtos.Wrappers.AllMemberResponseWrapperDto;
 import com.gym.trainerService.Dto.SessionDtos.Wrappers.AllSessionsWrapperDto;
 import com.gym.trainerService.Dto.TrainerMangementDto.Requests.SpecialityResponseDto;
+import com.gym.trainerService.Dto.TrainerMangementDto.Responses.ClientMatrixInfo;
+import com.gym.trainerService.Dto.TrainerMangementDto.Responses.TrainerDashBoardInfoResponseDto;
 import com.gym.trainerService.Dto.TrainerMangementDto.Responses.TrainerResponseDto;
 import com.gym.trainerService.Dto.TrainerMangementDto.Wrappers.AllPublicTrainerInfoResponseWrapperDto;
 import com.gym.trainerService.Dto.TrainerMangementDto.Wrappers.AllTrainerResponseDtoWrapper;
+import com.gym.trainerService.Dto.TrainerReviewDto.Responses.RatingMatrixInfo;
 import com.gym.trainerService.Dto.TrainerReviewDto.Wrapper.AllReviewResponseWrapperDto;
 import com.gym.trainerService.Models.Trainer;
 import org.springframework.cache.CacheManager;
@@ -191,7 +195,29 @@ public class RedisConfig {
     }
 
 
+    @Bean
+    public TypedJsonRedisSerializer<ClientMatrixInfo> clientMatrixInfoTypedJsonRedisSerializer
+            (ObjectMapper objectMapper) {
+        return new TypedJsonRedisSerializer<>(objectMapper, ClientMatrixInfo.class);
+    }
 
+    @Bean
+    public TypedJsonRedisSerializer<SessionMatrixInfo> sessionMatrixInfoTypedJsonRedisSerializer
+            (ObjectMapper objectMapper) {
+        return new TypedJsonRedisSerializer<>(objectMapper,SessionMatrixInfo.class);
+    }
+
+    @Bean
+    public TypedJsonRedisSerializer<RatingMatrixInfo> ratingMatrixInfoTypedJsonRedisSerializer
+            (ObjectMapper objectMapper) {
+        return  new TypedJsonRedisSerializer<>(objectMapper,RatingMatrixInfo.class);
+    }
+
+    @Bean
+    public TypedJsonRedisSerializer<TrainerDashBoardInfoResponseDto> trainerDashBoardInfoResponseDtoRedisSerializer
+            (ObjectMapper objectMapper) {
+        return new TypedJsonRedisSerializer<>(objectMapper,TrainerDashBoardInfoResponseDto.class);
+    }
     /**
      * Configures and provides the central {@link CacheManager} that manages all Redis caches.
      * <p>
@@ -208,6 +234,9 @@ public class RedisConfig {
      * @param allPublicTrainerInfoResponseWrapperDtoRedisSerializer trainer's basic info list cache serializer
      * @param specialityResponseDtoTypedJsonRedisSerializer for all trainer's speciality and all possible speciality
      * @param trainerTypedJsonRedisSerializer serializer for trainer entity
+     * @param clientMatrixInfoTypedJsonRedisSerializer serializer for trainer's client count
+     * @param sessionMatrixInfoTypedJsonRedisSerializer store session matrix of trainer
+     * @param ratingMatrixInfoTypedJsonRedisSerializer  store review matrix of trainer
      * @return configured {@link RedisCacheManager} with specific TTLs and serializers
      */
     @Bean
@@ -221,6 +250,10 @@ public class RedisConfig {
             TypedJsonRedisSerializer<AllPublicTrainerInfoResponseWrapperDto> allPublicTrainerInfoResponseWrapperDtoRedisSerializer,
             TypedJsonRedisSerializer<Trainer> trainerTypedJsonRedisSerializer,
             TypedJsonRedisSerializer<SpecialityResponseDto> specialityResponseDtoTypedJsonRedisSerializer,
+            TypedJsonRedisSerializer<ClientMatrixInfo> clientMatrixInfoTypedJsonRedisSerializer,
+            TypedJsonRedisSerializer<SessionMatrixInfo>sessionMatrixInfoTypedJsonRedisSerializer,
+            TypedJsonRedisSerializer<RatingMatrixInfo> ratingMatrixInfoTypedJsonRedisSerializer,
+            TypedJsonRedisSerializer<TrainerDashBoardInfoResponseDto> trainerDashBoardInfoResponseDtoRedisSerializer,
             GenericJackson2JsonRedisSerializer genericRedisSerializer) {
 
         RedisCacheConfiguration defaultConfig = RedisCacheConfiguration.defaultCacheConfig()
@@ -283,6 +316,26 @@ public class RedisConfig {
                 .serializeValuesWith(RedisSerializationContext.SerializationPair
                         .fromSerializer(genericRedisSerializer))
                 .entryTtl(Duration.ofDays(2)));
+
+        cacheConfigs.put("ClientMatrix",defaultConfig
+                .serializeValuesWith(RedisSerializationContext.SerializationPair
+                        .fromSerializer(clientMatrixInfoTypedJsonRedisSerializer))
+                .entryTtl(Duration.ofHours(4)));
+
+        cacheConfigs.put("sessionMatrix",defaultConfig
+                .serializeValuesWith(RedisSerializationContext.SerializationPair
+                        .fromSerializer(sessionMatrixInfoTypedJsonRedisSerializer))
+                .entryTtl(Duration.ofHours(4)));
+
+        cacheConfigs.put("ratingMatrix",defaultConfig
+                .serializeValuesWith(RedisSerializationContext.SerializationPair
+                        .fromSerializer(ratingMatrixInfoTypedJsonRedisSerializer))
+                .entryTtl(Duration.ofMinutes(30)));
+
+        cacheConfigs.put("DashboardInfo",defaultConfig
+                .serializeValuesWith(RedisSerializationContext.SerializationPair
+                        .fromSerializer(trainerDashBoardInfoResponseDtoRedisSerializer))
+                .entryTtl(Duration.ofHours(4)));
 
         return RedisCacheManager.builder(connectionFactory)
                 .cacheDefaults(defaultConfig)
