@@ -20,7 +20,6 @@ public class AddSessionsRequestDto {
     private String sessionName;
 
     @NotNull(message = "Session date must not be null")
-    @FutureOrPresent(message = "Session date must be in the present or future")
     private LocalDateTime sessionDate;
 
     @Positive(message = "duration can not be in negative")
