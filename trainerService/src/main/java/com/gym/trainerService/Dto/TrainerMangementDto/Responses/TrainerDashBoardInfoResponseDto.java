@@ -1,5 +1,7 @@
 package com.gym.trainerService.Dto.TrainerMangementDto.Responses;
 
+import com.gym.trainerService.Dto.MemberDtos.Responses.SessionMatrixInfo;
+import com.gym.trainerService.Dto.TrainerReviewDto.Responses.RatingMatrixInfo;
 import lombok.AllArgsConstructor;
 import lombok.Builder;
 import lombok.Data;
@@ -10,10 +12,7 @@ import lombok.NoArgsConstructor;
 @AllArgsConstructor
 @NoArgsConstructor
 public class TrainerDashBoardInfoResponseDto {
-    private int currentClientCount;
-    private int lastMonthClientCount;
-    private int totalSessionsThisWeek;
-    private int totalSessionsLeft;
-    private double currentRating;
-    private double LastMonthRating;
+    private ClientMatrixInfo clientMatrixInfo;
+    private SessionMatrixInfo sessionMatrixInfo;
+    private RatingMatrixInfo ratingMatrixInfo;
 }
