@@ -16,6 +16,7 @@ import jakarta.validation.Valid;
 import jakarta.validation.ValidationException;
 import jakarta.validation.constraints.NotBlank;
 import jakarta.validation.constraints.Positive;
+import jakarta.validation.constraints.PositiveOrZero;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.http.HttpStatus;
@@ -196,13 +197,14 @@ public class MemberTrainerController {
      *
      * @see AllSessionInfoResponseDto
      */
-    @GetMapping("/sessions/past")
+    @GetMapping("member/sessions/past")
     public ResponseEntity<AllSessionInfoResponseDto> getPastSessions(@RequestParam @NotBlank String memberId,
                                                                      @RequestParam @Positive int pageSize,
-                                                                     @RequestParam @Positive int pageNo)
+                                                                     @RequestParam @PositiveOrZero int pageNo,
+                                                                     @RequestParam(defaultValue = "DESC") String sortDirection)
     {
         log.info("Request received to get past sessions of page size {} and page no {}", pageSize, pageNo);
-        AllSessionInfoResponseDto response = trainerService.getPastSessions(memberId, pageSize, pageNo);
+        AllSessionInfoResponseDto response = trainerService.getPastSessions(memberId, pageSize, pageNo,sortDirection);
         return ResponseEntity.status(HttpStatus.ACCEPTED).body(response);
     }
     /**
@@ -220,10 +222,12 @@ public class MemberTrainerController {
      *
      * @see AllSessionInfoResponseDto
      */
-    @GetMapping("/sessions/next")
-    public ResponseEntity<AllSessionInfoResponseDto> getUpcomingSessions(@RequestParam @NotBlank String memberId) {
+    @GetMapping("member/sessions/next")
+    public ResponseEntity<AllSessionInfoResponseDto> getUpcomingSessions(@RequestParam @NotBlank String memberId,
+                                                                         @RequestParam @Positive int pageSize,
+                                                                         @RequestParam @PositiveOrZero int pageNo) {
         log.info("Request received to get upcoming sessions for memberId {}", memberId);
-        AllSessionInfoResponseDto response = trainerService.getUpcomingSessions(memberId);
+        AllSessionInfoResponseDto response = trainerService.getUpcomingSessions(memberId,pageNo,pageSize);
         return ResponseEntity.status(HttpStatus.ACCEPTED).body(response);
     }
     /**
