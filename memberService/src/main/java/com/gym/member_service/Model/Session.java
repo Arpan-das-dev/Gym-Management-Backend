@@ -35,4 +35,6 @@ public class Session {
 
     @Column(name = "endTime", nullable = false)
     private LocalDateTime sessionEndTime;
+
+    private String sessionStatus;
 }
