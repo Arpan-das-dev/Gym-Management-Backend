@@ -16,4 +16,5 @@ public class SessionsResponseDto {
     private LocalDateTime sessionEndTime;
     private String memberId;
     private String trainerId;
+    private String sessionStatus;
 }
