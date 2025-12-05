@@ -13,6 +13,7 @@ import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.cache.annotation.CacheEvict;
 import org.springframework.cache.annotation.Cacheable;
+import org.springframework.cache.annotation.Caching;
 import org.springframework.stereotype.Service;
 
 import java.time.LocalDate;
@@ -59,7 +60,10 @@ public class MemberManagementService {
      * @param requestDto contains details for member assignment
      * @return {@link MemberResponseDto} of the assigned member
      */
-    @CacheEvict(value = "AllMemberListCache", key = "#trainerId")
+    @Caching(evict = {
+            @CacheEvict(value = "ClientMatrix",key = "#trainerId"),
+            @CacheEvict(value = "AllMemberListCache", key = "#trainerId")
+    })
     @Transactional
     public MemberResponseDto addMember(String trainerId, AssignMemberRequestDto requestDto) {
         log.info("Request reached service to assign member {} to trainer {}",
@@ -135,7 +139,10 @@ public class MemberManagementService {
      * @return result message indicating success or failure
      */
     @Transactional
-    @CacheEvict(value = "AllMemberListCache",key ="#trainerId")
+    @Caching(evict = {
+            @CacheEvict(value = "ClientMatrix",key = "#trainerId"),
+            @CacheEvict(value = "AllMemberListCache",key ="#trainerId")
+    })
     public String deleteMemberByIds(String trainerId, String memberId) {
         int effectedRows = memberRepository.deleteByTrainerAndMember(trainerId,memberId);
        return effectedRows > 0 ? "Successfully deleted" : "No memberFound with the ids";
@@ -149,6 +156,7 @@ public class MemberManagementService {
      * @param requestDto request containing updated eligibility date
      * @return updated {@link MemberResponseDto}
      */
+    @CacheEvict(value = "ClientMatrix",key = "#trainerId")
     private MemberResponseDto updateMember(String trainerId, Member member, AssignMemberRequestDto requestDto) {
         member.setTrainerId(trainerId);
         member.setEligibilityEnd(requestDto.getEligibilityEnd());
