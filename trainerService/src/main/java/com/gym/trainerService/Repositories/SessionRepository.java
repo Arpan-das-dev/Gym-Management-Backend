@@ -93,4 +93,9 @@ public interface SessionRepository extends JpaRepository<Session,String > {
        """)
     Optional<Session> sessionSlotCheck(@Param("startTime") LocalDateTime startTime,
                                        @Param("endTime") LocalDateTime endTime);
+
+    @Query("SELECT s FROM Session s WHERE s.sessionStartTime BETWEEN :startOfWeek AND :endOfWeek")
+    List<Session> sessionInWeekRange(
+            @Param("startOfWeek") LocalDateTime startOfWeek,
+            @Param("endOfWeek") LocalDateTime endOfWeek);
 }

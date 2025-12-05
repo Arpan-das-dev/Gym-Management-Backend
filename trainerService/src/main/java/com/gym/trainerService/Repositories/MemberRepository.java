@@ -6,6 +6,7 @@ import org.springframework.data.jpa.repository.JpaRepository;
 import org.springframework.data.jpa.repository.Modifying;
 import org.springframework.data.jpa.repository.Query;
 
+import java.time.LocalDate;
 import java.util.List;
 import java.util.Optional;
 
@@ -56,4 +57,18 @@ public interface MemberRepository extends JpaRepository<Member, String> {
 
     @Query("SELECT c.trainerId, COUNT(c) FROM Member c GROUP BY c.trainerId")
     List<Object[]> getClientCountForAllTrainers();
+
+    /**
+     * JPQL Method 1: Counts members currently eligible.
+     * @param currentDate The current date (e.g., 2025-12-05).
+     */
+    @Query("SELECT COUNT(m) FROM Member m WHERE m.eligibilityEnd >= :currentDate")
+    Long countCurrentMembers(@Param("currentDate") LocalDate currentDate);
+
+    /**
+     * JPQL Method 2: Counts members eligible at the end of the last month.
+     * @param lastMonthEndDate The last day of the previous month (e.g., 2025-11-30).
+     */
+    @Query("SELECT COUNT(m) FROM Member m WHERE m.eligibilityEnd >= :lastMonthEndDate")
+    Long countMembersEligibleAtLastMonthEnd(@Param("lastMonthEndDate") LocalDate lastMonthEndDate);
 }
