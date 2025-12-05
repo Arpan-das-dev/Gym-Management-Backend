@@ -1,5 +1,6 @@
 package com.gym.trainerService.Services.MemberServices;
 
+import com.gym.trainerService.Dto.MemberDtos.Responses.SessionMatrixInfo;
 import com.gym.trainerService.Dto.SessionDtos.Requests.AddSessionRequestDto;
 import com.gym.trainerService.Dto.SessionDtos.Requests.UpdateSessionRequestDto;
 import com.gym.trainerService.Dto.SessionDtos.Responses.AllSessionResponseDto;
@@ -24,8 +25,10 @@ import org.springframework.data.domain.PageRequest;
 import org.springframework.data.domain.Pageable;
 import org.springframework.stereotype.Service;
 
+import java.time.DayOfWeek;
 import java.time.LocalDateTime;
 import java.time.format.DateTimeFormatter;
+import java.time.temporal.TemporalAdjusters;
 import java.util.List;
 /**
  * Service class managing business logic for handling training sessions between trainers and members.
@@ -82,6 +85,7 @@ public class SessionManagementService {
      */
     @Transactional
     @CachePut(value = "AllSessionCache", key = "#trainerId")
+    @CacheEvict(value = "sessionMatrix",key = "#trainerId")
     public AllSessionsWrapperDto addSession(String trainerId, AddSessionRequestDto requestDto) {
         // validating trainer existence if not present then throw a custom exception */
         if(!trainerRepository.existsById(trainerId)) {
@@ -120,6 +124,7 @@ public class SessionManagementService {
                 .trainerId(member.getTrainerId())
                 .sessionStartTime(startTime)
                 .sessionEndTime(endTime)
+                .status("UPCOMING")
                 .build();
         // saving session to database */
         sessionRepository.save(session);
@@ -149,6 +154,7 @@ public class SessionManagementService {
      */
     @Transactional
     @CachePut(value = "AllSessionCache", key = "#requestDto.trainerId")
+    @CacheEvict(value = "sessionMatrix",key = "#trainerId")
     public AllSessionsWrapperDto updateSession(String sessionId, UpdateSessionRequestDto requestDto) {
         // fetching session from database if not found then throw custom exception
         Session session = sessionRepository.findById(sessionId)
@@ -263,7 +269,8 @@ public class SessionManagementService {
     @Transactional
     @Caching(evict = {
             @CacheEvict(value = "AllSessionCache", key = "#trainerId"),
-            @CacheEvict(value = "AllSessionCache", key = "#trainerId + '*'")
+            @CacheEvict(value = "AllSessionCache", key = "#trainerId + '*'"),
+            @CacheEvict(value = "sessionMatrix",key = "#trainerId")
     })
     public String deleteSession(String sessionId,String trainerId) {
         // fetching session from database if not found then throw custom exception */
@@ -313,4 +320,38 @@ public class SessionManagementService {
                 .build();
     }
 
+    @Cacheable(value = "sessionMatrix",key = "#trainerId")
+    public SessionMatrixInfo getSessionMatrix(String trainerId) {
+
+        log.info("Starting session matrix calculation for trainer: {}", trainerId);
+
+        LocalDateTime today = LocalDateTime.now();
+        LocalDateTime startOfWeek = today.with(TemporalAdjusters.previousOrSame(DayOfWeek.MONDAY));
+        LocalDateTime endOfWeek = today.with(TemporalAdjusters.nextOrSame(DayOfWeek.SATURDAY));
+        LocalDateTime now = LocalDateTime.now();
+
+        log.debug("Current date: {}, Week range: {} to {}", today, startOfWeek, endOfWeek);
+
+        List<Session> sessions = sessionRepository.sessionInWeekRange(startOfWeek, endOfWeek);
+
+        log.info("Repository returned {} total sessions for the week.", sessions.size());
+
+        int totalSessions = sessions.size();
+
+        long remainingSessionsLong = sessions.stream()
+                .filter(s -> s.getSessionEndTime().isAfter(now))
+                .count();
+
+        int remainingSessions = (int) remainingSessionsLong;
+        log.debug("Calculated remaining sessions: {}", remainingSessions);
+
+        SessionMatrixInfo result = SessionMatrixInfo.builder()
+                .totalSessionsThisWeek(totalSessions)
+                .totalSessionsLeft(remainingSessions)
+                .build();
+
+        log.info("Finished session matrix calculation for trainer {}. Result: Total={}, Remaining={}", trainerId, totalSessions, remainingSessions);
+
+        return result;
+    }
 }
