@@ -2,6 +2,7 @@ package com.gym.trainerService.Services.TrainerServices;
 
 import com.gym.trainerService.Dto.TrainerReviewDto.Requests.ReviewAddRequestDto;
 import com.gym.trainerService.Dto.TrainerReviewDto.Requests.ReviewUpdateRequestDto;
+import com.gym.trainerService.Dto.TrainerReviewDto.Responses.RatingMatrixInfo;
 import com.gym.trainerService.Dto.TrainerReviewDto.Responses.ReviewResponseDto;
 import com.gym.trainerService.Dto.TrainerReviewDto.Wrapper.AllReviewResponseWrapperDto;
 import com.gym.trainerService.Exception.Custom.InvalidReviewException;
@@ -75,7 +76,8 @@ public class TrainerReviewService {
     @Caching(evict = {
             @CacheEvict(value = "AllTrainerCache", key = "'All'"),
             @CacheEvict(value = "trainerCache", key = "#trainerId"),
-            @CacheEvict(value = "reviewCache", key = "#trainerId + '*' ")
+            @CacheEvict(value = "reviewCache", key = "#trainerId + '*' "),
+            @CacheEvict(value = "ratingMatrix" , key = "#trainerId")
     })
     public ReviewResponseDto addReviewForMemberByUser(String trainerId, ReviewAddRequestDto requestDto) {
         // fetching the trainer by id from db (if valid) otherwise throws exception
@@ -165,9 +167,10 @@ public class TrainerReviewService {
      */
     @Transactional
     @Caching(evict = {
-            @CacheEvict(value = "trainerCache", key = "#trainerId"),
+            @CacheEvict(value = "trainerCache", key = "#requestDto.trainerId"),
             @CacheEvict(value = "AllTrainerCache", key = "'All'"),
-            @CacheEvict(value = "reviewCache", key = "#trainerId + '*'")
+            @CacheEvict(value = "reviewCache", key = "#requestDto.trainerId + '*'"),
+            @CacheEvict(value = "ratingMatrix" , key = "#requestDto.trainerId")
     })
     public ReviewResponseDto updateReviewForTrainerById(String reviewId, ReviewUpdateRequestDto requestDto) {
         Review review = reviewRepository.findById(reviewId)
@@ -217,7 +220,8 @@ public class TrainerReviewService {
     @Caching(evict = {
             @CacheEvict(value = "trainerCache", key = "#trainerId"),
             @CacheEvict(value = "AllTrainerCache", key = "'All'"),
-            @CacheEvict(value = "reviewCache", key = "#trainerId + '*'")
+            @CacheEvict(value = "reviewCache", key = "#trainerId + '*'"),
+            @CacheEvict(value = "ratingMatrix" , key = "#trainerId")
     })
     public String deleteReviewForTrainerByReviewId(String reviewId, String trainerId) {
         Review review = reviewRepository.findById(reviewId)
@@ -257,4 +261,36 @@ public class TrainerReviewService {
                 .build();
     }
 
+    @Cacheable(value = "ratingMatrix" , key = "#trainerId")
+    public RatingMatrixInfo getRatingMatrix(String trainerId) {
+        LocalDateTime now = LocalDateTime.now();
+        LocalDateTime firstDayOfCurrentMonth = now.withDayOfMonth(1);
+
+        log.info("⭐⭐⭐ get request to get review matrix for trainer {} from {} to {} range",
+                trainerId, firstDayOfCurrentMonth, now);
+
+        Double currentRatingRaw = reviewRepository.getReviewsByTrainerId(trainerId);
+        Double oldRatingRaw = reviewRepository.getReviewBYTrainerIdWithDate(trainerId, firstDayOfCurrentMonth);
+
+        // 1. Handle NULL results by converting them to 0.00
+        double currentRating = (currentRatingRaw != null) ? currentRatingRaw : 0.00;
+        double oldRating = (oldRatingRaw != null) ? oldRatingRaw:0.00 ;
+
+        double change = currentRating - oldRating;
+
+        // 2. Handle Division by Zero for Percentage Calculation
+        double percentageChange = 0.00;
+        if (currentRating != 0.00) {
+            percentageChange = (change / currentRating) * 100;
+        }
+
+        log.info("⭐⭐⭐ current rating is {} where the older one is {} and the change in % is {}%",
+                currentRating, oldRating, percentageChange);
+
+        return RatingMatrixInfo.builder()
+                .currentRating(currentRating)
+                .oldRating(oldRating)
+                .change(percentageChange)
+                .build();
+    }
 }
