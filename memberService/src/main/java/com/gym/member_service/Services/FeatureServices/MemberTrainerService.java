@@ -16,6 +16,7 @@ import com.gym.member_service.Repositories.MemberRepository;
 import com.gym.member_service.Repositories.SessionRepository;
 import com.gym.member_service.Repositories.TrainerRepository;
 import com.gym.member_service.Services.OtherService.WebClientServices;
+import com.gym.member_service.Utils.CustomJavaEvict;
 import jakarta.transaction.Transactional;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
@@ -26,6 +27,7 @@ import org.springframework.dao.DataAccessException;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.PageRequest;
 import org.springframework.data.domain.Pageable;
+import org.springframework.data.domain.Sort;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.TransactionSystemException;
 import reactor.core.publisher.Mono;
@@ -80,6 +82,7 @@ public class MemberTrainerService {
      * Repository for training session data access operations.
      */
     private final SessionRepository sessionRepository;
+    private final CustomJavaEvict evict;
     
     /**
      * Processes a trainer assignment request and forwards it to administrative services.
@@ -274,7 +277,6 @@ public class MemberTrainerService {
      * @see AllSessionInfoResponseDto
      */
     @Transactional
-    @CacheEvict(value = "member'sSessionCache", key = "#memberId")
     public AllSessionInfoResponseDto addSessionToMemberById(String memberId, String trainerId,
                                                             AddSessionsRequestDto requestDto) {
         // 1. Fetch the member by ID, throw error if not found
@@ -311,9 +313,11 @@ public class MemberTrainerService {
                 .sessionEndTime(endTime)
                 .memberId(member.getId()).
                 trainerId(trainer.getTrainerId())
+                .sessionStatus("UPCOMING")
                 .build();
         // 5. Save session in DB
         sessionRepository.save(session);
+        evict.evictMemberSessionCachePattern("memberSessionCache",session.getMemberId(),"UP");
         log.info("Successfully saved session with this id {} and for the date on {}"
                 , session.getSessionId(), session.getSessionStartTime());
         // 6. Return response DTO
@@ -347,9 +351,15 @@ public class MemberTrainerService {
      * @see AllSessionInfoResponseDto
      * @see SessionsResponseDto
      */
-    @Cacheable(value = "member'sSessionCache", key = "#memberId':'#pageSize':'pageNo")
-    public AllSessionInfoResponseDto getPastSessions(String memberId, int pageSize, int pageNo) {
-        Pageable page = PageRequest.of(pageNo, pageSize);
+    @Cacheable(
+            value = "memberSessionCache",
+            key = "'PAST:' + #memberId + ':' + #pageNo + ':' + #pageSize + ':' + #sortDirection"
+    )
+    public AllSessionInfoResponseDto getPastSessions(String memberId, int pageSize, int pageNo,String sortDirection) {
+        Sort.Direction direction = sortDirection.equalsIgnoreCase("ASC") ?
+                Sort.Direction.ASC : Sort.Direction.DESC;
+        Sort sort = Sort.by(direction,"sessionStartTime");
+        Pageable page = PageRequest.of(pageNo, pageSize,sort);
         Page<Session> sessions = sessionRepository.findPastSessionsByMemberId(memberId, page);
         List<SessionsResponseDto> responseDtoList = sessions.getContent().stream()
                 .map(response -> SessionsResponseDto.builder()
@@ -358,8 +368,17 @@ public class MemberTrainerService {
                         memberId(response.getMemberId()).
                         trainerId(response.getTrainerId())
                         .sessionStartTime(response.getSessionStartTime())
-                        .sessionEndTime(response.getSessionEndTime()).build()).toList();
-        return AllSessionInfoResponseDto.builder().sessionsResponseDtoList(responseDtoList).build();
+                        .sessionEndTime(response.getSessionEndTime())
+                        .sessionStatus(response.getSessionStatus()== null ? "N/A": response.getSessionStatus())
+                        .build()).toList();
+        return AllSessionInfoResponseDto.builder()
+                .sessionsResponseDtoList(responseDtoList)
+                .pageNo(sessions.getNumber())
+                .pageSize(sessions.getSize())
+                .totalElements(sessions.getTotalElements())
+                .totalPages(sessions.getTotalPages())
+                .lastPage(sessions.isLast())
+                .build();
     }
      /**
      * Retrieves all upcoming training sessions for a member.
@@ -383,8 +402,11 @@ public class MemberTrainerService {
      * @see AllSessionInfoResponseDto
      * @see SessionsResponseDto
      */
-    @Cacheable(value = "member'sSessionCache", key = "#memberId")
-    public AllSessionInfoResponseDto getUpcomingSessions(String memberId) {
+     @Cacheable(
+             value = "memberSessionCache",
+             key = "'UP:' + #memberId + ':' + #pageNo + ':' + #pageSize"
+     )
+    public AllSessionInfoResponseDto getUpcomingSessions(String memberId,int pageNo, int pageSize) {
         Member member = memberRepository.findById(memberId)
                 .orElseThrow(() -> new UserNotFoundException("No member found with this id: " + memberId));
         Trainer trainer = trainerRepository.findTrainerByMemberId(memberId).orElse(null);
@@ -396,9 +418,23 @@ public class MemberTrainerService {
         } else if (trainer.getEligibilityEnd().isBefore(LocalDate.now())) {
             throw new TrainerExpiredException("Trainer plan expired unable to fetch info");
         }
-        List<Session> sessions = sessionRepository.findUpcomingSessionsByMemberId(memberId);
-        List<SessionsResponseDto> responseDtoList = sessions.stream().map(res -> SessionsResponseDto.builder().sessionId(res.getSessionId()).sessionName(res.getSessionName()).memberId(res.getMemberId()).trainerId(res.getTrainerId()).sessionStartTime(res.getSessionStartTime()).sessionEndTime(res.getSessionEndTime()).build()).toList();
-        return AllSessionInfoResponseDto.builder().sessionsResponseDtoList(responseDtoList).build();
+        Sort sort = Sort.by(Sort.Direction.DESC,"sessionStartTime");
+        Pageable page = PageRequest.of(pageNo,pageSize,sort);
+        Page<Session> sessions = sessionRepository.findUpcomingSessionsByMemberId(memberId,page);
+        List<SessionsResponseDto> responseDtoList = sessions.stream()
+                .map(res -> SessionsResponseDto.builder()
+                        .sessionId(res.getSessionId())
+                        .sessionName(res.getSessionName())
+                        .memberId(res.getMemberId())
+                        .trainerId(res.getTrainerId())
+                        .sessionStartTime(res.getSessionStartTime())
+                        .sessionEndTime(res.getSessionEndTime())
+                        .sessionStatus(res.getSessionStatus()== null ? "UPCOMING": res.getSessionStatus())
+                        .build()).toList();
+        return AllSessionInfoResponseDto.builder()
+                .sessionsResponseDtoList(responseDtoList)
+
+                .build();
     }
     /**
      * Updates an existing training session with new details.
@@ -426,7 +462,6 @@ public class MemberTrainerService {
      * @see SessionsResponseDto
      */
     @Transactional
-    @CacheEvict(value = "member'sSessionCache", key = "#memberId")
     public SessionsResponseDto updateSession(String sessionId, String memberId,
                                              UpdateSessionRequestDto requestDto) {
         Session session = sessionRepository.findById(sessionId)
@@ -440,7 +475,7 @@ public class MemberTrainerService {
         session.setSessionStartTime(requestDto.getSessionStartTime());
         session.setSessionEndTime(requestDto.getSessionEndTime());
         sessionRepository.save(session);
-
+        evict.evictMemberSessionCachePattern("memberSessionCache",session.getMemberId(),"UP");
         return SessionsResponseDto.builder()
                 .sessionId(session.getSessionId())
                 .sessionName(session.getSessionName())
@@ -471,7 +506,6 @@ public class MemberTrainerService {
      * @throws IllegalArgumentException if any parameter is null or empty
      */
     @Transactional
-    @CacheEvict(value = "member'sSessionCache", key = "#memberId")
     public String deleteSessionBySessionId(String sessionId, String memberId) {
         Session session = sessionRepository.findById(sessionId)
                 .orElseThrow(() -> new NoSessionFoundException("No session found with this id: " + sessionId));
@@ -479,6 +513,7 @@ public class MemberTrainerService {
             throw new InvalidSessionException("Input mismatch for the memberId: " + memberId);
         }
         sessionRepository.deleteById(sessionId);
+        evict.evictMemberSessionCachePattern("memberSessionCache",session.getMemberId(),"UP");
         return "Successfully deleted session of id: " + sessionId;
     }
 
