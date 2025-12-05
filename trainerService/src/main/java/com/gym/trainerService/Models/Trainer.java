@@ -63,4 +63,7 @@ public class Trainer implements Serializable {
     @Column(name = "about",columnDefinition = "TEXT")
     private String about = "";
 
+    @Builder.Default
+    @Column(name = "frozen")
+    private boolean frozen = false;
 }
