@@ -5,6 +5,8 @@ import lombok.extern.slf4j.Slf4j;
 import org.springframework.data.redis.core.StringRedisTemplate;
 import org.springframework.stereotype.Service;
 
+import java.util.Collections;
+import java.util.HashSet;
 import java.util.Set;
 
 @Slf4j
@@ -12,8 +14,6 @@ import java.util.Set;
 @RequiredArgsConstructor
 public class CustomJavaEvict {
     private final StringRedisTemplate redisTemplate;
-
-
 
     /**
      * Helper method to manually evict cache entries based on a pattern.
@@ -39,4 +39,55 @@ public class CustomJavaEvict {
             log.warn("No keys found to evict for pattern: {}", pattern);
         }
     }
+    public void evictMemberSessionCachePattern(String cacheName, String memberId, String type) {
+
+        Set<String> keysToDelete = new HashSet<>();
+
+        // MEMBER-FIRST caches (e.g., BMI)
+        String memberPattern = cacheName + "::" + memberId + "*";
+
+        // Session caches
+        String upPattern   = cacheName + "::UP:" + memberId + "*";
+        String pastPattern = cacheName + "::PAST:" + memberId + "*";
+
+        log.debug("Evicting cache '{}' for member '{}' with type '{}'", cacheName, memberId, type);
+
+        switch (type.toUpperCase()) {
+
+            case "UP":
+                keysToDelete.addAll(safeKeys(upPattern));
+                break;
+
+            case "PAST":
+                keysToDelete.addAll(safeKeys(pastPattern));
+                break;
+
+            case "MEMBER":
+                keysToDelete.addAll(safeKeys(memberPattern));
+                break;
+
+            case "ALL":  // Clear every related cache
+                keysToDelete.addAll(safeKeys(memberPattern));
+                keysToDelete.addAll(safeKeys(upPattern));
+                keysToDelete.addAll(safeKeys(pastPattern));
+                break;
+
+            default:
+                log.warn("Invalid cache eviction type '{}'. Allowed: UP, PAST, MEMBER, ALL", type);
+                return;
+        }
+
+        if (!keysToDelete.isEmpty()) {
+            redisTemplate.delete(keysToDelete);
+            log.info("Evicted {} keys from cache '{}' for member '{}'", keysToDelete.size(), cacheName, memberId);
+        } else {
+            log.warn("No keys found to evict for cache '{}' and member '{}'", cacheName, memberId);
+        }
+    }
+
+    private Set<String> safeKeys(String pattern) {
+        Set<String> keys = redisTemplate.keys(pattern);
+        return (keys != null) ? keys : Collections.emptySet();
+    }
+
 }
