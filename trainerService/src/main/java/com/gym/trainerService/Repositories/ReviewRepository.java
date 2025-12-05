@@ -7,6 +7,7 @@ import org.springframework.data.domain.Pageable;
 import org.springframework.data.jpa.repository.JpaRepository;
 import org.springframework.data.jpa.repository.Query;
 
+import java.time.LocalDateTime;
 import java.util.List;
 
 /**
@@ -68,4 +69,8 @@ public interface ReviewRepository extends JpaRepository<Review, String> {
 
     @Query("SELECT r.trainer.id, COUNT(r) FROM Review r GROUP BY r.trainer.id")
     List<Object[]> getReviewCountsForAllTrainers();
+
+    @Query("SELECT avg(r.review) FROM Review r WHERE r.trainer.id =:trainerId AND r.reviewDate< :lastMonth")
+    Double getReviewBYTrainerIdWithDate( @Param("trainerId") String trainerId,
+                                         @Param("lastMonth") LocalDateTime lastMonth);
 }
