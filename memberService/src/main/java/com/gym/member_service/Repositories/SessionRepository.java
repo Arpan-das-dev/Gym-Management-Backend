@@ -13,25 +13,50 @@ import java.util.List;
 
 public interface SessionRepository extends JpaRepository<Session,String>{
 
-    @Query(value = "SELECT * FROM session s " +
-            "WHERE s.member_id = :memberId " +
-            "AND s.start_time < NOW() " +
-            "ORDER BY s.start_time DESC",
-            countQuery = "SELECT COUNT(*) FROM session s " +
-                    "WHERE s.member_id = :memberId " +
-                    "AND s.start_time < NOW()",
-            nativeQuery = true)
-    Page<Session> findPastSessionsByMemberId(@Param("memberId") String memberId, Pageable pageable);
+    /**
+     * Retrieves past sessions for a member.
+     * Past = sessionStartTime < NOW()
+     * Sorting is fully controlled by Pageable.
+     */
+    @Query("""
+        SELECT s FROM Session s
+        WHERE s.memberId = :memberId
+          AND s.sessionStartTime < CURRENT_TIMESTAMP
+    """)
+    Page<Session> findPastSessionsByMemberId(
+            @Param("memberId") String memberId,
+            Pageable pageable
+    );
 
-    @Query(value = "SELECT * FROM session s " +
-            "WHERE s.member_id = :memberId " +
-            "AND s.start_time >= NOW() " +
-            "ORDER BY s.start_time ASC",
-            nativeQuery = true)
-    List<Session> findUpcomingSessionsByMemberId(@Param("memberId") String memberId);
 
-    @Query(value = "SELECT s FROM Session s WHERE s.sessionStartTime BETWEEN :now AND :threshold")
-    List<Session> findSessionsStartingSoon(@Param("now") LocalDateTime now,
-                                           @Param("threshold") LocalDateTime threshold);
+    /**
+     * Retrieves upcoming sessions for a member.
+     * Upcoming = sessionStartTime >= NOW()
+     * Sorting is fully controlled by Pageable.
+     */
+    @Query("""
+        SELECT s FROM Session s
+        WHERE s.memberId = :memberId
+          AND s.sessionStartTime >= CURRENT_TIMESTAMP
+    """)
+    Page<Session> findUpcomingSessionsByMemberId(
+            @Param("memberId") String memberId,
+            Pageable pageable
+    );
+
+
+    /**
+     * Retrieves sessions starting soon — NOT pageable.
+     * Can be kept sorted in JPQL.
+     */
+    @Query("""
+        SELECT s FROM Session s
+        WHERE s.sessionStartTime BETWEEN :now AND :threshold
+        ORDER BY s.sessionStartTime ASC
+    """)
+    List<Session> findSessionsStartingSoon(
+            @Param("now") LocalDateTime now,
+            @Param("threshold") LocalDateTime threshold
+    );
 
 }
