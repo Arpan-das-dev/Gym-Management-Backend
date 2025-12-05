@@ -7,6 +7,7 @@ import com.gym.trainerService.Dto.TrainerMangementDto.Requests.TrainerAboutReque
 import com.gym.trainerService.Dto.TrainerMangementDto.Requests.TrainerCreateRequestDto;
 import com.gym.trainerService.Dto.TrainerMangementDto.Responses.AllTrainerResponseDto;
 import com.gym.trainerService.Dto.TrainerMangementDto.Responses.PublicTrainerInfoResponseDto;
+import com.gym.trainerService.Dto.TrainerMangementDto.Responses.TrainerDashBoardInfoResponseDto;
 import com.gym.trainerService.Dto.TrainerMangementDto.Responses.TrainerResponseDto;
 import com.gym.trainerService.Dto.TrainerMangementDto.Wrappers.AllPublicTrainerInfoResponseWrapperDto;
 import com.gym.trainerService.Dto.TrainerMangementDto.Wrappers.AllTrainerResponseDtoWrapper;
@@ -95,6 +96,14 @@ public class TrainerManagementController {
     }
 
 
+    @LogExecutionTime
+    @GetMapping("/trainer/dashboard")
+    public ResponseEntity<TrainerDashBoardInfoResponseDto> getTrainerDashboardInfo(
+            @RequestParam @NotBlank(message = "Please Provide a Valid Id to Proceed Request") String trainerId) {
+        log.info("®️®️ Request received to get info for trainer's dashboard for trainer {}",trainerId);
+        TrainerDashBoardInfoResponseDto response = trainerManagementService.getTrainerDashBoardInfo(trainerId);
+        return ResponseEntity.status(HttpStatus.OK).body(response);
+    }
     /**
      * Retrieves basic information for all trainers
      *
