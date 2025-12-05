@@ -182,7 +182,7 @@ public class RedisConfig {
                         .fromSerializer(trainerInfoResponseDtoSerializer))
                 .entryTtl(Duration.ofHours(3)));
 
-        cacheConfigs.put("member'sSessionCache",defaultConfig
+        cacheConfigs.put("memberSessionCache",defaultConfig
                 .serializeValuesWith(RedisSerializationContext.SerializationPair
                         .fromSerializer(allSessionInfoResponseDtoSerializer))
                 .entryTtl(Duration.ofHours(16)));
