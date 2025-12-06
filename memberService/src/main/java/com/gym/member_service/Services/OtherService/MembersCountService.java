@@ -1,5 +1,7 @@
 package com.gym.member_service.Services.OtherService;
 
+import com.gym.member_service.Dto.MemberTrainerDtos.Requests.ListOfMemberIdRequestDto;
+import com.gym.member_service.Dto.MemberTrainerDtos.Responses.MemberStatus;
 import com.gym.member_service.Model.MembersActive;
 import com.gym.member_service.Repositories.MemberActiveRepository;
 import com.gym.member_service.Repositories.MemberRepository;
@@ -11,6 +13,7 @@ import org.springframework.scheduling.annotation.Scheduled;
 import org.springframework.stereotype.Service;
 
 import java.time.LocalDateTime;
+import java.util.List;
 
 @Slf4j
 @Service
@@ -96,4 +99,8 @@ public class MembersCountService {
         }
     }
 
+    public List<MemberStatus>  getChunkOfMemberStatus(ListOfMemberIdRequestDto requestDto) {
+        return requestDto.getMemberIds().parallelStream()
+                .map(id-> new MemberStatus(id,isActive(id))).toList();
+    }
 }
