@@ -1,13 +1,19 @@
 package com.gym.member_service.Controllers;
 
+import com.gym.member_service.Dto.MemberTrainerDtos.Requests.ListOfMemberIdRequestDto;
+import com.gym.member_service.Dto.MemberTrainerDtos.Responses.MemberStatus;
 import com.gym.member_service.Dto.NotificationDto.GenericResponse;
 import com.gym.member_service.Services.OtherService.MembersCountService;
 import lombok.RequiredArgsConstructor;
+import lombok.extern.slf4j.Slf4j;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.stereotype.Service;
 import org.springframework.web.bind.annotation.*;
 
+import java.util.List;
+
+@Slf4j
 @RequiredArgsConstructor
 @RestController
 @RequestMapping("${member-service.Base_Url.count}")
@@ -55,5 +61,12 @@ public class MembersCountController {
         // returning member count as OK http status
     }
 
-
+    @PostMapping("trainer/isActiveClients")
+    public ResponseEntity<List<MemberStatus>> getListOfMemberIsActiveOrNot(
+            @RequestBody ListOfMemberIdRequestDto requestDto) {
+        log.info("Request received to get a chunk of member status for {} members ",requestDto.getMemberIds().size());
+        List<MemberStatus>  memberStatuses = otherService.getChunkOfMemberStatus(requestDto);
+        log.info("Sending response of {} members status ",memberStatuses.size());
+        return ResponseEntity.status(HttpStatus.OK).body(memberStatuses);
+    }
 }
