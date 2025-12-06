@@ -2,12 +2,14 @@ package com.gym.trainerService.Services.OtherServices;
 
 import com.gym.trainerService.Dto.SessionDtos.Responses.SessionResponseDto;
 import com.gym.trainerService.Dto.SessionDtos.Responses.UpdateSessionResponseDto;
+import com.gym.trainerService.Exception.Custom.InterServiceCommunicationError;
 import com.gym.trainerService.Models.Session;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.scheduling.annotation.Async;
 import org.springframework.stereotype.Service;
 import org.springframework.web.reactive.function.client.WebClient;
+import reactor.core.publisher.Mono;
 
 /**
  * Service responsible for inter-service communication between Trainer Service and Member Service.
@@ -66,8 +68,8 @@ public class WebClientService {
      * @param session  the created {@link Session} entity
      * @param duration session duration in hours
      */
-    @Async
-    public void sendSessionToMember(Session session, double duration) {
+
+    public Mono<String> sendSessionToMember(Session session, double duration) {
         log.info("Request received to webclient service to create session for member");
         // Building session response DTO
         SessionResponseDto responseDto = SessionResponseDto.builder()
@@ -81,16 +83,19 @@ public class WebClientService {
                 + "&trainerId=" + session.getTrainerId();
         
         // Making asynchronous POST request to Member Service
-        webClient.build().post()
+        return webClient.build().post()
                 .uri(url)
                 .bodyValue(responseDto)
-                .retrieve()
-                .toBodilessEntity()
-                .subscribe(
-                        success-> log.info("{}:: Successfully send to {}"
-                                ,success.getStatusCode(),MemberService_BaseUrl_Session),
-                error-> log.error(error.getMessage())
-        );
+                .exchangeToMono(res-> {
+                    if(res.statusCode().is2xxSuccessful()) {
+                        return res.bodyToMono(String.class)
+                                .defaultIfEmpty("Successfully Added Session ")
+                                .doOnNext(msg-> log.info("👍🏻👍🏻 response received from memberservice {}",
+                                        msg));
+                    } else {
+                        throw new InterServiceCommunicationError("Unable to Add Sessions right now to due Internal Issue in Member Service");
+                    }
+                });
     }
 
     /**
