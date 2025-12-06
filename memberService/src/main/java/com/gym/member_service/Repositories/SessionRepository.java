@@ -21,10 +21,11 @@ public interface SessionRepository extends JpaRepository<Session,String>{
     @Query("""
         SELECT s FROM Session s
         WHERE s.memberId = :memberId
-          AND s.sessionStartTime < CURRENT_TIMESTAMP
+          AND s.sessionStartTime <:now
     """)
     Page<Session> findPastSessionsByMemberId(
             @Param("memberId") String memberId,
+            @Param("now") LocalDateTime now,
             Pageable pageable
     );
 
@@ -37,10 +38,11 @@ public interface SessionRepository extends JpaRepository<Session,String>{
     @Query("""
         SELECT s FROM Session s
         WHERE s.memberId = :memberId
-          AND s.sessionStartTime >= CURRENT_TIMESTAMP
+          AND s.sessionStartTime >=:now
     """)
     Page<Session> findUpcomingSessionsByMemberId(
             @Param("memberId") String memberId,
+            @Param("now") LocalDateTime now,
             Pageable pageable
     );
 
