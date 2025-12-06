@@ -41,7 +41,6 @@ public class AddSessionRequestDto {
 
     /** Date and time when the session will start. Must be current or future. */
     @NotNull(message = "Session date must not be null")
-    @FutureOrPresent(message = "Session date must be in the present or future")
     private LocalDateTime sessionDate;
 
     /** Duration in hours. Range: 0.5 (30 mins) – 2.5 (2 hrs 30 mins). */
@@ -49,4 +48,5 @@ public class AddSessionRequestDto {
     @DecimalMin(value = "0.5", message = "Minimum duration is 0.5 hours (30 mins)")
     @DecimalMax(value = "2.5", message = "Maximum duration is 2.5 hours (2 hrs 30 mins)")
     private double duration;
+
 }
