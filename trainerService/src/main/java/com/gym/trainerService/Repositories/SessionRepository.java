@@ -98,4 +98,7 @@ public interface SessionRepository extends JpaRepository<Session,String > {
     List<Session> sessionInWeekRange(
             @Param("startOfWeek") LocalDateTime startOfWeek,
             @Param("endOfWeek") LocalDateTime endOfWeek);
+
+    @Query("SELECT s FROM Session s WHERE s.sessionStartTime > :now")
+    Page<Session> findAllUpcoming(@Param("now") LocalDateTime now, Pageable pageable);
 }
