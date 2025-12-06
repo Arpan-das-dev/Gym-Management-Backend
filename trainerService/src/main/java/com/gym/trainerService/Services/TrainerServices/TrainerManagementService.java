@@ -306,7 +306,10 @@ public class TrainerManagementService {
      * @see org.springframework.dao.DataAccessException
      */
     @Transactional
-    @CacheEvict(value = "trainerCache", key = "#trainerId")
+    @Caching(evict = {
+            @CacheEvict(value = "speciality", key = "#trainerId"),
+            @CacheEvict(value = "trainerCache", key = "#trainerId")
+    })
     public String deleteSpecializationByName(String trainerId, String specialityName) {
         log.info("Request received to delete speciality with name {}", specialityName);
         int effectedRows = specialityRepository.deleteByTrainerIdWithName(trainerId, specialityName);
@@ -437,7 +440,7 @@ public class TrainerManagementService {
     }
 
     @Cacheable(value = "trainer",key = "#id")
-    private Trainer getById(String id) {
+    public Trainer getById(String id) {
         return trainerRepository.findById(id)
                 .orElseThrow(() -> new NoTrainerFoundException(
                 "No trainer found with the id: " + id));
