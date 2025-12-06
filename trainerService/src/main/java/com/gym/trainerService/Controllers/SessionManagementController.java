@@ -1,11 +1,14 @@
 package com.gym.trainerService.Controllers;
 
+import com.gym.trainerService.Dto.MemberDtos.Responses.GenericResponse;
 import com.gym.trainerService.Dto.SessionDtos.Requests.AddSessionRequestDto;
 import com.gym.trainerService.Dto.SessionDtos.Requests.UpdateSessionRequestDto;
 import com.gym.trainerService.Dto.SessionDtos.Wrappers.AllSessionsWrapperDto;
 import com.gym.trainerService.Services.MemberServices.SessionManagementService;
 import jakarta.validation.Valid;
+import jakarta.validation.constraints.NotBlank;
 import jakarta.validation.constraints.Positive;
+import jakarta.validation.constraints.PositiveOrZero;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.http.HttpStatus;
@@ -58,13 +61,14 @@ public class SessionManagementController {
      * @status 201 CREATED if the session is successfully created
      */
     @PostMapping("/trainer/addSessions")
-    public ResponseEntity<AllSessionsWrapperDto> addSession(@RequestParam String trainerId,
-                                                            @Valid @RequestBody
+    public ResponseEntity<GenericResponse> addSession(@RequestParam String trainerId,
+                                                      @RequestParam(defaultValue = "UPCOMING") String  status,
+                                                      @Valid @RequestBody
                                                             AddSessionRequestDto requestDto){
         log.info("Request received to add session for member {} with trainer {}"
                 ,requestDto.getMemberId(),trainerId);
-        AllSessionsWrapperDto response = sessionManagementService.addSession(trainerId,requestDto);
-        return ResponseEntity.status(HttpStatus.CREATED).body(response);
+       String  response = sessionManagementService.addSession(trainerId,status,requestDto);
+        return ResponseEntity.status(HttpStatus.CREATED).body(new GenericResponse(response));
     }
 
     /**
@@ -99,9 +103,13 @@ public class SessionManagementController {
      * @status 200 OK if sessions are found
      */
     @GetMapping("/trainer/getSessions")
-    public ResponseEntity<AllSessionsWrapperDto> getUpcomingSessions (@RequestParam String trainerId) {
-        log.info("Request received to get upcoming sessions for trainer: {}",trainerId);
-        AllSessionsWrapperDto response = sessionManagementService.getUpcomingSessions(trainerId);
+    public ResponseEntity<AllSessionsWrapperDto> getUpcomingSessions (
+            @RequestParam @NotBlank(message = "Can Not Proceed Request Without a Valid Trainer Id") String trainerId,
+            @RequestParam @PositiveOrZero(message = "Page No Can not be Negative") int pageNo,
+            @RequestParam @Positive(message = "Page size Must be Greater than Zero") int pageSize) {
+        log.info("Request received to get upcoming sessions for trainer: {} for page no {} of size {}",
+                trainerId,pageNo,pageSize);
+        AllSessionsWrapperDto response = sessionManagementService.getUpcomingSessions(trainerId,pageNo,pageSize);
         return ResponseEntity.status(HttpStatus.OK).body(response);
     }
 
@@ -119,11 +127,14 @@ public class SessionManagementController {
      * @status 200 OK if sessions are retrieved successfully
      */
     @GetMapping("/trainer/getSession/{pageSize}")
-    public ResponseEntity<AllSessionsWrapperDto> getPastSessions ( @PathVariable @Positive int pageSize,
-                                                                   @RequestParam String trainerId,
-                                                                   @RequestParam(defaultValue = "20") @Positive int pageNo) {
-        log.info("Request received to get past sessions for pageNo: {}, of size: {}",pageNo,pageSize);
-        AllSessionsWrapperDto response = sessionManagementService.getPastSessionsByPagination(trainerId,pageNo,pageSize);
+    public ResponseEntity<AllSessionsWrapperDto> getPastSessions(
+            @PathVariable @Positive int pageSize,
+            @RequestParam @NotBlank(message = "Can Not Proceed Request Without a Valid Trainer Id") String trainerId,
+            @RequestParam @PositiveOrZero int pageNo,
+            @RequestParam(defaultValue = "ASC") @NotBlank String sortDirection) {
+        log.info("Request received to get past sessions for pageNo: {}, of size: {}", pageNo, pageSize);
+        AllSessionsWrapperDto response = sessionManagementService
+                .getPastSessionsByPagination(trainerId, pageNo, pageSize,sortDirection);
         return ResponseEntity.status(HttpStatus.OK).body(response);
     }
 
