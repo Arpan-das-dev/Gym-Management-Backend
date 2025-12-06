@@ -25,4 +25,10 @@ public class AllSessionsWrapperDto {
 
     /** Collection of session details. */
     List<AllSessionResponseDto> responseDtoList;
+    private int pageNo;
+    private int pageSize;
+    private long totalElements;
+    private int totalPages;
+
+    private boolean lastPage;
 }
