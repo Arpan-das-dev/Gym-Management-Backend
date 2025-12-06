@@ -170,12 +170,12 @@ public class MemberTrainerController {
      * @see AllSessionInfoResponseDto
      */
     @PostMapping("/addSession")
-    public ResponseEntity<AllSessionInfoResponseDto> addSessionToMember(@RequestParam String memberId,
+    public ResponseEntity<String> addSessionToMember(@RequestParam String memberId,
                                                                         @RequestParam String trainerId,
                                                                         @Valid @RequestBody AddSessionsRequestDto
                                                                                     requestDto) {
         log.info("Request received to add session to member {} by trainer {}", memberId, trainerId);
-        AllSessionInfoResponseDto response = trainerService.addSessionToMemberById(memberId, trainerId, requestDto);
+        String response = trainerService.addSessionToMemberById(memberId, trainerId, requestDto);
         return ResponseEntity.status(HttpStatus.OK).body(response);
     }
     /**
