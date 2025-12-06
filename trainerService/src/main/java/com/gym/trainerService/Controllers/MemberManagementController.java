@@ -5,6 +5,7 @@ import com.gym.trainerService.Dto.MemberDtos.Responses.MemberResponseDto;
 import com.gym.trainerService.Dto.MemberDtos.Wrappers.AllMemberResponseWrapperDto;
 import com.gym.trainerService.Services.MemberServices.MemberManagementService;
 import jakarta.validation.Valid;
+import jakarta.validation.constraints.NotBlank;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.http.HttpStatus;
@@ -62,7 +63,9 @@ public class MemberManagementController {
      * @return {@link AllMemberResponseWrapperDto} containing the list of members
      */
     @GetMapping("/trainer/getMemberList")
-    public ResponseEntity<AllMemberResponseWrapperDto> getAllMembers (@RequestParam String trainerId) {
+    public ResponseEntity<AllMemberResponseWrapperDto> getAllMembers (
+            @RequestParam
+            @NotBlank(message = "Can not Proceed Any request Without Having Valid Credentials") String trainerId) {
         log.info("Request received to get all members list for trainer id: {}",trainerId);
         AllMemberResponseWrapperDto response = memberManagementService.getAllMembersByTrainerId(trainerId);
         return ResponseEntity.status(HttpStatus.OK).body(response);
