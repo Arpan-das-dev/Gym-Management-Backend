@@ -30,6 +30,7 @@ public class AllSessionResponseDto {
     /** Descriptive name of the session. */
     private String sessionName;
 
+    private String  sessionStatus;
     /** Session start timestamp. */
     private LocalDateTime sessionStartTime;
 
