@@ -212,7 +212,7 @@ public class RedisConfig {
         cacheConfigs.put("profileImageUrl", defaultConfig
                 .serializeValuesWith(RedisSerializationContext.SerializationPair
                         .fromSerializer(genericResponseRedisSerializer))
-                .entryTtl(Duration.ofHours(2)));
+                .entryTtl(Duration.ofHours(4)));
 
         cacheConfigs.put("loginStreak",defaultConfig
                 .serializeValuesWith(RedisSerializationContext.SerializationPair
