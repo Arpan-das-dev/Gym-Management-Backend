@@ -9,27 +9,35 @@ import com.gym.trainerService.Dto.SessionDtos.Wrappers.AllSessionsWrapperDto;
 import com.gym.trainerService.Exception.Custom.*;
 import com.gym.trainerService.Models.Member;
 import com.gym.trainerService.Models.Session;
+import com.gym.trainerService.Models.Trainer;
 import com.gym.trainerService.Repositories.MemberRepository;
 import com.gym.trainerService.Repositories.SessionRepository;
 import com.gym.trainerService.Repositories.TrainerRepository;
 import com.gym.trainerService.Services.OtherServices.WebClientService;
+import com.gym.trainerService.Utils.CustomCacheEvict;
 import com.gym.trainerService.Utils.SessionIdGenUtil;
 import jakarta.transaction.Transactional;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
+import org.springframework.cache.CacheManager;
 import org.springframework.cache.annotation.CacheEvict;
 import org.springframework.cache.annotation.CachePut;
 import org.springframework.cache.annotation.Cacheable;
 import org.springframework.cache.annotation.Caching;
+import org.springframework.data.domain.Page;
 import org.springframework.data.domain.PageRequest;
 import org.springframework.data.domain.Pageable;
+import org.springframework.data.domain.Sort;
 import org.springframework.stereotype.Service;
+import reactor.core.publisher.Mono;
 
 import java.time.DayOfWeek;
 import java.time.LocalDateTime;
 import java.time.format.DateTimeFormatter;
 import java.time.temporal.TemporalAdjusters;
 import java.util.List;
+import java.util.Objects;
+
 /**
  * Service class managing business logic for handling training sessions between trainers and members.
  * <p>
@@ -64,6 +72,8 @@ public class SessionManagementService {
     // injecting SessionIdGenUtil by constructor injection using @RequiredArgsConstructor
     private final SessionIdGenUtil sessionIdGenUtil;
 
+    private final CustomCacheEvict customCacheEvict;
+    private final CacheManager cacheManager;
     DateTimeFormatter formatter = DateTimeFormatter.ofPattern("yyyy-MM-dd HH:mm:ss");
 
     /**
@@ -84,9 +94,8 @@ public class SessionManagementService {
      * @return {@link AllSessionsWrapperDto} containing updated list of sessions for the trainer
      */
     @Transactional
-    @CachePut(value = "AllSessionCache", key = "#trainerId")
     @CacheEvict(value = "sessionMatrix",key = "#trainerId")
-    public AllSessionsWrapperDto addSession(String trainerId, AddSessionRequestDto requestDto) {
+    public String addSession(String trainerId, String status, AddSessionRequestDto requestDto) {
         // validating trainer existence if not present then throw a custom exception */
         if(!trainerRepository.existsById(trainerId)) {
             log.warn("No trainer found for the trainer with the id ---> {}",trainerId);
@@ -124,15 +133,28 @@ public class SessionManagementService {
                 .trainerId(member.getTrainerId())
                 .sessionStartTime(startTime)
                 .sessionEndTime(endTime)
-                .status("UPCOMING")
+                .status(status)
                 .build();
         // saving session to database */
-        sessionRepository.save(session);
         log.info("Successfully saved session on {}",session.getSessionStartTime().format(formatter));
-        // sending session details to member service by webClientService */
-        webClientService.sendSessionToMember(session,requestDto.getDuration());
-        log.info("Model sent to webClient service class ");
-        return responseDtoBuilderForAllSessionForTrainer(session.getTrainerId());
+        Mono<String> webClientResponse = webClientService.sendSessionToMember(session,requestDto.getDuration());
+
+        try {
+            String response;
+            response = webClientResponse
+                    .doOnSuccess(msg -> {
+                        sessionRepository.save(session);
+                        customCacheEvict.evictTrainerSessionCachePattern("AllSessionCache",trainerId,"UP");
+                        log.info("Successfully saved session to database after Member Service confirmation on {}",
+                                session.getSessionStartTime().format(formatter));
+                    })
+                    .block();
+
+            return response;
+        } catch (RuntimeException e) {
+            log.error("Failed to add session after WebClient call. Session not saved locally.", e);
+            throw e;
+        }
     }
 
     /**
@@ -201,17 +223,36 @@ public class SessionManagementService {
      * @param trainerId unique identifier of the trainer
      * @return {@link AllSessionsWrapperDto} containing all upcoming sessions
      */
-    @Cacheable(value = "AllSessionCache", key = "#trainerId")
-    public AllSessionsWrapperDto getUpcomingSessions(String trainerId) {
-        log.info("Request received in service class for all upcoming sessions for trainer {}",trainerId);
-        // validating trainer existence if not present then throw a custom exception */
-        if(trainerRepository.existsById(trainerId)) {
-            log.info("successfully retrieved sessions form database for trainer {}",trainerId);
-            return responseDtoBuilderForAllSessionForTrainer(trainerId);
+    @Cacheable(value = "AllSessionCache", key = "'UP:' + #trainerId + ':' + #pageNo + ':' + #pageSize")
+    public AllSessionsWrapperDto getUpcomingSessions(String trainerId, int pageNo, int pageSize) {
+        log.info("Request received in service class for all upcoming sessions for trainer {}", trainerId);
+        Trainer trainer = trainerRepository.findById(trainerId)
+                .orElseThrow(() -> new NoTrainerFoundException(
+                        "No trainer found with the id: " + trainerId));
+        log.info("successfully retrieved sessions form database for trainer {}", trainer.getTrainerId());
+        if (trainer.isFrozen()) {
+            throw new UnAuthorizedRequestException("Your Account has been Suspended Please Contact Admin");
         }
-        log.warn("No trainer found with the id: {}",trainerId);
-        // throwing custom exception if not found any trainer in the database */
-        throw new NoTrainerFoundException("No trainer found with this id: "+trainerId);
+        Sort sort = Sort.by(Sort.Direction.ASC, "sessionStartTime");
+        Pageable pageable = PageRequest.of(pageNo, pageSize, sort);
+        Page<Session> sessionPage = sessionRepository.findAllUpcoming(LocalDateTime.now(), pageable);
+        log.info("");
+        return AllSessionsWrapperDto.builder()
+                .responseDtoList(sessionPage.stream()
+                        .map(s -> AllSessionResponseDto.builder()
+                                .sessionId(s.getSessionId())
+                                .memberId(s.getMemberId())
+                                .sessionStatus(s.getStatus())
+                                .sessionName(s.getSessionName())
+                                .sessionStartTime(s.getSessionStartTime())
+                                .sessionEndTime(s.getSessionEndTime())
+                                .build()).toList())
+                .pageNo(sessionPage.getNumber())
+                .pageSize(sessionPage.getSize())
+                .totalElements(sessionPage.getTotalElements())
+                .totalPages(sessionPage.getTotalPages())
+                .lastPage(sessionPage.isLast())
+                .build();
     }
     /**
      * Retrieves past sessions for a given trainer using pagination.
@@ -225,32 +266,46 @@ public class SessionManagementService {
      * @param pageSize  number of records per page
      * @return {@link AllSessionsWrapperDto} containing paginated session data
      */
-    @Cacheable(value = "AllSessionCache", key = "#trainerId + ':' + #pageNo + ':' + #pageSize")
-    public AllSessionsWrapperDto getPastSessionsByPagination(String trainerId, int pageNo, int pageSize) {
+    @Cacheable(value = "AllSessionCache", key = "#trainerId + ':' + #pageNo + ':' + #pageSize + ':' + #sortDirection")
+    public AllSessionsWrapperDto getPastSessionsByPagination(String trainerId, int pageNo, int pageSize,String sortDirection)
+    {
         log.info("Request received in service class for past sessions for size {} and page no {}",pageSize,pageNo);
-        // validating trainer existence if not present then throw a custom exception */
-        if(!trainerRepository.existsById(trainerId)) {
-            log.warn("No trainer found  with the id ---> {}",trainerId);
-            throw new NoTrainerFoundException("No trainer found with this id :: "+trainerId);
+        Trainer trainer;
+        try {
+            trainer = (Trainer) Objects.requireNonNull(cacheManager.getCache("trainer")).get(trainerId);
+        } catch (Exception e) {
+            log.warn("Got an exception due to {}",e.getLocalizedMessage());
+            trainer = trainerRepository.findById(trainerId)
+                    .orElseThrow(() -> new NoTrainerFoundException(
+                            "No trainer found with the id: " + trainerId));
         }
-        // creating pageable instance for pagination */
-        Pageable pageRequest = PageRequest.of(pageNo,pageSize);
+        if (trainer != null && trainer.isFrozen()) {
+            throw new UnAuthorizedRequestException("Your Account has been Suspended Please Contact Admin");
+        }
+
+        Sort.Direction direction = sortDirection.equalsIgnoreCase("ASC") ?
+                Sort.Direction.ASC : Sort.Direction.DESC;
+        Sort sort = Sort.by(direction,"sessionStartTime");
+        Pageable pageRequest = PageRequest.of(pageNo,pageSize,sort);
         // fetching paginated data from database */
-        List<Session> sessionList = sessionRepository
-                .findPaginatedDataByTrainerId(trainerId,LocalDateTime.now(),pageRequest).stream().toList();
-        log.info("Successfully retrieved {} sessions for the trainer id:: {}",sessionList.size(),trainerId);
-        // building response dto using stream with map*/
-        List<AllSessionResponseDto> responseDtoList = sessionList.stream().map(session -> AllSessionResponseDto
-                .builder()
-                .sessionId(session.getSessionId())
-                .sessionName(session.getSessionName())
-                .memberId(session.getMemberId())
-                .sessionStartTime(session.getSessionStartTime())
-                .sessionEndTime(session.getSessionEndTime())
-                .build()).toList();
-        log.info("successfully build {} sessions ", responseDtoList.size());
+        Page<Session> sessionPage = sessionRepository
+                .findPaginatedDataByTrainerId(trainerId,LocalDateTime.now(),pageRequest);
+        log.info("Successfully retrieved {} sessions for the trainer id:: {}",sessionPage.getSize(),trainerId);
         return AllSessionsWrapperDto.builder()
-                .responseDtoList(responseDtoList)
+                .responseDtoList(sessionPage.stream()
+                        .map(s -> AllSessionResponseDto.builder()
+                                .sessionId(s.getSessionId())
+                                .memberId(s.getMemberId())
+                                .sessionStatus(s.getStatus())
+                                .sessionName(s.getSessionName())
+                                .sessionStartTime(s.getSessionStartTime())
+                                .sessionEndTime(s.getSessionEndTime())
+                                .build()).toList())
+                .pageNo(sessionPage.getNumber())
+                .pageSize(sessionPage.getSize())
+                .totalElements(sessionPage.getTotalElements())
+                .totalPages(sessionPage.getTotalPages())
+                .lastPage(sessionPage.isLast())
                 .build();
     }
     /**
@@ -268,8 +323,6 @@ public class SessionManagementService {
      */
     @Transactional
     @Caching(evict = {
-            @CacheEvict(value = "AllSessionCache", key = "#trainerId"),
-            @CacheEvict(value = "AllSessionCache", key = "#trainerId + '*'"),
             @CacheEvict(value = "sessionMatrix",key = "#trainerId")
     })
     public String deleteSession(String sessionId,String trainerId) {
