@@ -20,7 +20,6 @@ import com.gym.member_service.Utils.CustomJavaEvict;
 import jakarta.transaction.Transactional;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
-import org.springframework.cache.annotation.CacheEvict;
 import org.springframework.cache.annotation.CachePut;
 import org.springframework.cache.annotation.Cacheable;
 import org.springframework.dao.DataAccessException;
@@ -277,7 +276,7 @@ public class MemberTrainerService {
      * @see AllSessionInfoResponseDto
      */
     @Transactional
-    public AllSessionInfoResponseDto addSessionToMemberById(String memberId, String trainerId,
+    public String addSessionToMemberById(String memberId, String trainerId,
                                                             AddSessionsRequestDto requestDto) {
         // 1. Fetch the member by ID, throw error if not found
         Member member = memberRepository.findById(memberId)
@@ -320,18 +319,7 @@ public class MemberTrainerService {
         evict.evictMemberSessionCachePattern("memberSessionCache",session.getMemberId(),"UP");
         log.info("Successfully saved session with this id {} and for the date on {}"
                 , session.getSessionId(), session.getSessionStartTime());
-        // 6. Return response DTO
-        SessionsResponseDto responseDto = SessionsResponseDto.builder()
-                .sessionId(session.getSessionId())
-                .sessionName(session.getSessionName())
-                .sessionStartTime(session.getSessionStartTime())
-                .sessionEndTime(session.getSessionEndTime())
-                .memberId(session.getMemberId())
-                .trainerId(session.getTrainerId())
-                .build();
-        return AllSessionInfoResponseDto.builder()
-                .sessionsResponseDtoList(List.of(responseDto))
-                .build();
+        return "Added new Session for "+member.getFirstName()+" "+member.getLastName();
     }
     /**
      * Retrieves past training sessions for a member with pagination support.
@@ -360,7 +348,7 @@ public class MemberTrainerService {
                 Sort.Direction.ASC : Sort.Direction.DESC;
         Sort sort = Sort.by(direction,"sessionStartTime");
         Pageable page = PageRequest.of(pageNo, pageSize,sort);
-        Page<Session> sessions = sessionRepository.findPastSessionsByMemberId(memberId, page);
+        Page<Session> sessions = sessionRepository.findPastSessionsByMemberId(memberId,LocalDateTime.now(), page);
         List<SessionsResponseDto> responseDtoList = sessions.getContent().stream()
                 .map(response -> SessionsResponseDto.builder()
                         .sessionId(response.getSessionId()).
@@ -418,9 +406,9 @@ public class MemberTrainerService {
         } else if (trainer.getEligibilityEnd().isBefore(LocalDate.now())) {
             throw new TrainerExpiredException("Trainer plan expired unable to fetch info");
         }
-        Sort sort = Sort.by(Sort.Direction.DESC,"sessionStartTime");
+        Sort sort = Sort.by(Sort.Direction.ASC,"sessionStartTime");
         Pageable page = PageRequest.of(pageNo,pageSize,sort);
-        Page<Session> sessions = sessionRepository.findUpcomingSessionsByMemberId(memberId,page);
+        Page<Session> sessions = sessionRepository.findUpcomingSessionsByMemberId(memberId,LocalDateTime.now(),page);
         List<SessionsResponseDto> responseDtoList = sessions.stream()
                 .map(res -> SessionsResponseDto.builder()
                         .sessionId(res.getSessionId())
