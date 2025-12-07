@@ -5,6 +5,7 @@ import com.gym.trainerService.Dto.SessionDtos.Requests.AddSessionRequestDto;
 import com.gym.trainerService.Dto.SessionDtos.Requests.UpdateSessionRequestDto;
 import com.gym.trainerService.Dto.SessionDtos.Wrappers.AllSessionsWrapperDto;
 import com.gym.trainerService.Services.MemberServices.SessionManagementService;
+import com.gym.trainerService.Utils.CustomAnnotations.Annotations.LogExecutionTime;
 import jakarta.validation.Valid;
 import jakarta.validation.constraints.NotBlank;
 import jakarta.validation.constraints.Positive;
@@ -82,13 +83,14 @@ public class SessionManagementController {
      * @return {@link ResponseEntity} with {@link AllSessionsWrapperDto} representing the updated session list
      * @status 202 ACCEPTED if the update is successfully processed
      */
+    @LogExecutionTime
     @PutMapping("/trainer/updateSession")
-    public ResponseEntity<AllSessionsWrapperDto> updateSession(@RequestParam String sessionId,
+    public ResponseEntity<GenericResponse> updateSession(@RequestParam String sessionId,
                                                                @Valid @RequestBody
                                                                UpdateSessionRequestDto requestDto) {
         log.info("Request received for update session of id: {}",sessionId);
-        AllSessionsWrapperDto response = sessionManagementService.updateSession(sessionId,requestDto);
-        return ResponseEntity.status(HttpStatus.ACCEPTED).body(response);
+        String  response = sessionManagementService.updateSession(sessionId,requestDto);
+        return ResponseEntity.status(HttpStatus.ACCEPTED).body(new GenericResponse(response));
     }
 
     /**
@@ -150,10 +152,24 @@ public class SessionManagementController {
      * @status 200 OK if deletion is successful
      */
     @DeleteMapping("/trainer/deleteSession")
-    public ResponseEntity<String> deleteSessionBySessionId(@RequestParam String sessionId,
+    public ResponseEntity<GenericResponse> deleteSessionBySessionId(@RequestParam String sessionId,
                                                            @RequestParam String trainerId) {
         log.info("Request received to delete session {} by trainer {}", sessionId, trainerId);
         String response = sessionManagementService.deleteSession(sessionId,trainerId);
-        return ResponseEntity.status(HttpStatus.OK).body(response);
+        return ResponseEntity.status(HttpStatus.OK).body(new GenericResponse(response));
+    }
+
+    @LogExecutionTime
+    @PutMapping("/trainer/setStatus")
+    public ResponseEntity<GenericResponse> setStatusForSession(
+            @RequestParam @NotBlank(message = "Please Provide A Session Id To Update Session Status") String sessionId,
+            @RequestParam @NotBlank(message = "Can Not Proceed Without Valid Trainer Id") String trainerId,
+            @RequestParam @NotBlank(message = "Please Provide A Valid Status To Update Status") String status
+    ) {
+        log.info("©️©️ Request received to set staus as {} for session --> {} by trainer --> {} ",
+                status,sessionId,trainerId);
+        String response = sessionManagementService.setStatusForSession(sessionId,trainerId,status);
+        log.info("Sending Response as ::=> {}",response);
+        return ResponseEntity.status(HttpStatus.ACCEPTED).body(new GenericResponse(response));
     }
 }
