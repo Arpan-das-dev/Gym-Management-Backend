@@ -54,7 +54,8 @@ public class CustomCacheEvict{
 
         if (!keysToDelete.isEmpty()) {
             redisTemplate.delete(keysToDelete);
-            log.info("Evicted {} keys from cache '{}' for trainer '{}'", keysToDelete.size(), cacheName, trainerId);
+            log.info("Evicted {} keys from cache '{}' for trainer '{}' for::->{}", keysToDelete.size()
+                    , cacheName, trainerId,type);
         } else {
             log.warn("No keys found to evict for cache '{}' and trainer '{}'", cacheName, trainerId);
         }
