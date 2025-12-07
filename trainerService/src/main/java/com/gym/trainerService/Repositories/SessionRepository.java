@@ -29,28 +29,6 @@ import java.util.Optional;
  * @since 1.0
  */
 public interface SessionRepository extends JpaRepository<Session,String > {
-
-    /**
-     * Retrieves all upcoming sessions for a specific trainer.
-     * <p>
-     * Fetches sessions where the session start time is greater than or equal to the current time,
-     * effectively returning all future sessions. Results are ordered chronologically.
-     * </p>
-     *
-     * @param trainerId   unique identifier of the trainer
-     * @param currentTime current timestamp used to filter future sessions
-     * @return list of {@link Session} entities representing upcoming sessions
-     */
-    @Query("""
-       SELECT s FROM Session s
-         WHERE s.trainerId = :trainerId
-         AND s.sessionStartTime >= :currentTime
-         ORDER BY s.sessionStartTime ASC
-       """)
-    List<Session> findByTrainerId(@Param("trainerId") String trainerId,
-                                  @Param("currentTime") LocalDateTime currentTime);
-
-
     /**
      * Retrieves past sessions for a specific trainer in paginated form.
      * <p>
@@ -90,8 +68,8 @@ public interface SessionRepository extends JpaRepository<Session,String > {
 
     @Query("""
    SELECT s FROM Session s
-     WHERE s.sessionStartTime < :endTime 
-     AND s.sessionEndTime > :startTime
+     WHERE s.sessionStartTime < :endTime
+      AND s.sessionEndTime > :startTime
    """)
     Optional<Session> sessionSlotCheck(@Param("startTime") LocalDateTime startTime,
                                        @Param("endTime") LocalDateTime endTime);
