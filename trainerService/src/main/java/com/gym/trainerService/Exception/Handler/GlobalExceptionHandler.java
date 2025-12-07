@@ -4,6 +4,7 @@ package com.gym.trainerService.Exception.Handler;
 import com.gym.trainerService.Exception.Custom.*;
 import com.gym.trainerService.Exception.Model.ErrorResponse;
 import com.gym.trainerService.Exception.Util.ExceptionUtil;
+import com.sun.jdi.request.DuplicateRequestException;
 import jakarta.servlet.http.HttpServletRequest;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
@@ -63,7 +64,8 @@ public class GlobalExceptionHandler {
      */
     @ExceptionHandler({
             DuplicateSpecialtyFoundException.class,
-            DuplicateTrainerFoundException.class
+            DuplicateTrainerFoundException.class,
+            DuplicateRequestException.class
     })
     public ResponseEntity<ErrorResponse> handleConflict(Exception ex, HttpServletRequest request) {
         return ExceptionUtil.buildErrorResponse(HttpStatus.CONFLICT, ex.getMessage(), request);
