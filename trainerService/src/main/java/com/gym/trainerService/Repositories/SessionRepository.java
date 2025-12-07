@@ -86,11 +86,13 @@ public interface SessionRepository extends JpaRepository<Session,String > {
      * @return an {@link Optional} containing an existing {@link Session} if a conflict exists,
      *         or an empty {@link Optional} if the slot is available
      */
+    // SessionRepository.java
+
     @Query("""
-       SELECT s FROM Session s
-         WHERE s.sessionStartTime >= :startTime
-         AND s.sessionEndTime <= :endTime
-       """)
+   SELECT s FROM Session s
+     WHERE s.sessionStartTime < :endTime 
+     AND s.sessionEndTime > :startTime
+   """)
     Optional<Session> sessionSlotCheck(@Param("startTime") LocalDateTime startTime,
                                        @Param("endTime") LocalDateTime endTime);
 
