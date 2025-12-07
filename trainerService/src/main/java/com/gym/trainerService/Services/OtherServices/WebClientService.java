@@ -6,7 +6,6 @@ import com.gym.trainerService.Exception.Custom.InterServiceCommunicationError;
 import com.gym.trainerService.Models.Session;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.beans.factory.annotation.Value;
-import org.springframework.scheduling.annotation.Async;
 import org.springframework.stereotype.Service;
 import org.springframework.web.reactive.function.client.WebClient;
 import reactor.core.publisher.Mono;
@@ -103,8 +102,8 @@ public class WebClientService {
      *
      * @param session the updated {@link Session} entity
      */
-    @Async
-    public void updateSessionToMember(Session session) {
+
+    public Mono<String> updateSessionToMember(Session session) {
         log.info("Request received to webclient service for session update");
         // Building update session response DTO
         UpdateSessionResponseDto responseDto = UpdateSessionResponseDto.builder()
@@ -119,16 +118,21 @@ public class WebClientService {
                 + "&memberId=" + session.getMemberId();
 
         // Making asynchronous PUT request to Member Service
-        webClient.build().put()
+        return webClient.build().put()
                 .uri(url)
-                .bodyValue(responseDto).retrieve()
-                .toBodilessEntity()
-                .subscribe(
-                        success-> log.info("{}:: Successfully send update request to {}"
-                        ,success.getStatusCode(),MemberService_BaseUrl_Session+"/update-session"),
-                error-> log.error(error.getLocalizedMessage(),error.getCause())
-        );
-    }
+                .bodyValue(responseDto)
+                .exchangeToMono(res -> {
+                    if (res.statusCode().is2xxSuccessful()) {
+                        return res.bodyToMono(String.class)
+                                .defaultIfEmpty("Successfully Updated Session")
+                                .doOnNext(msg -> log.info("Get response from member service--> {}", msg));
+                    } else {
+                        throw new InterServiceCommunicationError("Unable to Add Sessions right now " +
+                                "to due Internal Issue in Member Service");
+                    }
+                });
+
+}
 
     /**
      * Sends a delete request to Member Service when a session is removed from Trainer Service.
@@ -136,22 +140,48 @@ public class WebClientService {
      * @param sessionId unique session identifier
      * @param memberId  identifier of the member linked to this session
      */
-    @Async
-    public void deleteSessionForMember(String sessionId, String memberId) {
+
+    public Mono<String> deleteSessionForMember(String sessionId, String memberId) {
         log.info("Request received to webclient service for session delete");
         // Building request URL and inserting query params
         String url = MemberService_BaseUrl_Session+"/session"+
                 "?sessionId=" + sessionId +
                 "&memberId=" + memberId;
         // Making asynchronous DELETE request to Member Service
-        webClient.build().delete()
+        return webClient.build().delete()
                 .uri(url)
-                .retrieve()
-                .toBodilessEntity()
-                .subscribe(
-           success-> log.info("{} successfully send to member-service to delete session {}",
-                        success.getStatusCode(),url),
-                error-> log.error(String.valueOf(error.getCause()))
-                );
+                .exchangeToMono(res -> {
+                    if (res.statusCode().is2xxSuccessful()) {
+                        return res.bodyToMono(String.class)
+                                .defaultIfEmpty("Successfully Updated Session")
+                                .doOnNext(msg -> log.info("Get response from member service --> {}", msg));
+                    } else {
+                        throw new InterServiceCommunicationError("Unable to Add Sessions right now " +
+                                "to due Internal Issue in Member Service");
+                    }
+                });
+    }
+
+    public Mono<String> updateSessionStatusForMember(String sessionId, String memberId, String trainerId,String status) {
+        log.info("Request received to webclient service for set session status");
+        String url = MemberService_BaseUrl_Session+"/setStatus"+
+                "?sessionId="+sessionId+"&memberId="+memberId+"&trainerId="+trainerId
+                +"&status="+status;
+        return webClient.build().put()
+                .uri(url)
+                .exchangeToMono(res-> {
+                    if(res.statusCode().is2xxSuccessful()) {
+                        return res.bodyToMono(String.class)
+                                .defaultIfEmpty("Successfully Updated Session Status as "+status)
+                                .doOnNext(msg->log.info("{} get response from member service on url --> {}"
+                                        ,res.statusCode(),url));
+                    } else {
+                        throw new InterServiceCommunicationError("Unable to Add Sessions right now " +
+                                "to due Internal Issue in Member Service");
+                    }
+                }).onErrorResume(err->{
+                    log.warn("an error occurred due to {}",err.getMessage());
+                    return null;
+                });
     }
 }
