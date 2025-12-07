@@ -7,6 +7,8 @@ import com.gym.member_service.Dto.MemberManagementDto.Responses.LoginStreakRespo
 import com.gym.member_service.Dto.MemberManagementDto.Responses.MemberInfoResponseDto;
 import com.gym.member_service.Dto.MemberManagementDto.Wrappers.AllMembersInfoWrapperResponseDtoList;
 import com.gym.member_service.Exception.Exceptions.DuplicateUserFoundException;
+import com.gym.member_service.Exception.Exceptions.PlanExpiredException;
+import com.gym.member_service.Exception.Exceptions.UnAuthorizedRequestException;
 import com.gym.member_service.Exception.Exceptions.UserNotFoundException;
 import com.gym.member_service.Model.*;
 import com.gym.member_service.Repositories.MemberRepository;
@@ -416,7 +418,17 @@ public class MemberManagementService {
 
     @Cacheable(value = "MemberEntity", key = "#memberId")
     public  Member cacheMemberDetails(String memberId) {
-        return memberRepository.findById(memberId)
+        log.info("MemberManagementService::line::421 --> Request received to get member details by id for {}",memberId);
+        Member member = memberRepository.findById(memberId)
                 .orElseThrow(() -> new UserNotFoundException("Member with this id does not exist"));
+        if(member.isFrozen()) {
+            throw new UnAuthorizedRequestException("Can Not Proceed Request Due to Account Frozen for "+
+                    member.getFirstName()+ " "+ member.getLastName());
+        } else if (member.getPlanDurationLeft() <= 0 || member.getPlanExpiration().isBefore(LocalDateTime.now())) {
+            throw new PlanExpiredException("Can not Proceed Request Because "+
+                    member.getFirstName()+ " "+ member.getLastName()+
+                    "'s Plan Has Expired");
+        }
+        return member;
     }
 }
