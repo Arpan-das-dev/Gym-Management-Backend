@@ -62,7 +62,8 @@ public class MemberManagementService {
      */
     @Caching(evict = {
             @CacheEvict(value = "ClientMatrix",key = "#trainerId"),
-            @CacheEvict(value = "AllMemberListCache", key = "#trainerId")
+            @CacheEvict(value = "AllMemberListCache", key = "#trainerId"),
+            @CacheEvict(value = "DashboardInfo",key = "#trainerId"),
     })
     @Transactional
     public MemberResponseDto addMember(String trainerId, AssignMemberRequestDto requestDto) {
@@ -141,7 +142,8 @@ public class MemberManagementService {
     @Transactional
     @Caching(evict = {
             @CacheEvict(value = "ClientMatrix",key = "#trainerId"),
-            @CacheEvict(value = "AllMemberListCache",key ="#trainerId")
+            @CacheEvict(value = "AllMemberListCache",key ="#trainerId"),
+            @CacheEvict(value = "DashboardInfo",key = "#trainerId"),
     })
     public String deleteMemberByIds(String trainerId, String memberId) {
         int effectedRows = memberRepository.deleteByTrainerAndMember(trainerId,memberId);
