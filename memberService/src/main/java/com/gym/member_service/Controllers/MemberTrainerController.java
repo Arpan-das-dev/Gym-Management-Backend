@@ -11,6 +11,8 @@ import com.gym.member_service.Dto.MemberTrainerDtos.Responses.TrainerInfoRespons
 import com.gym.member_service.Dto.MemberTrainerDtos.Wrapper.AllSessionInfoResponseDto;
 import com.gym.member_service.Dto.NotificationDto.GenericResponse;
 import com.gym.member_service.Services.FeatureServices.MemberTrainerService;
+import com.gym.member_service.Utils.LogExecutionTime;
+import com.sun.jdi.request.DuplicateRequestException;
 import jakarta.persistence.EntityNotFoundException;
 import jakarta.validation.Valid;
 import jakarta.validation.ValidationException;
@@ -254,14 +256,17 @@ public class MemberTrainerController {
      * @see SessionsResponseDto
      */
     @PutMapping("/update-session")
-    public ResponseEntity<SessionsResponseDto> updateSessionById(@RequestParam @NotBlank String  sessionId,
+    public ResponseEntity<String> updateSessionById(@RequestParam @NotBlank String  sessionId,
                                                                  @RequestParam @NotBlank String memberId,
                                                                  @Valid @RequestBody UpdateSessionRequestDto
                                                                          requestDto)
     {
         log.info("Request received to update session with id {}", sessionId);
         SessionsResponseDto response = trainerService.updateSession(sessionId,memberId, requestDto);
-        return ResponseEntity.status(HttpStatus.CREATED).body(response);
+        log.info("Successfully Updated session::{} by trainer::{} for member::{}",
+                response.getSessionId(),response.getTrainerId(),response.getMemberId());
+        String res = "Successfully Updated Session";
+        return ResponseEntity.status(HttpStatus.CREATED).body(res);
     }
     /**
      * Deletes a training session.
@@ -285,6 +290,21 @@ public class MemberTrainerController {
                                                      @RequestParam @NotBlank String memberId) {
         log.info("Request received to delete session of id: {} for memberId: {}", sessionId, memberId);
         String response = trainerService.deleteSessionBySessionId(sessionId, memberId);
+        return ResponseEntity.status(HttpStatus.OK).body(response);
+    }
+
+    @LogExecutionTime
+    @PutMapping("/setStatus")
+    public ResponseEntity<String> updateSessionForMember(
+            @RequestParam @NotBlank(message = "Please Provide A Session Id To Update Session Status") String sessionId,
+            @RequestParam @NotBlank (message = "Unable to Process Request without Having a Valid Member Id")  String memberId,
+            @RequestParam @NotBlank(message = "Can Not Proceed Without Valid Trainer Id") String trainerId,
+            @RequestParam @NotBlank(message = "Please Provide A Valid Status To Update Status") String status
+    ){
+        log.info("©️©️ Request received to set status as {} for member::{} by trainer::{} for session :: {}",
+                status,memberId,trainerId,sessionId);
+        String response = trainerService.setSessionStatus(sessionId,memberId,trainerId,status);
+        log.info("::MemberTrainerController::line no:: 307 --> Sending response as {}",response);
         return ResponseEntity.status(HttpStatus.OK).body(response);
     }
 }
