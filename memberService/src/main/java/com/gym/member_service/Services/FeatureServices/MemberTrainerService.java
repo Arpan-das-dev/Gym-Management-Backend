@@ -15,6 +15,7 @@ import com.gym.member_service.Model.Trainer;
 import com.gym.member_service.Repositories.MemberRepository;
 import com.gym.member_service.Repositories.SessionRepository;
 import com.gym.member_service.Repositories.TrainerRepository;
+import com.gym.member_service.Services.MemberServices.MemberManagementService;
 import com.gym.member_service.Services.OtherService.WebClientServices;
 import com.gym.member_service.Utils.CustomJavaEvict;
 import jakarta.transaction.Transactional;
@@ -77,6 +78,7 @@ public class MemberTrainerService {
      * Web client service for external administrative service communication.
      */
     private final WebClientServices webClientServices;
+    private final MemberManagementService memberManagementService;
     /**
      * Repository for training session data access operations.
      */
@@ -505,4 +507,33 @@ public class MemberTrainerService {
         return "Successfully deleted session of id: " + sessionId;
     }
 
+    public String setSessionStatus(String sessionId,String memberId,String trainerId,String status) {
+        log.info("::MemberTrainerService::line 512-> Request Received to set status ");
+        Member member = memberManagementService.cacheMemberDetails(memberId);
+        log.info("Fetched member ::{} {} ",member.getFirstName(),member.getLastName());
+        Session session = sessionRepository.findById(sessionId)
+                .orElseThrow(() -> new NoSessionFoundException("No session found with this id: " + sessionId));
+        log.info("Fetched session {} by member id {}",session.getSessionName(),session.getMemberId());
+        if (!session.getMemberId().equals(memberId)) {
+            throw new InvalidSessionException("Input mismatch for the member " +member.getFirstName()+member.getLastName());
+        } else if (!session.getTrainerId().equals(trainerId)) {
+            throw new InvalidSessionException("Input mismatch for the trainerId");
+        }
+        session.setSessionStatus(status);
+        evictIt(session);
+        sessionRepository.save(session);
+        return "Session Status Updated for "+member.getFirstName()+member.getLastName();
+    }
+
+    private void evictIt(Session session) {
+        log.info("::MemberTrainerService::line 529 -->Request received to evict cache for session of member ::-> {}"
+                ,session.getMemberId());
+        boolean presentOrFuture = session.getSessionStartTime().isAfter(LocalDateTime.now());
+        if(presentOrFuture) {
+            log.info("evicting cache for upcoming sessions");
+            evict.evictMemberSessionCachePattern("memberSessionCache",session.getMemberId(),"UP");
+        }
+        log.info("evicting cache for past sessions");
+        evict.evictMemberSessionCachePattern("memberSessionCache",session.getMemberId(),"PAST");
+    }
 }
