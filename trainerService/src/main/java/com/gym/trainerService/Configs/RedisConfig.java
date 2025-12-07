@@ -310,7 +310,7 @@ public class RedisConfig {
         cacheConfigs.put("AllSessionCache",defaultConfig
                 .serializeValuesWith(RedisSerializationContext.SerializationPair
                         .fromSerializer(allSessionsWrapperDtoRedisSerializer))
-                .entryTtl(Duration.ofHours(16)));
+                .entryTtl(Duration.ofMinutes(15)));
 
         cacheConfigs.put("profileImageCache",defaultConfig
                 .serializeValuesWith(RedisSerializationContext.SerializationPair
