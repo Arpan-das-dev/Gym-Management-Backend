@@ -77,6 +77,7 @@ public class TrainerReviewService {
             @CacheEvict(value = "AllTrainerCache", key = "'All'"),
             @CacheEvict(value = "trainerCache", key = "#trainerId"),
             @CacheEvict(value = "reviewCache", key = "#trainerId + '*' "),
+            @CacheEvict(value = "DashboardInfo",key = "#trainerId"),
             @CacheEvict(value = "ratingMatrix" , key = "#trainerId")
     })
     public ReviewResponseDto addReviewForMemberByUser(String trainerId, ReviewAddRequestDto requestDto) {
@@ -170,7 +171,8 @@ public class TrainerReviewService {
             @CacheEvict(value = "trainerCache", key = "#requestDto.trainerId"),
             @CacheEvict(value = "AllTrainerCache", key = "'All'"),
             @CacheEvict(value = "reviewCache", key = "#requestDto.trainerId + '*'"),
-            @CacheEvict(value = "ratingMatrix" , key = "#requestDto.trainerId")
+            @CacheEvict(value = "ratingMatrix" , key = "#requestDto.trainerId"),
+            @CacheEvict(value = "DashboardInfo",key = "#trainerId"),
     })
     public ReviewResponseDto updateReviewForTrainerById(String reviewId, ReviewUpdateRequestDto requestDto) {
         Review review = reviewRepository.findById(reviewId)
@@ -221,7 +223,8 @@ public class TrainerReviewService {
             @CacheEvict(value = "trainerCache", key = "#trainerId"),
             @CacheEvict(value = "AllTrainerCache", key = "'All'"),
             @CacheEvict(value = "reviewCache", key = "#trainerId + '*'"),
-            @CacheEvict(value = "ratingMatrix" , key = "#trainerId")
+            @CacheEvict(value = "ratingMatrix" , key = "#trainerId"),
+            @CacheEvict(value = "DashboardInfo",key = "#trainerId"),
     })
     public String deleteReviewForTrainerByReviewId(String reviewId, String trainerId) {
         Review review = reviewRepository.findById(reviewId)
