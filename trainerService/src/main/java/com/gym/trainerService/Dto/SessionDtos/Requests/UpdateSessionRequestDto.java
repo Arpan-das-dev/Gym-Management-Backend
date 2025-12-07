@@ -46,7 +46,6 @@ public class UpdateSessionRequestDto {
 
     /** Updated session date/time (must be present or future). */
     @NotNull(message = "Session date must not be null")
-    @FutureOrPresent(message = "Session date must be in the present or future")
     private LocalDateTime sessionDate;
 
     /** Updated duration (in hours). */
