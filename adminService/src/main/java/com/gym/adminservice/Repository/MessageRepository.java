@@ -8,6 +8,9 @@ import org.springframework.data.jpa.repository.Query;
 import java.util.List;
 
 public interface MessageRepository extends JpaRepository<Messages,String> {
-    @Query("SELECT m FROM Messages m WHERE userId = :userId")
+    @Query("SELECT m FROM Messages m WHERE m.userId = :userId")
     List<Messages> findAllByUserId(@Param("userId") String userId);
+
+    @Query("SELECT count (m) FROM Messages m WHERE m.userId =:userId")
+    int countByUserId(@Param("userId") String userId);
 }
