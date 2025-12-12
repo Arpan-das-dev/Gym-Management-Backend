@@ -27,7 +27,6 @@ public class ReviewUpdateRequestDto {
     private String trainerId;
 
     @NotNull(message = "Review date is required")
-    @PastOrPresent(message = "Review date cannot be in the future")
     private LocalDateTime reviewDate;
 
     @Size(max = 500, message = "Comment must be at most 500 characters")
