@@ -17,8 +17,6 @@ public class ReviewResponseDto {
     private String userName;
     private String userRole;
     private LocalDateTime reviewDate;
-    private int helpFullVote;
-    private int notHelpFullVote;
     private String comment;
     private Double review;
 }
