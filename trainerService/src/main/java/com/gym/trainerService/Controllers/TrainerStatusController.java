@@ -54,7 +54,7 @@ public class TrainerStatusController {
     public ResponseEntity<GenericResponse> setStatusForTrainer(
             @RequestParam(defaultValue = "UNAVAILABLE") @NotBlank String status,
             @RequestParam @NotBlank(message = "Unable To Proceed with Empty TrainerId") String trainerId) {
-        log.info("Request received to set status as :: {} for trainer :: {}", status, trainerId);
+        log.info("©️©️ Request received to set status as :: {} for trainer :: {}", status, trainerId);
         String response = trainerStatusService.setStatus(status, trainerId);
         return ResponseEntity.status(HttpStatus.CREATED).body(new GenericResponse(response));
     }
@@ -74,7 +74,7 @@ public class TrainerStatusController {
     @GetMapping("/all/status")
     public ResponseEntity<GenericResponse> getStatusForTrainer(
             @RequestParam @NotBlank(message = "Unable To Proceed with Empty TrainerId") String trainerId) {
-        log.info("Request received to get status for trainer :: {}", trainerId);
+        log.info("©️©️ Request received to get status for trainer :: {}", trainerId);
         String response = trainerStatusService.getStatus(trainerId);
         return ResponseEntity.status(HttpStatus.OK).body(new GenericResponse(response));
     }
@@ -93,7 +93,7 @@ public class TrainerStatusController {
     @DeleteMapping("/trainer/deleteStatus")
     public ResponseEntity<String> deleteStatusForTrainer(
             @RequestParam @NotBlank(message = "Unable To Proceed with Empty TrainerId") String trainerId) {
-        log.info("Request received to delete status for trainer :: {}",trainerId);
+        log.info("©️©️ Request received to delete status for trainer :: {}",trainerId);
         String response = trainerStatusService.deleteStatus(trainerId);
         return ResponseEntity.status(HttpStatus.ACCEPTED).body(response);
     }
@@ -105,6 +105,7 @@ public class TrainerStatusController {
     @PostMapping("trainer/increment")
     public ResponseEntity<?> markAsActive(
             @RequestParam @NotBlank(message = "Unable To Proceed with Empty TrainerId") String id) {
+        log.info("©️©️ request received to mark {} as active and increment count",id);
         trainerStatusService.markAsActive(id);
         return ResponseEntity.accepted().build();
         // returning response as ACCEPTED http status
@@ -117,6 +118,7 @@ public class TrainerStatusController {
     @PostMapping("trainer/decrement")
     public ResponseEntity<?> markAsInactive(
             @RequestParam @NotBlank(message = "Unable To Proceed with Empty TrainerId") String id) {
+        log.info("©️©️ request received to mark {} as inactive and decrement count",id);
         trainerStatusService.markAsInactive(id);
         return ResponseEntity.accepted().build();
         // returning response as ACCEPTED http status
