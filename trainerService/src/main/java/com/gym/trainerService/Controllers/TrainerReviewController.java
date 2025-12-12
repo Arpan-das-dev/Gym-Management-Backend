@@ -1,10 +1,12 @@
 package com.gym.trainerService.Controllers;
 
+import com.gym.trainerService.Dto.MemberDtos.Responses.GenericResponse;
 import com.gym.trainerService.Dto.TrainerReviewDto.Requests.ReviewAddRequestDto;
 import com.gym.trainerService.Dto.TrainerReviewDto.Requests.ReviewUpdateRequestDto;
 import com.gym.trainerService.Dto.TrainerReviewDto.Responses.ReviewResponseDto;
 import com.gym.trainerService.Dto.TrainerReviewDto.Wrapper.AllReviewResponseWrapperDto;
 import com.gym.trainerService.Services.TrainerServices.TrainerReviewService;
+import com.gym.trainerService.Utils.CustomAnnotations.Annotations.LogExecutionTime;
 import jakarta.validation.Valid;
 import jakarta.validation.constraints.NotBlank;
 import jakarta.validation.constraints.Positive;
@@ -49,14 +51,14 @@ public class TrainerReviewController {
      *
      * @param trainerId  the unique identifier of the trainer to review
      * @param requestDto the validated DTO containing review details
-     * @return a {@link ResponseEntity} with status {@code 201 Created} and the created {@link ReviewResponseDto}
+     * @return a {@link ResponseEntity} with status {@code 201 Created} and the created {@link GenericResponse}
      */
-    @PostMapping("/add")
-    public ResponseEntity<ReviewResponseDto> addReviewForMember (@RequestParam String trainerId,
-                                                                 @Valid @RequestBody ReviewAddRequestDto requestDto) {
-        log.info("Request received to  add review for trainer {} by {} ",trainerId,requestDto.getUserName());
-        ReviewResponseDto response = trainerReviewService.addReviewForMemberByUser(trainerId,requestDto);
-        return ResponseEntity.status(HttpStatus.CREATED).body(response);
+    @PostMapping("/user/add")
+    public ResponseEntity<GenericResponse> addReviewForTrainer (@RequestParam String trainerId,
+                                                                @Valid @RequestBody ReviewAddRequestDto requestDto) {
+        log.info("©️©️ Request received to  add review for trainer {} by {} ",trainerId,requestDto.getUserName());
+        String  response = trainerReviewService.addReviewForTrainerByUser(trainerId,requestDto);
+        return ResponseEntity.status(HttpStatus.CREATED).body(new GenericResponse(response));
     }
 
     /**
@@ -65,21 +67,45 @@ public class TrainerReviewController {
      * @param trainerId     the unique identifier of the trainer
      * @param pageNo        the page number, must be zero or positive
      * @param pageSize      the size of the page, must be positive
-     * @param sortBy        the field by which to sort the results
      * @param sortDirection the direction of sorting, e.g., ASC or DESC
      * @return a {@link ResponseEntity} with status {@code 200 OK} and a wrapped list of reviews {@link AllReviewResponseWrapperDto}
      */
-    @GetMapping("/getAll")
-    public ResponseEntity<AllReviewResponseWrapperDto> getAllReviewByTrainerId(@RequestParam @NotBlank String trainerId,
-                                                                               @RequestParam @PositiveOrZero int pageNo,
-                                                                               @RequestParam @Positive int pageSize,
-                                                                               @RequestParam @NotBlank String  sortBy,
-                                                                               @RequestParam @NotBlank String sortDirection)
-    {
-        log.info("Request received to get all review for trainer id: {}",trainerId);
+    @GetMapping("/all/getAll")
+    public ResponseEntity<AllReviewResponseWrapperDto> getAllReviewByTrainerId(
+            @RequestParam @NotBlank(message = "trainerId must not be blank") String trainerId,
+            @RequestParam @PositiveOrZero(message = "pageNo must be zero or positive") int pageNo,
+            @RequestParam @Positive(message = "pageSize must be greater than zero") int pageSize,
+            @RequestParam @NotBlank(message = "sortDirection must not be blank") String sortDirection) {
+        log.info("©️©️ Request received to get all review for trainer id: {}", trainerId);
         AllReviewResponseWrapperDto response = trainerReviewService
-                .getAllReviewByTrainerId(trainerId,pageNo,pageSize, sortBy,sortDirection);
+                .getAllReviewByTrainerId(trainerId, pageNo, pageSize,  sortDirection);
         return ResponseEntity.status(HttpStatus.OK).body(response);
+    }
+
+    /**
+     * a method to get review for a particular user's id
+     *
+     * @param userId a unique identifier for user id
+     * @param pageNo the page no which must be positive or zero
+     * @param pageSize the size of the page, must be positive
+     * @param sortDirection the direction of sorting, e.g., ASC or DESC
+     * @return a {@link ResponseEntity} with status {@code 200 OK} and
+     * a wrapped list of reviews {@link AllReviewResponseWrapperDto}
+     * @see TrainerReviewService#getReviewByUserId(String, int, int, String)
+     */
+    @LogExecutionTime
+    @GetMapping("/user/getReview")
+    public ResponseEntity<AllReviewResponseWrapperDto> getReviewByUserId(
+            @RequestParam @NotBlank(message = "userId must not be blank") String userId,
+            @RequestParam @PositiveOrZero(message = "pageNo must be zero or positive") int pageNo,
+            @RequestParam @Positive(message = "pageSize must be greater than zero") int pageSize,
+            @RequestParam @NotBlank(message = "sortDirection must not be blank") String sortDirection
+    ){
+        log.info("©️©️ request received to get reviews for {} of page no -> [{}] for size -> [{}]",
+                userId,pageNo,pageSize);
+        AllReviewResponseWrapperDto responseWrapperDto = trainerReviewService
+                .getReviewByUserId(userId,pageNo,pageSize,sortDirection);
+        return ResponseEntity.status(HttpStatus.OK).body(responseWrapperDto);
     }
 
     /**
@@ -90,14 +116,16 @@ public class TrainerReviewController {
      * @param requestDto the updated review data
      * @return a {@link ResponseEntity} with status {@code 202 Accepted} and the updated {@link ReviewResponseDto}
      */
-    @PutMapping("/update")
-    public ResponseEntity<ReviewResponseDto> updateReviewByReviewId(@RequestParam String reviewId,
+    @PutMapping("/user/update")
+    public ResponseEntity<GenericResponse> updateReviewByReviewId(@RequestParam String reviewId,
                                                                     @Valid @RequestBody ReviewUpdateRequestDto requestDto)
     {
-        log.info("Successfully received to update review for trainer {} by {} of review id: {}",
+        log.info("©️©️ Request received to update review for trainer {} by {} of review id: {}",
                 requestDto.getTrainerId(),requestDto.getUserName(),reviewId);
         ReviewResponseDto response = trainerReviewService.updateReviewForTrainerById(reviewId,requestDto);
-        return ResponseEntity.status(HttpStatus.ACCEPTED).body(response);
+        log.info("✅✅ successfully saved the updated request  by {}",response.getUserName());
+        String res = response.getUserName() + " We Have Successfully Updated Your Review";
+        return ResponseEntity.status(HttpStatus.ACCEPTED).body(new GenericResponse(res));
     }
 
     /**
@@ -107,10 +135,13 @@ public class TrainerReviewController {
      * @param trainerId the unique identifier of the associated trainer
      * @return a {@link ResponseEntity} with status {@code 202 Accepted} and a deletion confirmation message
      */
-    @DeleteMapping("/delete")
-    public ResponseEntity<String> deleteReviewById(@RequestParam String reviewId, @RequestParam String trainerId) {
-        log.info("Request received to delete review by reviewId: {} for trainer id: {}",reviewId,trainerId);
-        String response = trainerReviewService.deleteReviewForTrainerByReviewId(reviewId,trainerId);
-        return ResponseEntity.status(HttpStatus.ACCEPTED).body(response);
+    @DeleteMapping("/user/delete")
+    public ResponseEntity<GenericResponse> deleteReviewById(
+            @RequestParam String reviewId,
+            @RequestParam String trainerId,
+            @RequestParam String userId) {
+        log.info("©️©️ Request received to delete review by reviewId: {} for trainer id: {}",reviewId,trainerId);
+        String response = trainerReviewService.deleteReviewForTrainerByReviewId(reviewId,trainerId,userId);
+        return ResponseEntity.status(HttpStatus.ACCEPTED).body(new GenericResponse(response));
     }
 }
