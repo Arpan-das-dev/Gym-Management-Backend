@@ -1,11 +1,13 @@
 package com.gym.trainerService.Models;
 
+import com.fasterxml.jackson.annotation.JsonBackReference;
 import jakarta.persistence.*;
 import lombok.AllArgsConstructor;
 import lombok.Builder;
 import lombok.Data;
 import lombok.NoArgsConstructor;
 
+import java.io.Serializable;
 import java.time.LocalDateTime;
 
 /**
@@ -36,10 +38,8 @@ import java.time.LocalDateTime;
         @Index(name = "idx_user_id", columnList = "userId"),
         @Index(name = "idx_trainer_id", columnList = "trainerId"),
         @Index(name = "idx_trainer_user", columnList = "trainerId, userId"),
-        @Index(name = "idx_reported", columnList = "reported"),
-        @Index(name = "idx_helpFull_vote", columnList = "helpFullVote")
 })
-public class Review {
+public class Review implements Serializable {
     @Id
     @GeneratedValue(strategy = GenerationType.UUID)
     private String reviewId;
@@ -53,27 +53,16 @@ public class Review {
     @Column(nullable = false)
     private String userRole;
 
-    @Column(nullable = false)
+    @Column(nullable = false,columnDefinition = "TEXT")
     private String comment;
 
     @Column(nullable = false)
     private Double review = 0.0;
 
-    @Column(nullable = false)
-    private int helpFullVote = 0;
-
-    @Column(nullable = false)
-    private int notHelpFullVote = 0;
-
-    private boolean reported = false;
-
     private LocalDateTime reviewDate;
 
-    /**
-     * Many-to-One relationship to the Trainer entity.
-     * Fetch type is LAZY to avoid loading the trainer unless explicitly needed.
-     */
     @ManyToOne(fetch = FetchType.LAZY)
     @JoinColumn(name = "trainer_id")
+    @JsonBackReference
     private Trainer trainer;
 }

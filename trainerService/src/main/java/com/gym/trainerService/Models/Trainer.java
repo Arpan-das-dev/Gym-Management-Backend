@@ -56,7 +56,7 @@ public class Trainer implements Serializable {
     @Column(nullable = false)
     private double averageRating = 0.0;
 
-    @OneToMany(mappedBy = "trainer",cascade = CascadeType.ALL, orphanRemoval = true)
+    @OneToMany(mappedBy = "trainer",cascade = CascadeType.ALL)
     private List<Review> reviews;
 
     @Builder.Default
