@@ -51,12 +51,12 @@ public class TrainerStatusController {
      * @see TrainerStatusService#setStatus(String, String)
      */
     @PostMapping("/trainer/status")
-    public ResponseEntity<String> setStatusForTrainer(
+    public ResponseEntity<GenericResponse> setStatusForTrainer(
             @RequestParam(defaultValue = "UNAVAILABLE") @NotBlank String status,
-            @RequestParam @NotBlank String trainerId) {
+            @RequestParam @NotBlank(message = "Unable To Proceed with Empty TrainerId") String trainerId) {
         log.info("Request received to set status as :: {} for trainer :: {}", status, trainerId);
         String response = trainerStatusService.setStatus(status, trainerId);
-        return ResponseEntity.status(HttpStatus.CREATED).body(response);
+        return ResponseEntity.status(HttpStatus.CREATED).body(new GenericResponse(response));
     }
 
     /**
@@ -72,7 +72,8 @@ public class TrainerStatusController {
      * @see TrainerStatusService#getStatus(String)
      */
     @GetMapping("/all/status")
-    public ResponseEntity<GenericResponse> getStatusForTrainer(@RequestParam @NotBlank String trainerId) {
+    public ResponseEntity<GenericResponse> getStatusForTrainer(
+            @RequestParam @NotBlank(message = "Unable To Proceed with Empty TrainerId") String trainerId) {
         log.info("Request received to get status for trainer :: {}", trainerId);
         String response = trainerStatusService.getStatus(trainerId);
         return ResponseEntity.status(HttpStatus.OK).body(new GenericResponse(response));
@@ -90,7 +91,8 @@ public class TrainerStatusController {
      * @see TrainerStatusService#deleteStatus(String)
      */
     @DeleteMapping("/trainer/deleteStatus")
-    public ResponseEntity<String> deleteStatusForTrainer(@RequestParam @NotBlank String trainerId) {
+    public ResponseEntity<String> deleteStatusForTrainer(
+            @RequestParam @NotBlank(message = "Unable To Proceed with Empty TrainerId") String trainerId) {
         log.info("Request received to delete status for trainer :: {}",trainerId);
         String response = trainerStatusService.deleteStatus(trainerId);
         return ResponseEntity.status(HttpStatus.ACCEPTED).body(response);
@@ -101,7 +103,8 @@ public class TrainerStatusController {
      * here a request to increase the current member count
      */
     @PostMapping("trainer/increment")
-    public ResponseEntity<?> markAsActive(@RequestParam String id) {
+    public ResponseEntity<?> markAsActive(
+            @RequestParam @NotBlank(message = "Unable To Proceed with Empty TrainerId") String id) {
         trainerStatusService.markAsActive(id);
         return ResponseEntity.accepted().build();
         // returning response as ACCEPTED http status
@@ -112,7 +115,8 @@ public class TrainerStatusController {
      * when the account is deactivated for some time
      */
     @PostMapping("trainer/decrement")
-    public ResponseEntity<?> markAsInactive(@RequestParam String id) {
+    public ResponseEntity<?> markAsInactive(
+            @RequestParam @NotBlank(message = "Unable To Proceed with Empty TrainerId") String id) {
         trainerStatusService.markAsInactive(id);
         return ResponseEntity.accepted().build();
         // returning response as ACCEPTED http status
