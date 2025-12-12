@@ -73,4 +73,7 @@ public interface ReviewRepository extends JpaRepository<Review, String> {
     @Query("SELECT avg(r.review) FROM Review r WHERE r.trainer.id =:trainerId AND r.reviewDate< :lastMonth")
     Double getReviewBYTrainerIdWithDate( @Param("trainerId") String trainerId,
                                          @Param("lastMonth") LocalDateTime lastMonth);
+
+    @Query("SELECT r FROM Review r WHERE r.userId =:userId")
+    Page<Review> findByUserId( @Param("userId") String userId, Pageable page);
 }
