@@ -4,7 +4,6 @@ import com.fasterxml.jackson.databind.DeserializationFeature;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.fasterxml.jackson.databind.SerializationFeature;
 import com.fasterxml.jackson.datatype.jsr310.JavaTimeModule;
-import com.gym.trainerService.Dto.MemberDtos.Responses.GenericResponse;
 import com.gym.trainerService.Dto.MemberDtos.Responses.SessionMatrixInfo;
 import com.gym.trainerService.Dto.MemberDtos.Wrappers.AllMemberResponseWrapperDto;
 import com.gym.trainerService.Dto.SessionDtos.Wrappers.AllSessionsWrapperDto;
@@ -218,6 +217,8 @@ public class RedisConfig {
             (ObjectMapper objectMapper) {
         return new TypedJsonRedisSerializer<>(objectMapper,TrainerDashBoardInfoResponseDto.class);
     }
+
+
     /**
      * Configures and provides the central {@link CacheManager} that manages all Redis caches.
      * <p>
@@ -337,6 +338,8 @@ public class RedisConfig {
                         .fromSerializer(trainerDashBoardInfoResponseDtoRedisSerializer))
                 .entryTtl(Duration.ofHours(4)));
 
+
+
         return RedisCacheManager.builder(connectionFactory)
                 .cacheDefaults(defaultConfig)
                 .withInitialCacheConfigurations(cacheConfigs)
@@ -354,4 +357,6 @@ public class RedisConfig {
     public StringRedisTemplate redisTemplate(RedisConnectionFactory connectionFactory){
         return new StringRedisTemplate(connectionFactory);
     }
+
+
 }
