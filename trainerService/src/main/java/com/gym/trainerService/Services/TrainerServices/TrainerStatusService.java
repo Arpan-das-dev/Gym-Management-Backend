@@ -68,7 +68,7 @@ public class TrainerStatusService {
         redis.opsForValue().set(redisKey, status, STATUS_TTL);
 
         // ACTIVE → add to set, UNAVAILABLE → remove
-        if ("UNAVAILABLE".equalsIgnoreCase(status) || "BUSY".equalsIgnoreCase(status)) {
+        if ("UNAVAILABLE".equalsIgnoreCase(status)) {
             markAsInactive(trainerId);
         } else {
             markAsActive(trainerId);
