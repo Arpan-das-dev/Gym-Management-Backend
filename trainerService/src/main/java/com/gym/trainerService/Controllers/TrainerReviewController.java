@@ -54,10 +54,11 @@ public class TrainerReviewController {
      * @return a {@link ResponseEntity} with status {@code 201 Created} and the created {@link GenericResponse}
      */
     @PostMapping("/user/add")
-    public ResponseEntity<GenericResponse> addReviewForTrainer (@RequestParam String trainerId,
-                                                                @Valid @RequestBody ReviewAddRequestDto requestDto) {
-        log.info("©️©️ Request received to  add review for trainer {} by {} ",trainerId,requestDto.getUserName());
-        String  response = trainerReviewService.addReviewForTrainerByUser(trainerId,requestDto);
+    public ResponseEntity<GenericResponse> addReviewForTrainer(
+            @RequestParam @NotBlank(message = "Unable to Proceed with empty TrainerId") String trainerId,
+            @Valid @RequestBody ReviewAddRequestDto requestDto) {
+        log.info("©️©️ Request received to  add review for trainer {} by {} ", trainerId, requestDto.getUserName());
+        String response = trainerReviewService.addReviewForTrainerByUser(trainerId, requestDto);
         return ResponseEntity.status(HttpStatus.CREATED).body(new GenericResponse(response));
     }
 
@@ -78,7 +79,7 @@ public class TrainerReviewController {
             @RequestParam @NotBlank(message = "sortDirection must not be blank") String sortDirection) {
         log.info("©️©️ Request received to get all review for trainer id: {}", trainerId);
         AllReviewResponseWrapperDto response = trainerReviewService
-                .getAllReviewByTrainerId(trainerId, pageNo, pageSize,  sortDirection);
+                .getAllReviewByTrainerId(trainerId, pageNo, pageSize, sortDirection);
         return ResponseEntity.status(HttpStatus.OK).body(response);
     }
 
@@ -100,11 +101,11 @@ public class TrainerReviewController {
             @RequestParam @PositiveOrZero(message = "pageNo must be zero or positive") int pageNo,
             @RequestParam @Positive(message = "pageSize must be greater than zero") int pageSize,
             @RequestParam @NotBlank(message = "sortDirection must not be blank") String sortDirection
-    ){
+    ) {
         log.info("©️©️ request received to get reviews for {} of page no -> [{}] for size -> [{}]",
-                userId,pageNo,pageSize);
+                userId, pageNo, pageSize);
         AllReviewResponseWrapperDto responseWrapperDto = trainerReviewService
-                .getReviewByUserId(userId,pageNo,pageSize,sortDirection);
+                .getReviewByUserId(userId, pageNo, pageSize, sortDirection);
         return ResponseEntity.status(HttpStatus.OK).body(responseWrapperDto);
     }
 
@@ -117,13 +118,13 @@ public class TrainerReviewController {
      * @return a {@link ResponseEntity} with status {@code 202 Accepted} and the updated {@link ReviewResponseDto}
      */
     @PutMapping("/user/update")
-    public ResponseEntity<GenericResponse> updateReviewByReviewId(@RequestParam String reviewId,
-                                                                    @Valid @RequestBody ReviewUpdateRequestDto requestDto)
-    {
+    public ResponseEntity<GenericResponse> updateReviewByReviewId(
+            @RequestParam @NotBlank(message = "Unable to Proceed with empty Request Id") String reviewId,
+            @Valid @RequestBody ReviewUpdateRequestDto requestDto) {
         log.info("©️©️ Request received to update review for trainer {} by {} of review id: {}",
-                requestDto.getTrainerId(),requestDto.getUserName(),reviewId);
-        ReviewResponseDto response = trainerReviewService.updateReviewForTrainerById(reviewId,requestDto);
-        log.info("✅✅ successfully saved the updated request  by {}",response.getUserName());
+                requestDto.getTrainerId(), requestDto.getUserName(), reviewId);
+        ReviewResponseDto response = trainerReviewService.updateReviewForTrainerById(reviewId, requestDto);
+        log.info("✅✅ successfully saved the updated request  by {}", response.getUserName());
         String res = response.getUserName() + " We Have Successfully Updated Your Review";
         return ResponseEntity.status(HttpStatus.ACCEPTED).body(new GenericResponse(res));
     }
@@ -137,11 +138,11 @@ public class TrainerReviewController {
      */
     @DeleteMapping("/user/delete")
     public ResponseEntity<GenericResponse> deleteReviewById(
-            @RequestParam String reviewId,
-            @RequestParam String trainerId,
-            @RequestParam String userId) {
-        log.info("©️©️ Request received to delete review by reviewId: {} for trainer id: {}",reviewId,trainerId);
-        String response = trainerReviewService.deleteReviewForTrainerByReviewId(reviewId,trainerId,userId);
+            @RequestParam @NotBlank(message = "Unable to Proceed with empty Request Id") String reviewId,
+            @RequestParam @NotBlank(message = "trainerId must not be blank") String trainerId,
+            @RequestParam @NotBlank(message = "userId must not be blank") String userId) {
+        log.info("©️©️ Request received to delete review by reviewId: {} for trainer id: {}", reviewId, trainerId);
+        String response = trainerReviewService.deleteReviewForTrainerByReviewId(reviewId, trainerId, userId);
         return ResponseEntity.status(HttpStatus.ACCEPTED).body(new GenericResponse(response));
     }
 }
