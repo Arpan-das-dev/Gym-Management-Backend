@@ -60,6 +60,27 @@ public class CustomCacheEvict{
             log.warn("No keys found to evict for cache '{}' and trainer '{}'", cacheName, trainerId);
         }
     }
+    /**
+     * Custom method to clear all paginated review entries for a specific trainer
+     * using Redis KEYS pattern matching.
+     * * The cache key is structured as: "reviewCache::[trainerId]:[pageNo]:[pageSize]:[sortDirection]"
+     * * @param trainerId The ID of the trainer whose review pages need to be cleared.
+     */
+    public void evictReviewCacheByTrainerId(String trainerId) {
+        final String cacheName = "reviewCache";
+        String pattern = cacheName + "::" + trainerId + ":*";
+
+        // Use your existing utility to safely retrieve and delete keys
+        Set<String> keysToDelete = safeKeys(pattern);
+
+        if (!keysToDelete.isEmpty()) {
+            redisTemplate.delete(keysToDelete);
+            log.info("Evicted {} keys from reviewCache for trainer: {}",
+                    keysToDelete.size(), trainerId);
+        } else {
+            log.warn("No keys found to evict in reviewCache for trainer: {}", trainerId);
+        }
+    }
 
     private Set<String> safeKeys(String pattern) {
         Set<String> keys = redisTemplate.keys(pattern);
