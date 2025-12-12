@@ -14,4 +14,10 @@ import java.util.List;
 @NoArgsConstructor
 public class AllReviewResponseWrapperDto {
     List<ReviewResponseDto> reviewResponseDtoList;
+    private int pageNo;
+    private int pageSize;
+    private long totalElements;
+    private int totalPages;
+
+    private boolean lastPage;
 }
