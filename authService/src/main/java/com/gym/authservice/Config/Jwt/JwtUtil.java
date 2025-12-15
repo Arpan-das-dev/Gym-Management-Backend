@@ -17,9 +17,6 @@ public class JwtUtil {
 
     private final long expiration;
 
-    /**
-     * @Value("${jwt.refresh.expiration}") private final long refreshExpiration;
-     */
 
     public JwtUtil(
             @Value("${spring.secret.key}") String secretKey,
