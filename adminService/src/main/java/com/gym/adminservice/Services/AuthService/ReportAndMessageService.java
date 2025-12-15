@@ -44,7 +44,8 @@ public class ReportAndMessageService {
     @LogRequestTime
     @Transactional
     @Caching(evict = {
-            @CacheEvict(value = "messagesCache", key = "'userId:'#requestDto.userId")
+            @CacheEvict(value = "messagesCache",key = "'userId:' + #requestDto.userId"),
+            @CacheEvict(value = "adminMessageCache", allEntries = true)
     })
     public GenericResponseDto makeReportOrMessage(ReportOrMessageCreationRequestDto requestDto){
         log.info("®️®️ reached Service class to make a new report");
@@ -61,24 +62,13 @@ public class ReportAndMessageService {
                 .messageTime(requestDto.getMessageTime())
                 .build();
         messageRepository.save(messages);
+        clearReportCountCache(requestDto.getUserId());
         log.info("👍🏻👍🏻 saved new report by {} on {}",messages.getUserName(),messages.getMessageTime().toLocalDate());
-        toggleCount(messages.getUserId(),true);
         String response =  messages.getUserName()+"Successfully registered your report wait for admin to response";
         return new GenericResponseDto(response);
     }
 
-    private void toggleCount(String userId,boolean increment) {
-        log.info("request received for user {} to do {}",userId,increment ? "Increment": "Decrement");
-        int curCount = extractCount(userId);
-        String key = Redis_PreFix+userId;
-        if(increment) {
-           redisTemplate.opsForValue().set(key,String.valueOf(curCount+1),Duration.ofHours(6));
-           log.info("incremented :: current report count is {}",extractCount(userId));
-        }else{
-            redisTemplate.opsForValue().set(key,String.valueOf(curCount-1),Duration.ofHours(6));
-            log.info("decremented :: current report count is {}",extractCount(userId));
-        }
-    }
+
 
     private void validateCount( String userId) {
         log.info("Request received to validate count  for {} before adding it in db",userId);
@@ -104,9 +94,12 @@ public class ReportAndMessageService {
             return Integer.parseInt(value);
         }
     }
+    private void clearReportCountCache(String userId) {
+        redisTemplate.delete(Redis_PreFix + userId);
+    }
 
     @LogRequestTime
-    @Cacheable(value = "messagesCache", key = "'userId:'#userId")
+    @Cacheable(value = "messagesCache", key = "'userId:' + #userId")
     public AllMessageWrapperResponseDto viewAllReportsById(String userId){
         List<Messages> messages = messageRepository.findAllByUserId(userId);
         return AllMessageWrapperResponseDto.builder()
@@ -125,7 +118,8 @@ public class ReportAndMessageService {
     @LogRequestTime
     @Transactional
     @Caching(evict = {
-            @CacheEvict(value = "messagesCache", key = "'userId:'#requestDto.userId"),
+            @CacheEvict(value = "messagesCache", key = "'userId:' + #requestDto.userId"),
+            @CacheEvict(value = "adminMessageCache", allEntries = true)
     })
     public GenericResponseDto deleteReportByUser(String userId,String requestId) {
         log.info("Request received to delete request for user {}",userId);
@@ -136,28 +130,38 @@ public class ReportAndMessageService {
         }
         messageRepository.delete(message);
         String response = message.getUserName()+"we have successfully deleted your message or report";
-        toggleCount(userId,false);
+        clearReportCountCache(userId);
         return new GenericResponseDto(response);
     }
 
-    public AllMessageWrapperResponseDto getAllReportsForAdmin( int pageNo,int pageSize,String sortBy,String sortDirection)
-    {
+
+    @LogRequestTime
+    @Cacheable(
+            value = "adminMessageCache",
+            key = "'ADMIN:' + #pageNo + ':' + #pageSize + ':' + #sortBy + ':' + #sortDirection + ':' + #role + ':' + #status"
+    )
+    public AllMessageWrapperResponseDto getAllReportsForAdmin
+            (int pageNo, int pageSize, String sortBy,String sortDirection, String role, String status) {
         log.info("®️®️ reached service class");
-        Sort.Direction direction = sortDirection.trim().equalsIgnoreCase("ASC") ?
-                Sort.Direction.ASC : Sort.Direction.DESC;
-        Sort sort;
-        switch (sortBy.trim().toUpperCase()) {
-          case "USERNAME" -> sort = Sort.by(direction,"userName");
-          case "SUBJECT" -> sort = Sort.by(direction,"subject");
-          case "ROLE" -> sort = Sort.by(direction,"userRole");
-            default -> sort = Sort.by(direction,"messageTime");
-        }
-        Pageable pageable = PageRequest.of(pageNo,pageSize,sort);
+        Sort.Direction direction =
+                sortDirection.equalsIgnoreCase("ASC")
+                        ? Sort.Direction.ASC
+                        : Sort.Direction.DESC;
+
+        Sort sort = switch (sortBy.toUpperCase()) {
+            case "USERNAME" -> Sort.by(direction, "userName");
+            case "SUBJECT"  -> Sort.by(direction, "subject");
+            case "ROLE"     -> Sort.by(direction, "userRole");
+            case "STATUS"   -> Sort.by(direction, "status");
+            default         -> Sort.by(direction, "messageTime");
+        };
+
+        Pageable pageable = PageRequest.of(pageNo, pageSize, sort);
         log.info("Requesting db 🛄🛄 for direction of {} with sorting {}",direction,sort);
-        Page<Messages> messages = messageRepository.findAll(pageable);
-        log.info("Loaded {} no of reports from db ",messages.getSize());
-        List<AllReportsList> reportsList = messages.stream()
-                .map(m-> AllReportsList.builder()
+        Page<Messages> page = messageRepository.findAllWithFilters(role, status, pageable);
+        log.info("Loaded {} no of reports from db ",page.getSize());
+        List<AllReportsList> reports = page.getContent().stream()
+                .map(m -> AllReportsList.builder()
                         .userId(m.getUserId())
                         .userName(m.getUserName())
                         .userRole(m.getUserRole())
@@ -165,34 +169,46 @@ public class ReportAndMessageService {
                         .message(m.getMessage())
                         .messageTime(m.getMessageTime())
                         .messageStatus(m.getStatus())
-                        .build()).toList();
+                        .build()
+                ).toList();
+
         return AllMessageWrapperResponseDto.builder()
-                .reportsLists(reportsList)
-                .pageNo(messages.getNumber())
-                .pageSize(messages.getSize())
-                .totalElements(messages.getTotalElements())
-                .totalPages(messages.getTotalPages())
-                .lastPage(messages.isLast())
+                .reportsLists(reports)
+                .pageNo(page.getNumber())
+                .pageSize(page.getSize())
+                .totalElements(page.getTotalElements())
+                .totalPages(page.getTotalPages())
+                .lastPage(page.isLast())
                 .build();
     }
 
+    @LogRequestTime
     @Caching(evict = {
             @CacheEvict(value = "messagesCache", key = "'userId:'#userId"),
+            @CacheEvict(value = "adminMessageCache", allEntries = true)
     })
     public GenericResponseDto resolveMessageOrReport(String userId, ResolveMessageRequestDto requestDto){
-        log.info("Request received to resolve message for user  {}",userId);
+        log.info("®️®️ Request received to resolve message for user  {}",userId);
         Messages messages = messageRepository.findById(requestDto.getRequestId())
                 .orElseThrow(() -> new MessageNotFoundException("No Reports or Message find please try again later"));
-        if(requestDto.isDelete()) {
-            messageRepository.delete(messages);
-        }
-        messages.setStatus(Status.Resolved.name());
-        messageRepository.save(messages);
-        String response = "Successfully marked resolved request for "+ messages.getUserName();
         String subject = "Request Resolved";
-        Mono<String> notificationResponse =  messageOrReportService
-                .sendMessageOrReportResolverMessage(messages.getEmailId(),subject, requestDto.getMailMessage());
-        log.info("request received by notification service and get response as ::{}",notificationResponse);
+        if(requestDto.isDecline()) {
+            messages.setStatus(Status.Declined.name().toUpperCase());
+            messageRepository.save(messages);
+           subject = "Request Declined";
+        }
+        messages.setStatus(Status.Resolved.name().toUpperCase());
+        messageRepository.save(messages);
+        String status = requestDto.isDecline() ? Status.Declined.name() : Status.Resolved.name();
+        String response = "Successfully "+ status +" request for "+ messages.getUserName();
+        if(!messages.getEmailId().contains("@example.com") &&
+                requestDto.isNotify() && requestDto.getMailMessage()!=null)
+        {
+            Mono<String> notificationResponse =  messageOrReportService
+                    .sendMessageOrReportResolverMessage(messages.getEmailId(),subject, requestDto.getMailMessage());
+            log.info("request received by notification service and get response as ::{}",notificationResponse);
+        }
+        clearReportCountCache(messages.getUserId());
         return new GenericResponseDto(response);
     }
 
