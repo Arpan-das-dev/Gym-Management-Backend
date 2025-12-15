@@ -1,5 +1,6 @@
 package com.gym.member_service.Controllers;
 
+import com.gym.member_service.Dto.MemberProfieDtos.Responses.AllMemberProfileImageResponseWrapperDto;
 import com.gym.member_service.Dto.NotificationDto.GenericResponse;
 import com.gym.member_service.Services.MemberServices.MemberProfileService;
 import jakarta.validation.constraints.NotBlank;
@@ -10,6 +11,8 @@ import org.springframework.http.ResponseEntity;
 import org.springframework.validation.annotation.Validated;
 import org.springframework.web.bind.annotation.*;
 import org.springframework.web.multipart.MultipartFile;
+
+import java.util.List;
 
 
 /**
@@ -86,6 +89,15 @@ public class MemberProfileController {
         return ResponseEntity.accepted().body(new GenericResponse("Image deleted Successfully"));
     }
 
+    @GetMapping("/admin/getProfileUrls")
+    public ResponseEntity<AllMemberProfileImageResponseWrapperDto> getChunksOfProfileImage(
+            @RequestBody List<@NotBlank String> memberIds
+            ){
+        log.info("©️©️ Request received to get profile image for {} members",memberIds.size());
+        AllMemberProfileImageResponseWrapperDto response = profileService.getChunksOfMemberProfileImage(memberIds);
+        log.info("Serving {} no of member Profile Images ",response.getMemberProfileUrlList().size());
+        return ResponseEntity.status(HttpStatus.OK).body(response);
+    }
     /**
 
      Retrieves the profile image URL for a specific member.
