@@ -62,6 +62,7 @@ public class SecurityConfig {
                         .hasAnyRole("ADMIN","TRAINER")
                         // admin service routes
                         .pathMatchers("/fitStudio/admin/auth-management/**").hasRole("ADMIN")
+                        .pathMatchers("/fitStudio/admin/report-message/administrator/**").hasRole("ADMIN")
                         // Everything else must be authenticated
                         .anyExchange().authenticated()
                 )
