@@ -1,5 +1,6 @@
 package com.gym.member_service.Services.MemberServices;
 
+import com.gym.member_service.Dto.MemberProfieDtos.Responses.AllMemberProfileImageResponseWrapperDto;
 import com.gym.member_service.Dto.NotificationDto.GenericResponse;
 import com.gym.member_service.Exception.Exceptions.InvalidImageUrlException;
 import com.gym.member_service.Exception.Exceptions.UserNotFoundException;
@@ -8,6 +9,8 @@ import com.gym.member_service.Repositories.MemberRepository;
 import com.gym.member_service.Services.OtherService.AWSS3service;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
+import org.springframework.cache.Cache;
+import org.springframework.cache.CacheManager;
 import org.springframework.cache.annotation.CacheEvict;
 import org.springframework.cache.annotation.CachePut;
 import org.springframework.cache.annotation.Cacheable;
@@ -18,6 +21,7 @@ import org.springframework.web.multipart.MultipartFile;
 
 import java.time.LocalDateTime;
 import java.time.format.DateTimeFormatter;
+import java.util.*;
 
 /**
 
@@ -46,6 +50,7 @@ public class MemberProfileService {
     private final AWSS3service awss3service;
     private final MemberRepository memberRepository;
     private final MemberManagementService managementService;
+    private final CacheManager manager;
 
     DateTimeFormatter formatter = DateTimeFormatter.ofPattern("yyyy-MM-dd HH:mm:ss");
     /**
@@ -99,12 +104,67 @@ public class MemberProfileService {
         Member member = managementService.cacheMemberDetails(id);
         log.info("Member fetched from DB: {} {} with id {}", member.getFirstName(), member.getLastName(), member.getId());
         long end = System.currentTimeMillis();
-        String url = (member.getProfileImageUrl() == null || member.getProfileImageUrl().isEmpty()) ? "empty" : member.getProfileImageUrl();
+        String url = (member.getProfileImageUrl() == null || member.getProfileImageUrl().isEmpty()) ?
+                "empty" : member.getProfileImageUrl();
         GenericResponse response = new GenericResponse(url);
         log.info("Returning profile image URL: {}", url);
         log.info("Completed processing in {} ms, caching data with id {}", end - start, member.getId());
         System.out.println("⌛⌛ Completed process to get image URL at: " + LocalDateTime.now().format(formatter));
         return response;
+    }
+
+    public AllMemberProfileImageResponseWrapperDto getChunksOfMemberProfileImage(
+            List<String> memberIds
+    ) {
+        long start = System.currentTimeMillis();
+        log.info(" ®️®️ Request received for {} memberIds", memberIds.size());
+        Cache cache = manager.getCache("profileImageUrl");
+        Map<String, String> resultMap = new HashMap<>();
+        List<String> missingIds = new ArrayList<>();
+        int cacheHit = 0;
+        int cacheMiss = 0;
+        for (String id : memberIds) {
+            if (cache != null) {
+                Cache.ValueWrapper wrapper = cache.get(id);
+                if (wrapper != null) {
+                    GenericResponse res = (GenericResponse) wrapper.get();
+                    resultMap.put(id, Objects.requireNonNull(res).getMessage());
+                    cacheHit++;
+                    continue;
+                }
+            }
+            cacheMiss++;
+            missingIds.add(id);
+        }
+        log.info("🧠 [PROFILE-IMG] Cache stats → HIT: {}, MISS: {}", cacheHit, cacheMiss
+        );
+        if (!missingIds.isEmpty()) {
+            log.info("🗄️ [PROFILE-IMG] Fetching {} profile images from DB", missingIds.size()
+            );
+            List<Object[]> dbResults =
+                    memberRepository.findProfileImagesByIds(missingIds);
+            log.info("📦 [PROFILE-IMG] DB returned {} rows", dbResults.size()
+            );
+            for (Object[] row : dbResults) {
+                String id = (String) row[0];
+                String url = row[1] == null ? "empty" : row[1].toString();
+                resultMap.put(id, url);
+                if (cache != null) {
+                    cache.put(id, new GenericResponse(url));
+                }
+            }
+            log.info("💾 [PROFILE-IMG] Cached {} profile images into Redis", dbResults.size());
+        } else {
+            log.info("✅ [PROFILE-IMG] All profile images served from cache");
+        }
+        List<String> orderedUrls = memberIds.stream()
+                .map(id -> resultMap.getOrDefault(id, "empty") + "_" + id)
+                .toList();
+        long end = System.currentTimeMillis();
+        log.info("⏱️ [PROFILE-IMG] Completed request in {} ms (totalIds={})", (end - start), memberIds.size());
+        return AllMemberProfileImageResponseWrapperDto.builder()
+                .memberProfileUrlList(orderedUrls)
+                .build();
     }
 
     /**
