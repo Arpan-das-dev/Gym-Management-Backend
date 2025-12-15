@@ -4,6 +4,7 @@ import com.fasterxml.jackson.databind.DeserializationFeature;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.fasterxml.jackson.databind.SerializationFeature;
 import com.fasterxml.jackson.datatype.jsr310.JavaTimeModule;
+import com.gym.adminservice.Dto.Responses.AllMemberRequestDtoList;
 import com.gym.adminservice.Dto.Wrappers.AllMessageWrapperResponseDto;
 import com.gym.adminservice.Dto.Wrappers.AllPendingRequestResponseWrapperDto;
 import org.springframework.cache.CacheManager;
@@ -46,11 +47,18 @@ public class RedisConfig {
             (ObjectMapper redisObjectMapper) {
         return new TypedJsonRedisSerializer<>(redisObjectMapper,AllMessageWrapperResponseDto.class);
     }
+
+    @Bean
+    public TypedJsonRedisSerializer<AllMemberRequestDtoList> allMemberRequestDtoListRedisSerializer
+            (ObjectMapper redisObjectMapper) {
+        return new TypedJsonRedisSerializer<>(redisObjectMapper,AllMemberRequestDtoList.class);
+    }
     @Bean
     public CacheManager cacheManager
             (RedisConnectionFactory factory,
              TypedJsonRedisSerializer<AllPendingRequestResponseWrapperDto> allPendingRequestResponseWrapperDtoRedisSerializer,
-             TypedJsonRedisSerializer<AllMessageWrapperResponseDto> allMessageWrapperResponseDtoRedisSerializer
+             TypedJsonRedisSerializer<AllMessageWrapperResponseDto> allMessageWrapperResponseDtoRedisSerializer,
+             TypedJsonRedisSerializer<AllMemberRequestDtoList> allMemberRequestDtoListRedisSerializer
             ) {
         Map<String, RedisCacheConfiguration> cacheConfigs = new HashMap<>();
 
@@ -66,10 +74,21 @@ public class RedisConfig {
                         .SerializationPair.fromSerializer(allPendingRequestResponseWrapperDtoRedisSerializer))
                 .entryTtl(Duration.ofHours(2)));
 
+        cacheConfigs.put("memberRequests",defaultConfig
+                .serializeValuesWith(RedisSerializationContext
+                        .SerializationPair.fromSerializer(allMemberRequestDtoListRedisSerializer))
+                .entryTtl(Duration.ofHours(4)));
+
         cacheConfigs.put("messagesCache",defaultConfig
                 .serializeValuesWith(RedisSerializationContext
                         .SerializationPair.fromSerializer(allMessageWrapperResponseDtoRedisSerializer))
                 .entryTtl(Duration.ofMinutes(45)));
+
+        cacheConfigs.put("adminMessageCache",defaultConfig
+                .serializeValuesWith(RedisSerializationContext
+                        .SerializationPair.fromSerializer(allMessageWrapperResponseDtoRedisSerializer))
+                .entryTtl(Duration.ofMinutes(15)));
+
 
         return RedisCacheManager.builder(factory)
                 .cacheDefaults(RedisCacheConfiguration.defaultCacheConfig()
