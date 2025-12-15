@@ -1,5 +1,5 @@
 package com.gym.adminservice.Enums;
 
 public enum Status {
-    Pending, Resolved
+    Pending, Resolved,Declined
 }
