@@ -18,7 +18,7 @@ public class RequestTimeLoggerAspect {
 
     // Define the desired date/time format
     private static final DateTimeFormatter FORMATTER =
-            DateTimeFormatter.ofPattern("dd/MM/yy HH::mm::ss");
+            DateTimeFormatter.ofPattern("dd/MM/yy HH:mm:ss");
 
     /**
      * Intercepts any method annotated with @LogRequestTime.
@@ -26,7 +26,7 @@ public class RequestTimeLoggerAspect {
      * @return The result of the target method call.
      * @throws Throwable if the target method throws an exception.
      */
-    @Around("@annotation(com.example.annotations.LogRequestTime)") // Use the fully qualified name
+    @Around("@annotation(com.gym.adminservice.Utils.CustomAnnotations.Annotations.LogRequestTime)")
     public Object logRequestTime(ProceedingJoinPoint joinPoint) throws Throwable {
 
         // 1. Get the current request time (before proceeding)
@@ -41,11 +41,10 @@ public class RequestTimeLoggerAspect {
         log.info("⏰⏰:: Request received for {}.{} at {}", className, methodName, formattedTime);
 
         // 4. Proceed with the target method execution
-        Object result = joinPoint.proceed();
 
         // The logic for after method execution can go here if needed,
         // but for logging request time, we just need the 'before' part.
 
-        return result;
+        return joinPoint.proceed();
     }
 }
