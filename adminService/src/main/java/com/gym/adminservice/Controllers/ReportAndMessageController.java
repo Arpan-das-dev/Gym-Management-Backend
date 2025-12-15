@@ -1,10 +1,12 @@
 package com.gym.adminservice.Controllers;
 
 import com.gym.adminservice.Dto.Requests.ReportOrMessageCreationRequestDto;
+import com.gym.adminservice.Dto.Requests.ResolveMessageRequestDto;
 import com.gym.adminservice.Dto.Responses.GenericResponseDto;
 import com.gym.adminservice.Dto.Wrappers.AllMessageWrapperResponseDto;
 import com.gym.adminservice.Services.AuthService.ReportAndMessageService;
 import com.gym.adminservice.Utils.CustomAnnotations.Annotations.LogExecutionTime;
+import jakarta.validation.Valid;
 import jakarta.validation.constraints.NotBlank;
 import jakarta.validation.constraints.Positive;
 import jakarta.validation.constraints.PositiveOrZero;
@@ -12,10 +14,13 @@ import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
+import org.springframework.validation.annotation.Validated;
 import org.springframework.web.bind.annotation.*;
 
 @Slf4j
+@Validated
 @RequiredArgsConstructor
+@RestController
 @RequestMapping("${admin.REPORT_MESSAGE_URL}")
 public class ReportAndMessageController {
 
@@ -23,7 +28,8 @@ public class ReportAndMessageController {
 
     @LogExecutionTime
     @PostMapping("/users/launchReport")
-    ResponseEntity<GenericResponseDto> makeNewMessageOrReport(ReportOrMessageCreationRequestDto requestDto){
+    ResponseEntity<GenericResponseDto> makeNewMessageOrReport(
+            @Valid @RequestBody ReportOrMessageCreationRequestDto requestDto){
         log.info("©️©️ request received to launch a report for {} by {} on {}",
                 requestDto.getSubject(),requestDto.getUserName(),requestDto.getMessageTime());
         GenericResponseDto response = reportAndMessageService.makeReportOrMessage(requestDto);
@@ -56,22 +62,31 @@ public class ReportAndMessageController {
     }
 
     @LogExecutionTime
-    @GetMapping("/admin/getAll/{pageNo}")
-    ResponseEntity<AllMessageWrapperResponseDto> getAllReportsForAdmin(
+    @GetMapping("/administrator/getReports/{pageNo}/{pageSize}")
+    public ResponseEntity<AllMessageWrapperResponseDto> getAllReportsForAdmin(
             @PathVariable @PositiveOrZero(message = "Page No can not be Negative") int pageNo,
-            @RequestParam @Positive(message = "Page Size must be greater than Zero") int pageSize,
-            @RequestParam(required = false, defaultValue = "messageTime") String sortBy,
-            @RequestParam(required = false, defaultValue = "DESC") String sortDirection
+            @PathVariable @Positive(message = "Page Size must be greater than Zero") int pageSize,
+            @RequestParam(defaultValue = "messageTime") String sortBy,
+            @RequestParam(defaultValue = "DESC") String sortDirection,
+            @RequestParam(defaultValue = "ALL") String role,
+            @RequestParam(defaultValue = "ALL") String status
     ) {
-        log.info("©️©️ request get -> {} no of reports of page[{}] witch direction {} by {}",
-                pageSize, pageNo, sortDirection, sortBy);
+        log.info("©️©️ Admin request → page={}, size={}, sortBy={}, direction={}, role={}, status={}",
+                pageNo, pageSize, sortBy, sortDirection, role, status);
         AllMessageWrapperResponseDto response = reportAndMessageService
-                .getAllReportsForAdmin(pageNo, pageSize, sortBy, sortDirection);
-        log.info("serving response of {} elements and the page is {}", response.getTotalElements(),
-                response.isLastPage() ? "Last" : "Not Last");
-        return ResponseEntity.status(HttpStatus.OK).body(response);
+                .getAllReportsForAdmin(pageNo, pageSize, sortBy, sortDirection, role.toUpperCase(), status.toUpperCase());
+        log.info("Serving response of {} elements",response.getTotalElements());
+        return ResponseEntity.ok(response);
     }
 
     @LogExecutionTime
-    @PostMapping("/admin/")
+    @PostMapping("/administrator/{userId}")
+    ResponseEntity<GenericResponseDto> markAsResolveOrDelete(
+            @PathVariable @NotBlank(message = "Unable To Process request without Having valid id") String userId,
+            @Valid @RequestBody ResolveMessageRequestDto requestDto) {
+        log.info("©️©️ request received to update status request of user --> {} ",userId);
+        GenericResponseDto response = reportAndMessageService.resolveMessageOrReport(userId,requestDto);
+        log.info("Serving response as [ {} ]",response.getMessage());
+        return ResponseEntity.status(HttpStatus.OK).body(response);
+    }
 }
