@@ -162,6 +162,8 @@ public class ApprovalService {
                 .build();
     }
 
+    @Transactional
+    @CacheEvict(value = "memberRequests", key = "'pending'")
     public void addMemberRequestForTrainer(TrainerAssignRequestDto requestDto) {
         Optional<MemberRequest> inComingReq = memberRequestRepository.findBYMemberId(requestDto.getMemberId());
         if(inComingReq.isPresent()) {
@@ -186,6 +188,8 @@ public class ApprovalService {
         memberRequestRepository.save(request);
     }
 
+
+    @Cacheable(value = "memberRequests", key = "'pending'")
     public AllMemberRequestDtoList getAllRequests() {
         List<MemberRequest> requests = memberRequestRepository.findAll();
         List<MemberRequestResponse> result = requests.stream().map(res -> MemberRequestResponse.builder()
@@ -205,6 +209,7 @@ public class ApprovalService {
                 .build();
     }
 
+    @CacheEvict(value = "memberRequests", key = "'pending'")
     public Mono<String> assignTrainerToMember(String requestId, LocalDate eligiblyDate) {
 
         log.info("➡ Starting assignTrainerToMember(requestId={}, eligibleDate={})", requestId, eligiblyDate);
@@ -258,6 +263,7 @@ public class ApprovalService {
     }
 
 
+    @CacheEvict(value = "memberRequests", key = "'pending'")
     public Mono<Void> deleteRequest(String requestId) {
 
         log.info("➡ deleteRequest triggered for requestId={}", requestId);
@@ -275,17 +281,11 @@ public class ApprovalService {
     }
 
 
-
-    /**
- * Generates a unique requestId for member-trainer assignment requests.
- * Format: {memberId}-{trainerId}-{yyyyMMdd}-{8-char-random}
- * Example: M123-T456-20250916-ab12cd34
- */
-private String requestIdGen(String memberId, String trainerId, LocalDate requestDate) {
-    String datePart = requestDate.format(DateTimeFormatter.BASIC_ISO_DATE); // yyyyMMdd
-    String randomPart = UUID.randomUUID().toString().replace("-", "").substring(0, 8); // 8 chars
-    return memberId + "-" + trainerId + "-" + datePart + randomPart;
-}
+    private String requestIdGen(String memberId, String trainerId, LocalDate requestDate) {
+        String datePart = requestDate.format(DateTimeFormatter.BASIC_ISO_DATE); // yyyyMMdd
+        String randomPart = UUID.randomUUID().toString().replace("-", "").substring(0, 8); // 8 chars
+        return memberId + "-" + trainerId + "-" + datePart + randomPart;
+    }
 
 
 }
