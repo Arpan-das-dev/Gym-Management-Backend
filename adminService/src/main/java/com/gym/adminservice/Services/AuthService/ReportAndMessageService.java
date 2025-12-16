@@ -12,6 +12,7 @@ import com.gym.adminservice.Exceptions.Custom.UnauthorizedRequestException;
 import com.gym.adminservice.Models.Messages;
 import com.gym.adminservice.Repository.MessageRepository;
 import com.gym.adminservice.Services.WebClientServices.WebClientMessageOrReportService;
+import com.gym.adminservice.Utils.CustomAnnotations.Annotations.LogExecutionTime;
 import com.gym.adminservice.Utils.CustomAnnotations.Annotations.LogRequestTime;
 import com.gym.adminservice.Utils.ReportIdGenUtil;
 import jakarta.transaction.Transactional;
@@ -25,6 +26,7 @@ import org.springframework.data.domain.PageRequest;
 import org.springframework.data.domain.Pageable;
 import org.springframework.data.domain.Sort;
 import org.springframework.data.redis.core.StringRedisTemplate;
+import org.springframework.scheduling.annotation.Scheduled;
 import org.springframework.stereotype.Service;
 import reactor.core.publisher.Mono;
 
@@ -55,10 +57,10 @@ public class ReportAndMessageService {
                 .userId(requestDto.getUserId())
                 .userName(requestDto.getUserName())
                 .userRole(requestDto.getUserRole())
-                .emailId(requestDto.getUserId())
+                .emailId(requestDto.getEmailId())
                 .subject(requestDto.getSubject())
                 .message(requestDto.getMessage())
-                .status(Status.Pending.name())
+                .status(Status.Pending.name().toUpperCase())
                 .messageTime(requestDto.getMessageTime())
                 .build();
         messageRepository.save(messages);
@@ -105,6 +107,7 @@ public class ReportAndMessageService {
         return AllMessageWrapperResponseDto.builder()
                 .reportsLists(messages.stream()
                         .map(m-> AllReportsList.builder()
+                                .requestId(m.getMessageId())
                                 .userName(m.getUserName())
                                 .subject(m.getSubject())
                                 .message(m.getMessage())
@@ -159,9 +162,9 @@ public class ReportAndMessageService {
         Pageable pageable = PageRequest.of(pageNo, pageSize, sort);
         log.info("Requesting db 🛄🛄 for direction of {} with sorting {}",direction,sort);
         Page<Messages> page = messageRepository.findAllWithFilters(role, status, pageable);
-        log.info("Loaded {} no of reports from db ",page.getSize());
         List<AllReportsList> reports = page.getContent().stream()
                 .map(m -> AllReportsList.builder()
+                        .requestId(m.getMessageId())
                         .userId(m.getUserId())
                         .userName(m.getUserName())
                         .userRole(m.getUserRole())
@@ -171,7 +174,7 @@ public class ReportAndMessageService {
                         .messageStatus(m.getStatus())
                         .build()
                 ).toList();
-
+        log.info("Loaded {} no of reports from db ",reports.size());
         return AllMessageWrapperResponseDto.builder()
                 .reportsLists(reports)
                 .pageNo(page.getNumber())
@@ -184,7 +187,7 @@ public class ReportAndMessageService {
 
     @LogRequestTime
     @Caching(evict = {
-            @CacheEvict(value = "messagesCache", key = "'userId:'#userId"),
+            @CacheEvict(value = "messagesCache", key = "'userId:' + #userId"),
             @CacheEvict(value = "adminMessageCache", allEntries = true)
     })
     public GenericResponseDto resolveMessageOrReport(String userId, ResolveMessageRequestDto requestDto){
@@ -213,5 +216,18 @@ public class ReportAndMessageService {
     }
 
 
+    @LogRequestTime
+    @LogExecutionTime
+    @Transactional
+    @Scheduled(cron = "0 0 0 ? * SUN")
+    @Caching(evict = {
+            @CacheEvict(value = "messagesCache",allEntries = true),
+            @CacheEvict(value = "adminMessageCache", allEntries = true)
+    })
+    public void AutoCleanUp(){
+        log.info("🏃🏻‍♀️‍➡️🏃🏻‍♀️‍➡️ auto cleanup started");
+        int effectedRows =  messageRepository.autoCleanUp();
+        log.info("Successfully removed {} no of old reports from db",effectedRows);
+    }
 
 }
