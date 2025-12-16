@@ -81,7 +81,7 @@ public class ReportAndMessageController {
 
     @LogExecutionTime
     @PostMapping("/administrator/{userId}")
-    ResponseEntity<GenericResponseDto> markAsResolveOrDelete(
+    ResponseEntity<GenericResponseDto> markAsResolveOrDecline(
             @PathVariable @NotBlank(message = "Unable To Process request without Having valid id") String userId,
             @Valid @RequestBody ResolveMessageRequestDto requestDto) {
         log.info("©️©️ request received to update status request of user --> {} ",userId);
