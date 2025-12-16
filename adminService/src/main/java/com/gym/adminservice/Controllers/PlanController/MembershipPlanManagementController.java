@@ -7,6 +7,7 @@ import com.gym.adminservice.Dto.PlanDtos.Responses.UpdateResponseDto;
 import com.gym.adminservice.Dto.Responses.GenericResponseDto;
 import com.gym.adminservice.Exceptions.Custom.PlanNotFounException;
 import com.gym.adminservice.Services.PlanServices.MembershipPlanManagementService;
+import com.gym.adminservice.Utils.CustomAnnotations.Annotations.LogExecutionTime;
 import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
@@ -29,9 +30,11 @@ public class MembershipPlanManagementController {
 
     private final MembershipPlanManagementService planManagementService;
     DateTimeFormatter formatter = DateTimeFormatter.ofPattern("yyyy-MM-dd HH:mm:ss");
+
+    @LogExecutionTime
     @PostMapping("createPlan")
     ResponseEntity<GenericResponseDto> createPlan(@Valid @RequestBody PlanCreateRequestDto requestDto){
-        log.info("{} Received request to create plan with name: {}",
+        log.info(" ©️©️  {}Received request to create plan with name: {}",
                 LocalDateTime.now().format(formatter), requestDto.getPlanName());
         try {
             log.info("{}:: Successfully created the plan:: {}",
@@ -45,17 +48,19 @@ public class MembershipPlanManagementController {
         }
     }
 
+    @LogExecutionTime
     @GetMapping("getAll")
     ResponseEntity<List<CreationResponseDto>> getAllPlans(){
-
+        log.info(" ©️©️  request received to get all plans by admin");
         List<CreationResponseDto> responseDtoList = planManagementService.getAllPlans();
         return ResponseEntity.status(HttpStatus.OK).body(responseDtoList);
     }
 
+    @LogExecutionTime
     @PutMapping("updatePlan")
     ResponseEntity<GenericResponseDto> updatePlanById(@RequestParam String id,
                                                       @Valid @RequestBody UpdatePlanRequestDto requestDto){
-        log.info("Received request to update plan with id: {}", id);
+        log.info(" ©️©️ Received request to update plan with id: {}", id);
         try {
             log.info("{}:: Successfully updated the plan:: {}",
                     LocalDateTime.now().format(formatter),requestDto.getPlanName());
@@ -67,9 +72,10 @@ public class MembershipPlanManagementController {
         }
     }
 
+    @LogExecutionTime
     @DeleteMapping("delete")
     ResponseEntity<GenericResponseDto> deletePlanById(@Valid @RequestParam String id){
-        log.info("Received request to delete plan with id: {}", id);
+        log.info(" ©️©️ Received request to delete plan with id: {}", id);
         try {
             log.info("{}:: Successfully deleted  the plan:: {}",
                     LocalDateTime.now().format(formatter),id);
