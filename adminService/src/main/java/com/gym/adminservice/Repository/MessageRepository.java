@@ -5,7 +5,9 @@ import io.lettuce.core.dynamic.annotation.Param;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
 import org.springframework.data.jpa.repository.JpaRepository;
+import org.springframework.data.jpa.repository.Modifying;
 import org.springframework.data.jpa.repository.Query;
+import org.springframework.transaction.annotation.Transactional;
 
 import java.util.List;
 
@@ -13,7 +15,7 @@ public interface MessageRepository extends JpaRepository<Messages,String> {
     @Query("SELECT m FROM Messages m WHERE m.userId = :userId")
     List<Messages> findAllByUserId(@Param("userId") String userId);
 
-    @Query("SELECT count (m) FROM Messages m WHERE m.userId =:userId")
+    @Query("SELECT count (m) FROM Messages m WHERE m.userId = :userId AND m.status = 'PENDING'")
     int countByUserId(@Param("userId") String userId);
 
     @Query("""
@@ -26,4 +28,8 @@ public interface MessageRepository extends JpaRepository<Messages,String> {
             @Param("status") String status,
             Pageable pageable
     );
+
+
+    @Query("DELETE FROM Messages m WHERE m.status = 'PENDING'")
+    int autoCleanUp();
 }
