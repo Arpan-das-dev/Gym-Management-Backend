@@ -89,7 +89,7 @@ public class MemberProfileController {
         return ResponseEntity.accepted().body(new GenericResponse("Image deleted Successfully"));
     }
 
-    @GetMapping("/admin/getProfileUrls")
+    @PostMapping("/admin/getProfileUrls")
     public ResponseEntity<AllMemberProfileImageResponseWrapperDto> getChunksOfProfileImage(
             @RequestBody List<@NotBlank String> memberIds
             ){
