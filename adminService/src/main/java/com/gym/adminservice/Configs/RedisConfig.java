@@ -53,6 +53,7 @@ public class RedisConfig {
             (ObjectMapper redisObjectMapper) {
         return new TypedJsonRedisSerializer<>(redisObjectMapper,AllMemberRequestDtoList.class);
     }
+
     @Bean
     public CacheManager cacheManager
             (RedisConnectionFactory factory,
