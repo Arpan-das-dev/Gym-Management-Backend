@@ -1,5 +1,6 @@
 package com.gym.notificationservice.Services;
 
+import com.gym.notificationservice.Dto.PaymentNotificationDtos.Requests.PaymentFailedDto;
 import com.gym.notificationservice.Dto.PaymentNotificationDtos.Requests.PlanNotificationRequest;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
@@ -7,9 +8,12 @@ import org.springframework.stereotype.Service;
 import org.springframework.web.multipart.MultipartFile;
 import org.thymeleaf.TemplateEngine;
 import org.thymeleaf.context.Context;
+import reactor.core.publisher.Mono;
+import reactor.core.scheduler.Schedulers;
 
 
 import java.time.LocalDate;
+import java.util.concurrent.CompletableFuture;
 
 @Slf4j
 @Service
@@ -43,4 +47,53 @@ public class PaymentNotificationService {
         log.info("PaymentNotificationService :: completed request in {} ms",System.currentTimeMillis()-start);
         return "Mail sent successfully to user "+request.getUserName();
     }
+
+    public String sendFailedPaymentMail(PaymentFailedDto failedDto) {
+        long start = System.currentTimeMillis();
+        if(failedDto.getEmailId().contains("@example")){
+            return "Send mail To fake mail id";
+        }
+        log.info("®️®️ PaymentNotificationService :: Request reached service class to send failed payment mail");
+        Context context = new Context();
+        context.setVariable("userName",failedDto.getUserName());
+        context.setVariable("paymentId",failedDto.getPaymentId());
+        context.setVariable("amount",failedDto.getAmount());
+
+        String body = templateEngine.process("payment-failed",context);
+        CompletableFuture<String> response = mailjetService
+                .sendMail(failedDto.getEmailId(),failedDto.getSubject(),body);
+        Mono.fromFuture(response)
+                .subscribeOn(Schedulers.boundedElastic())
+                .subscribe(
+                        s -> log.info("Async mail success: {}", s),
+                        e -> log.error("Async mail failed: {}", e.getMessage())
+                );
+        log.info("PaymentNotificationService -> completed request in {} ms",System.currentTimeMillis()-start);
+        return "Successfully send Mail to "+failedDto.getEmailId();
+    }
+
+    public String sendRefundFailedMail(PaymentFailedDto failedDto) {
+        long start = System.currentTimeMillis();
+        if(failedDto.getEmailId().contains("@example")){
+            return "Send mail To fake mail id";
+        }
+        log.info("®️®️ PaymentNotificationService :: Request reached service class to send failed refund mail");
+        Context context = new Context();
+        context.setVariable("userName",failedDto.getUserName());
+        context.setVariable("paymentId",failedDto.getPaymentId());
+        context.setVariable("amount",failedDto.getAmount());
+
+        String body = templateEngine.process("refund-failed",context);
+        CompletableFuture<String> response = mailjetService
+                .sendMail(failedDto.getEmailId(),failedDto.getSubject(),body);
+        Mono.fromFuture(response)
+                .subscribeOn(Schedulers.boundedElastic())
+                .subscribe(
+                        s -> log.info("Async mail success : {}", s),
+                        e -> log.error("Async mail failed : {}", e.getMessage())
+                );
+        log.info("line 92::PaymentNotificationService -> completed request in {} ms",System.currentTimeMillis()-start);
+        return "Successfully send Mail to "+failedDto.getEmailId();
+    }
+
 }
