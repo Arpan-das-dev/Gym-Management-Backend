@@ -3,6 +3,7 @@ package com.gym.planService.Repositories;
 import com.gym.planService.Models.PlanCuponCode;
 import io.lettuce.core.dynamic.annotation.Param;
 import org.springframework.data.jpa.repository.JpaRepository;
+import org.springframework.data.jpa.repository.Modifying;
 import org.springframework.data.jpa.repository.Query;
 
 import java.util.List;
@@ -36,4 +37,13 @@ public interface PlanCuponCodeRepository extends JpaRepository<PlanCuponCode,Str
 
     @Query("SELECT c FROM PlanCuponCode c WHERE c.accessibility = 'PUBLIC'")
     List<PlanCuponCode> findPublicCodes();
+
+    @Modifying
+    @Query("""
+                UPDATE PlanCuponCode c
+                SET c.cuponCodeUser = COALESCE(c.cuponCodeUser, 0) + 1
+                WHERE c.cuponCode = :cuponCode
+            """)
+    int incrementCuponUsageCount(@Param("cuponCode") String cuponCode);
+
 }
