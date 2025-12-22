@@ -11,6 +11,7 @@ import lombok.NoArgsConstructor;
 @NoArgsConstructor
 public class PaymentFailedDto {
     private String subject;
+    private String emailId;
     private String cause;
     private Double amount;
     private String userName;
