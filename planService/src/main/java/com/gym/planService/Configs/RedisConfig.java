@@ -5,7 +5,10 @@ import com.fasterxml.jackson.databind.ObjectMapper;
 import com.fasterxml.jackson.databind.SerializationFeature;
 import com.fasterxml.jackson.datatype.jsr310.JavaTimeModule;
 import com.gym.planService.Dtos.CuponDtos.Wrappers.AllCuponCodeWrapperResponseDto;
+import com.gym.planService.Dtos.OrderDtos.Responses.MonthlyRevenueResponseDto;
 import com.gym.planService.Dtos.OrderDtos.Wrappers.AllRecentTransactionsResponseWrapperDto;
+import com.gym.planService.Dtos.OrderDtos.Wrappers.ReceiptResponseWrapperDto;
+import com.gym.planService.Dtos.PlanDtos.Responses.MostPopularPlanIds;
 import com.gym.planService.Dtos.PlanDtos.Responses.TotalUserResponseDto;
 import com.gym.planService.Dtos.PlanDtos.Wrappers.AllMonthlyRevenueWrapperResponseDto;
 import com.gym.planService.Dtos.PlanDtos.Wrappers.AllPlanResponseWrapperResponseDto;
@@ -49,20 +52,40 @@ public class RedisConfig {
         return new TypedJsonRedisSerializer<>(redisObjectMapper,AllCuponCodeWrapperResponseDto.class);
     }
 
-    @Bean TypedJsonRedisSerializer<AllMonthlyRevenueWrapperResponseDto> allMonthlyRevenueWrapperResponseDtoRedisSerializer
+    @Bean
+    public TypedJsonRedisSerializer<AllMonthlyRevenueWrapperResponseDto> allMonthlyRevenueWrapperResponseDtoRedisSerializer
             (ObjectMapper redisObjectMapper) {
         return new TypedJsonRedisSerializer<>(redisObjectMapper, AllMonthlyRevenueWrapperResponseDto.class);
     }
 
-    @Bean TypedJsonRedisSerializer<TotalUserResponseDto> totalUserResponseDtoRedisSerializer
+    @Bean
+    public TypedJsonRedisSerializer<TotalUserResponseDto> totalUserResponseDtoRedisSerializer
             (ObjectMapper redisObjectMapper){
         return new TypedJsonRedisSerializer<>(redisObjectMapper,TotalUserResponseDto.class);
     }
 
     @Bean
-    TypedJsonRedisSerializer <AllRecentTransactionsResponseWrapperDto> allRecentTransactionsResponseWrapperDtoRedisSerializer
+    public TypedJsonRedisSerializer <AllRecentTransactionsResponseWrapperDto> allRecentTransactionsResponseWrapperDtoRedisSerializer
             (ObjectMapper redisObjectMapper) {
         return new TypedJsonRedisSerializer<>(redisObjectMapper, AllRecentTransactionsResponseWrapperDto.class);
+    }
+
+    @Bean
+    public TypedJsonRedisSerializer<MostPopularPlanIds> mostPopularPlanIdsRedisSerializer
+            (ObjectMapper redisObjectMapper) {
+        return new TypedJsonRedisSerializer<>(redisObjectMapper, MostPopularPlanIds.class);
+    }
+
+    @Bean
+    public TypedJsonRedisSerializer<MonthlyRevenueResponseDto> monthlyRevenueResponseDtoRedisSerializer
+            (ObjectMapper redisObjectMapper) {
+        return new TypedJsonRedisSerializer<>(redisObjectMapper, MonthlyRevenueResponseDto.class);
+    }
+
+    @Bean
+    public TypedJsonRedisSerializer<ReceiptResponseWrapperDto> receiptResponseWrapperDtoRedisSerializer
+            (ObjectMapper redisObjectMapper) {
+        return new TypedJsonRedisSerializer<>(redisObjectMapper, ReceiptResponseWrapperDto.class);
     }
 
     @Bean
@@ -72,7 +95,10 @@ public class RedisConfig {
             TypedJsonRedisSerializer<AllCuponCodeWrapperResponseDto> allCuponCodeWrapperResponseDtoRedisSerializer,
             TypedJsonRedisSerializer<AllMonthlyRevenueWrapperResponseDto> allMonthlyRevenueWrapperResponseDtoRedisSerializer,
             TypedJsonRedisSerializer<TotalUserResponseDto> totalUserResponseDtoSerializer,
-            TypedJsonRedisSerializer<AllRecentTransactionsResponseWrapperDto> allRecentTransactionsResponseWrapperDtoRedisSerializer
+            TypedJsonRedisSerializer<AllRecentTransactionsResponseWrapperDto> allRecentTransactionsResponseWrapperDtoRedisSerializer,
+            TypedJsonRedisSerializer<MostPopularPlanIds> mostPopularPlanIdsRedisSerializer,
+            TypedJsonRedisSerializer<MonthlyRevenueResponseDto> monthlyRevenueResponseDtoRedisSerializer,
+            TypedJsonRedisSerializer<ReceiptResponseWrapperDto> receiptResponseWrapperDtoRedisSerializer
     ) {
         RedisCacheConfiguration defaultConfig = RedisCacheConfiguration.defaultCacheConfig()
                 .serializeKeysWith(RedisSerializationContext.SerializationPair
@@ -105,6 +131,21 @@ public class RedisConfig {
                 .serializeValuesWith(RedisSerializationContext.SerializationPair.
                         fromSerializer(allRecentTransactionsResponseWrapperDtoRedisSerializer))
                 .entryTtl(Duration.ofMinutes(20)));
+
+        cacheConfigs.put("mostPopular",defaultConfig
+                .serializeValuesWith(RedisSerializationContext.SerializationPair
+                        .fromSerializer(mostPopularPlanIdsRedisSerializer))
+                .entryTtl(Duration.ofHours(2)));
+
+        cacheConfigs.put("monthlyRevenue",defaultConfig
+                .serializeValuesWith(RedisSerializationContext.SerializationPair
+                        .fromSerializer(monthlyRevenueResponseDtoRedisSerializer))
+                .entryTtl(Duration.ofHours(2)));
+
+        cacheConfigs.put("receiptCache",defaultConfig
+                .serializeValuesWith(RedisSerializationContext.SerializationPair
+                        .fromSerializer(receiptResponseWrapperDtoRedisSerializer))
+                .entryTtl(Duration.ofHours(4)));
 
         return RedisCacheManager.builder(connectionFactory)
                 .cacheDefaults(defaultConfig)
