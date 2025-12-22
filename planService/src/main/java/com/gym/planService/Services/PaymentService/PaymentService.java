@@ -154,7 +154,7 @@ public class PaymentService {
                 .askMemberServiceToAppendPlan(plan, payment.getUserId())
                 .doOnSubscribe(s -> log.info("Initiating member service call"))
                 .doOnNext(res -> log.info("Received response from member service: {}", res))
-                .onErrorResume(err-> handlePaymentFailure(payment,err));
+                .onErrorResume(err-> handlePaymentFailure(payment,err,dto.getUserMail()));
 
         // --- 3. Combine and Process  ---
         return Mono.zip(receiptFlowMono, memberServiceResponseMono)
@@ -205,7 +205,7 @@ public class PaymentService {
         return amount - discount;
     }
 
-    private Mono<String> handlePaymentFailure(PlanPayment payment, Throwable err) {
+    private Mono<String> handlePaymentFailure(PlanPayment payment, Throwable err,String userMail) {
         log.info("💀💀 an error occurred during memberservice's plan appending due to {}",err.getMessage());
         return Mono.<String>fromCallable(() -> {
             try {
@@ -213,7 +213,7 @@ public class PaymentService {
                 payment.setPaymentStatus("REFUNDED");
                 payment.setTransactionTime(LocalDateTime.now());
                 paymentRepository.save(payment);
-                webClientService.informUserForFailedCase("FAILED", payment);
+                webClientService.informUserForFailedCase("FAILED", payment,userMail);
                 throw new PaymentFailedException(
                         "Plan activation failed, but don't worry! We've initiated a full refund. "
                                 + refundId
@@ -223,7 +223,7 @@ public class PaymentService {
                 payment.setPaymentStatus("MANUAL_INTERVENTION");
                 payment.setTransactionTime(LocalDateTime.now());
                 paymentRepository.save(payment);
-                webClientService.informUserForFailedCase("CRITICAL", payment);
+                webClientService.informUserForFailedCase("CRITICAL", payment,userMail);
                 throw new RefundFailedException(
                         "💀💀 Plan activation failed and refund encountered an issue. "
                                 + payment.getPaymentId()+
