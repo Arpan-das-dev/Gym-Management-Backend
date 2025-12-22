@@ -1,5 +1,6 @@
 package com.gym.notificationservice.Controller;
 
+import com.gym.notificationservice.Dto.PaymentNotificationDtos.Requests.PaymentFailedDto;
 import com.gym.notificationservice.Dto.PaymentNotificationDtos.Requests.PlanNotificationRequest;
 import com.gym.notificationservice.Dto.PaymentNotificationDtos.Requests.PlanPaymentRequestDto;
 import com.gym.notificationservice.Dto.PaymentNotificationDtos.Responses.GenericResponseDto;
@@ -43,6 +44,27 @@ public class PaymentNotificationController {
         log.info("request received to send email with attachment");
         return ResponseEntity.status(HttpStatus.ACCEPTED)
                 .body(notificationService.sendAttachedMail(request, multipartFile));
+    }
+
+    @PostMapping("/all/paymentFailed")
+    public ResponseEntity<String> sendMailForFailedPayment(@Valid @RequestBody PaymentFailedDto failedDto){
+        log.info("©️©️ request received to send email to [{}] for failed payment",failedDto.getEmailId());
+        try {
+            String response = notificationService.sendFailedPaymentMail(failedDto);
+            return ResponseEntity.status(HttpStatus.OK).body(response);
+        } catch (Exception e) {
+            return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR).body(e.getMessage());
+        }
+    }
+    @PostMapping("/all/refundFailed")
+    public ResponseEntity<String> sendMailForFailedRefund(@Valid @RequestBody PaymentFailedDto failedDto){
+        log.info("©️©️ request received to send email to [{}] for failed refund",failedDto.getEmailId());
+        try {
+            String response = notificationService.sendRefundFailedMail(failedDto);
+            return ResponseEntity.status(HttpStatus.OK).body(response);
+        } catch (Exception e) {
+            return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR).body(e.getMessage());
+        }
     }
 }
 
