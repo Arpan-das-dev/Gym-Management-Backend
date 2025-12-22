@@ -10,6 +10,7 @@ import lombok.NoArgsConstructor;
 @AllArgsConstructor
 @NoArgsConstructor
 public class MonthlyReviewResponseDto {
+    private int year;
     private String month;
     private Double revenue;
     private Double change;
