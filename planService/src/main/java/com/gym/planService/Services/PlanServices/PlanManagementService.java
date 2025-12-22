@@ -14,6 +14,7 @@ import lombok.extern.slf4j.Slf4j;
 import org.springframework.cache.annotation.CacheEvict;
 import org.springframework.cache.annotation.CachePut;
 import org.springframework.cache.annotation.Cacheable;
+import org.springframework.cache.annotation.Caching;
 import org.springframework.stereotype.Service;
 
 import java.util.List;
@@ -165,20 +166,20 @@ public class PlanManagementService {
                 .build();
     }
 
+    @Caching(evict = {
+            @CacheEvict(value = "totalUsers", key = "'totalUsersList'"),
+            @CacheEvict(value = "mostPopular", key = "'popular'")
+    })
     @Transactional
-    public String decrementMemberCount( String planId) {
-        Plan plan = planRepository.findById(planId)
-                .orElseThrow(() -> new PlanNotFoundException("No plan found with the id::" + planId));
-
-        log.info("Successfully retrieved plan for member's count of  -->{}", plan.getPlanName());
-        if(plan.getMembersCount()!= 0 && plan.getMembersCount()> 0){
-            plan.setMembersCount(plan.getMembersCount()-1);
+    public String decrementMemberCount(List<String> planIds) {
+        log.info("®️®️ request received in service class for {} plan ids",planIds.size());
+        int effectedRows = planRepository.bulkDecrementMemberCount(planIds);
+        log.info("Successfully update members count for {} plans",effectedRows);
+        if(effectedRows>0){
+            return "Successfully decreased member's count for plan ids";
         } else {
-           plan.setMembersCount(0);
+            return "Request proceed but no plan found to decrease member's count";
         }
-        planRepository.save(plan);
-        log.info("Successfully saved plan with member's count {}",plan.getMembersCount());
-        return "Successfully saved plan "+plan.getPlanName();
     }
 
 
