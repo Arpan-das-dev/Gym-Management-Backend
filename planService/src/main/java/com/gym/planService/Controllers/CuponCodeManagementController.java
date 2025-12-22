@@ -123,10 +123,11 @@ public class CuponCodeManagementController {
      */
     @PostMapping("/all/validateCuponCode")
     public ResponseEntity<CuponValidationResponseDto> validateCuponCode(
-            @RequestParam @Valid @NotBlank(message = "Coupon code must be provided.") String cuponCode) {
+            @RequestParam @Valid @NotBlank(message = "Coupon code must be provided.") String cuponCode,
+            @RequestParam @Valid @NotBlank(message = "Plan Id must be Provided") String  planId) {
 
         log.info("API :: [POST] /all/validateCuponCode | Validating coupon '{}'", cuponCode);
-        CuponValidationResponseDto response = cuponService.validateCupon(cuponCode);
+        CuponValidationResponseDto response = cuponService.validateCupon(cuponCode,planId);
         return ResponseEntity.status(HttpStatus.OK).body(response);
     }
 
