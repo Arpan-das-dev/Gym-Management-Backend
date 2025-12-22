@@ -36,6 +36,12 @@ public interface PlanPaymentRepository extends JpaRepository<PlanPayment,String>
     """)
     Page<PlanPayment> searchByUserNameOrDate(@Param("search") String search, Pageable pageable);
 
-
+    @Query("SELECT p FROM PlanPayment p WHERE p.userId = :userId " +
+            "AND (:status = 'ALL' OR p.paymentStatus = :status)")
+    Page<PlanPayment> findReceiptCustomUsers(
+            @Param("userId") String userId,
+            @Param("status") String status,
+            Pageable pageable
+    );
 
 }
