@@ -1,7 +1,9 @@
 package com.gym.planService.Services.OtherServices;
 
+import com.gym.planService.Dtos.OrderDtos.Responses.PaymentFailedDto;
 import com.gym.planService.Dtos.OrderDtos.Responses.PlanNotificationResponse;
 import com.gym.planService.Dtos.PlanDtos.Responses.PlanResponseDtoForMemberService;
+import com.gym.planService.Exception.Custom.InterServiceCommunicationException;
 import com.gym.planService.Models.Plan;
 import com.gym.planService.Models.PlanPayment;
 import lombok.extern.slf4j.Slf4j;
@@ -18,6 +20,8 @@ import reactor.core.publisher.Mono;
 import java.io.File;
 import java.io.FileOutputStream;
 import java.io.IOException;
+import java.math.BigDecimal;
+import java.math.RoundingMode;
 import java.time.LocalDate;
 import java.util.concurrent.CompletableFuture;
 
@@ -39,6 +43,7 @@ public class WebClientService {
         this.member_Service_Plan_URL = member_Service_Plan_URL;
     }
 
+    @Async
     public void sendUpdateBymMailWithAttachment
             (byte[] pdfReceiptArray, PlanPayment payment,Integer duration, String userMail)
             throws IOException {
@@ -133,4 +138,30 @@ public class WebClientService {
 
     }
 
+    @Async
+    public void informUserForFailedCase(String cause, PlanPayment payment) {
+        String endpoint = cause.equalsIgnoreCase("FAILED") ?
+                "/all/paymentFailed" : "/all/refundFailed";
+        String url = notification_service_Base_URL+endpoint;
+        String subject = cause.equalsIgnoreCase("FAILED") ?
+                "PAYMENT FAILED" : "REFUND FAILED";
+        PaymentFailedDto payload = PaymentFailedDto.builder()
+                .subject(subject)
+                .cause(cause.toUpperCase())
+                .amount(BigDecimal.valueOf(payment.getPaidPrice())
+                        .setScale(2, RoundingMode.HALF_UP)
+                        .doubleValue())
+                .paymentId(payment.getPaymentId())
+                .userName(payment.getUserName())
+                .build();
+        webclient.build().post()
+                .uri(url)
+                .bodyValue(payload)
+                .retrieve().toBodilessEntity()
+                .doOnSuccess(s-> log.info("Request send to [ {} ] to inform user -> {}",url,payment.getUserName()))
+                .onErrorMap(err-> {
+                    log.warn("error occurred due to {}",err.getMessage());
+                    return new InterServiceCommunicationException("Unable To Send You Mail Kindly Contact Admin ");
+                });
+    }
 }
