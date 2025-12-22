@@ -1,13 +1,15 @@
 package com.gym.planService.Services.PaymentService;
 
+import com.gym.planService.Dtos.CuponDtos.Responses.CuponValidationResponseDto;
 import com.gym.planService.Dtos.OrderDtos.Requests.ConfirmPaymentDto;
 import com.gym.planService.Dtos.OrderDtos.Requests.PlanPaymentRequestDto;
+import com.gym.planService.Dtos.OrderDtos.Responses.ReceiptResponseDto;
 import com.gym.planService.Dtos.OrderDtos.Responses.RecentTransactionsResponseDto;
 import com.gym.planService.Dtos.OrderDtos.Wrappers.AllRecentTransactionsResponseWrapperDto;
+import com.gym.planService.Dtos.OrderDtos.Wrappers.ReceiptResponseWrapperDto;
 import com.gym.planService.Dtos.PlanDtos.Responses.GenericResponse;
 import com.gym.planService.Exception.Custom.*;
 import com.gym.planService.Models.Plan;
-import com.gym.planService.Models.PlanCuponCode;
 import com.gym.planService.Models.PlanPayment;
 import com.gym.planService.Repositories.PlanCuponCodeRepository;
 import com.gym.planService.Repositories.PlanPaymentRepository;
@@ -16,6 +18,7 @@ import com.gym.planService.Services.OtherServices.AwsService;
 import com.gym.planService.Services.OtherServices.RazorPayService;
 import com.gym.planService.Services.OtherServices.ReceiptGenerator;
 import com.gym.planService.Services.OtherServices.WebClientService;
+import com.gym.planService.Services.PlanServices.CuponCodeManagementService;
 import com.gym.planService.Utils.PaymentIdGenUtil;
 import com.razorpay.Order;
 import com.razorpay.RazorpayException;
@@ -29,15 +32,21 @@ import org.springframework.data.domain.Page;
 import org.springframework.data.domain.PageRequest;
 import org.springframework.data.domain.Pageable;
 import org.springframework.data.domain.Sort;
+import org.springframework.data.redis.core.StringRedisTemplate;
 import org.springframework.stereotype.Service;
 import reactor.core.publisher.Mono;
+import reactor.core.scheduler.Schedulers;
 import reactor.util.function.Tuple2;
 import reactor.util.function.Tuples;
 
 
+import java.math.BigDecimal;
+import java.math.RoundingMode;
 import java.time.LocalDateTime;
 import java.time.format.DateTimeFormatter;
+import java.util.Collections;
 import java.util.List;
+import java.util.Set;
 
 @Slf4j
 @Service
@@ -52,6 +61,8 @@ public class PaymentService {
     private final ReceiptGenerator receiptGenerator;
     private final AwsService awsService;
     private final WebClientService webClientService;
+    private final StringRedisTemplate redisTemplate;
+    private final CuponCodeManagementService cuponCodeManagementService;
 
     @Transactional
     @CacheEvict(value = "recentTransactions", allEntries = true )
@@ -62,24 +73,29 @@ public class PaymentService {
         Plan plan = planRepository.findById(requestDto.getPlanId())
                 .orElseThrow(() -> new PlanNotFoundException("No plan found with ID: " + requestDto.getPlanId()));
 
-        PlanCuponCode cuponCode = cuponCodeRepository.findById(requestDto.getCuponCode()).orElse(null);
+        CuponValidationResponseDto validationResponse = null;
+        if(requestDto.getCuponCode()!= null) {
+          validationResponse  = cuponCodeManagementService
+                    .validateCupon(requestDto.getCuponCode(),requestDto.getPlanId());
+        }
 
+        if(validationResponse!=null && !validationResponse.isValid()){
+            throw new CuponCodeNotFoundException("No Coupon Associated With "+plan.getPlanName()+"Plan");
+        }
         String paymentId = paymentIdGenUtil.generatePaymentId(
                 requestDto.getUserId(),
                 requestDto.getPlanId(),
                 requestDto.getPaymentDate()
         );
 
-        Double finalAmount = calculateDiscountedAmount(cuponCode, requestDto.getAmount());
+        Double finalAmount = calculateDiscountedAmount(requestDto.getAmount(),validationResponse);
 
         Order razorOrder;
         try {
             log.info("final amount to be paid ====> {}", finalAmount);
             razorOrder = razorPayService.makePayment(finalAmount.longValue(), requestDto.getCurrency(), paymentId);
-            if (cuponCode != null) {
-                cuponCode.setCuponCodeUser(cuponCode.getCuponCodeUser()+1);
-                cuponCodeRepository.save(cuponCode);
-            }
+            int effectedRows = cuponCodeRepository.incrementCuponUsageCount(requestDto.getCuponCode());
+            log.info("effected rows for updating cupon code {} usage counts",effectedRows);
         } catch (RazorpayException e) {
             log.error("Razorpay order creation failed for user {}: {}", requestDto.getUserId(), e.getMessage());
             throw new PaymentGatewayException("Unable to initiate payment. Please try again later.");
@@ -113,7 +129,9 @@ public class PaymentService {
     @Transactional
     @Caching(evict = {
             @CacheEvict(value = "totalUsers", key = "'totalUsersList'"),
-            @CacheEvict(value = "recentTransactions", allEntries = true )
+            @CacheEvict(value = "recentTransactions", allEntries = true ),
+            @CacheEvict(value = "allRevenue", allEntries = true),
+            @CacheEvict(value = "monthlyRevenue", key = "'revenue'")
     })
     public Mono<GenericResponse> confirmPayment(ConfirmPaymentDto dto) {
         long startTime = System.currentTimeMillis();
@@ -125,77 +143,94 @@ public class PaymentService {
                     return new PaymentNotFoundException("No payment found for this order ID");
                 });
 
-        payment.setPaymentStatus("SUCCESS");
-        payment.setTransactionTime(LocalDateTime.now());
-
         Plan plan = planRepository.findById(payment.getPlanId())
                 .orElseThrow(() -> {
                     log.error("Plan not found for ID: {}", payment.getPlanId());
                     return new PlanNotFoundException("No plan found with ID: " + payment.getPlanId());
                 });
-
-
-        // A. Receipt Generation and S3 Upload Flow (PDF generation is now reactive/async)
-        Mono<Tuple2<String, byte[]>> receiptFlowMono = Mono
-                .fromFuture(receiptGenerator.generatePlanPaymentReceipt(payment))
-                .doOnSuccess(success -> log.debug("PDF bytes generated successfully of size {}",success.length))
-                .flatMap(pdfBytes -> Mono.fromFuture(awsService.uploadPaymentReceipt(pdfBytes, payment.getPaymentId()))
-                        // Pass both the URL and the original PDF bytes needed for the email
-                        .map(receiptUrl -> Tuples.of(receiptUrl, pdfBytes)));
-
-        // B. Member Service Update Flow
+        Mono<Tuple2<String, byte[]>> receiptFlowMono = generateAndUploadReceipt(payment);
         Mono<String> memberServiceResponseMono = webClientService
                 .askMemberServiceToAppendPlan(plan, payment.getUserId())
                 .doOnSubscribe(s -> log.info("Initiating member service call"))
-                .doOnNext(res -> log.info("Received response from member service: {}", res));
+                .doOnNext(res -> log.info("Received response from member service: {}", res))
+                .onErrorResume(err-> handlePaymentFailure(payment,err));
 
-
-        // --- 3. Combine and Process (Non-Blocking) ---
+        // --- 3. Combine and Process  ---
         return Mono.zip(receiptFlowMono, memberServiceResponseMono)
                 .flatMap(tuple -> {
                     String receiptUrl = tuple.getT1().getT1();
                     byte[] pdfReceiptArray = tuple.getT1().getT2();
                     String message = tuple.getT2();
 
-                    log.info("Received final response from member service and receipt URL: {}", receiptUrl);
-                    log.info("Total processing time until response: {} ms", System.currentTimeMillis() - startTime);
-
-                    // C. Update synchronous entities
-                    plan.setMembersCount(plan.getMembersCount() + 1);
-                    planRepository.save(plan);
-
-                    payment.setReceiptUrl(receiptUrl);
-                    paymentRepository.save(payment);
-
-                    // D. Fire-and-Forget Email
-                    try {
-                        // Assuming sendUpdateBymMailWithAttachment returns a CompletableFuture<Void> or similar
-                        // Use .subscribe() to execute it asynchronously without blocking the main flow.
-                        webClientService
-                                .sendUpdateBymMailWithAttachment(pdfReceiptArray, payment, plan.getDuration(), dto.getUserMail());
-
-                        log.info("Email service call initiated asynchronously for user: {}", dto.getUserMail());
-                    } catch (Exception e) {
-                        // Catch sync exception from method call, but don't re-throw as fatal to transaction
-                        log.warn("Synchronous error during email initiation for {}: {}", dto.getUserMail(), e.getMessage());
-                    }
-
-                    return Mono.just(new GenericResponse(message));
-                })
-                .onErrorMap(e -> {
-                    log.error("Transaction failed during reactive flow: {}", e.getMessage());
-                    String res = "Payment Done but failed to complete post-payment processing. Contact support for receipt.";
-                    // If the transaction fails here, @Transactional will roll back DB changes.
-                    return new InterServiceCommunicationException(res);
+                    log.info("Received final response from member service and receipt URL:[ {} ]", receiptUrl);
+                    return Mono.fromCallable(() -> {
+                                payment.setPaymentStatus("SUCCESS");
+                                payment.setTransactionTime(LocalDateTime.now());
+                                payment.setReceiptUrl(receiptUrl);
+                                paymentRepository.save(payment);
+                                planRepository.incrementMembersCount(plan.getPlanId());
+                                evictUserReceiptCache(payment.getUserId());
+                                redisTemplate.delete("USERS::" + plan.getPlanId());
+                                return payment;
+                            })
+                            .subscribeOn(Schedulers.boundedElastic())
+                            .flatMap(savedPayment -> {
+                                try {
+                                    webClientService
+                                            .sendUpdateBymMailWithAttachment(pdfReceiptArray, savedPayment,
+                                                    plan.getDuration(), dto.getUserMail());
+                                } catch (Exception e) {
+                                    log.error("Email failed for user {}, but payment is successful: {}",
+                                            dto.getUserMail(), e.getMessage());
+                                }
+                                log.info("Total processing time: {} ms", System.currentTimeMillis() - startTime);
+                                return Mono.just(new GenericResponse(message));
+                            });
                 });
     }
 
-    private Double calculateDiscountedAmount(PlanCuponCode cuponCode, Double amount) {
-        if (cuponCode == null) return amount;
-        double discount = (cuponCode.getPercentage() / 100) * amount;
+    private Mono<Tuple2<String, byte[]>> generateAndUploadReceipt(PlanPayment payment){
+        return Mono
+                .fromFuture(receiptGenerator.generatePlanPaymentReceipt(payment))
+                .doOnSuccess(success -> log.debug("PDF bytes generated successfully of size {}",success.length))
+                .flatMap(pdfBytes -> Mono
+                        .fromFuture(awsService.uploadPaymentReceipt(pdfBytes, payment.getPaymentId()))
+                        // Pass both the URL and the original PDF bytes needed for the email
+                        .map(receiptUrl -> Tuples.of(receiptUrl, pdfBytes)));
+    }
+    private Double calculateDiscountedAmount(Double amount,CuponValidationResponseDto responseDto) {
+        if(responseDto== null) return amount;
+        double discount = (responseDto.getOffPercentage() / 100) * amount;
         return amount - discount;
     }
 
+    private Mono<String> handlePaymentFailure(PlanPayment payment, Throwable err) {
+        log.info("💀💀 an error occurred during memberservice's plan appending due to {}",err.getMessage());
+        return Mono.<String>fromCallable(() -> {
+            try {
+                String refundId = razorPayService.refundPayment(payment.getPaymentId(), payment.getPaidPrice(), "Service Failure");
+                payment.setPaymentStatus("REFUNDED");
+                payment.setTransactionTime(LocalDateTime.now());
+                paymentRepository.save(payment);
+                webClientService.informUserForFailedCase("FAILED", payment);
+                throw new PaymentFailedException(
+                        "Plan activation failed, but don't worry! We've initiated a full refund. "
+                                + refundId
+                                + " No action required. Refund should reflect in 5-7 days."
+                );
+            } catch (Exception e) {
+                payment.setPaymentStatus("MANUAL_INTERVENTION");
+                payment.setTransactionTime(LocalDateTime.now());
+                paymentRepository.save(payment);
+                webClientService.informUserForFailedCase("CRITICAL", payment);
+                throw new RefundFailedException(
+                        "💀💀 Plan activation failed and refund encountered an issue. "
+                                + payment.getPaymentId()+
+                                " Please contact support immediately with your Payment ID."
+                );
+            }
+        }).subscribeOn(Schedulers.boundedElastic());
+    }
     @Cacheable(
             value = "recentTransactions",
             key = "'search=' + (#searchBy ?: '') + ':sort=' + #sortBy + ':dir=' + #sortDirection + ':p=' + #pageNo + ':s=' + #pageSize"
@@ -268,5 +303,67 @@ public class PaymentService {
     }
 
 
+    @Cacheable(
+            value = "receiptCache",
+            key = "#userId + ':' + #status + ':' + #sortBy + ':' + #sortDirection + ':' + #pageNo + ':' + #pageSize"
+    )
+    public ReceiptResponseWrapperDto getReceiptForUsers(String userId, String sortDirection, String sortBy,
+                                                        String status, int pageNo, int pageSize) {
+        log.info("®️®️ Request received to get receipt for user {}", userId);
+        Sort.Direction direction = sortDirection.equalsIgnoreCase("ASC") ?
+                Sort.Direction.ASC : Sort.Direction.DESC;
+        Sort sort;
+        switch (sortBy.trim().toUpperCase()) {
+            case "YEAR" -> sort = Sort.by(direction, "paymentYear");
+            case "TRANSACTION" -> sort = Sort.by(direction, "transactionTime");
+            default -> sort = Sort.by(direction, "paymentDate");
+        }
+        if(!status.equalsIgnoreCase("ALL")){
+            status = status.equalsIgnoreCase("PENDING") ? "PENDING" : "SUCCESS";
+        }
+        Pageable pageable = PageRequest.of(pageNo,pageSize,sort);
+        Page<PlanPayment> payments = paymentRepository.findReceiptCustomUsers(userId,status,pageable);
 
+        return ReceiptResponseWrapperDto.builder()
+                .responseDtoList(payments.stream().map(payment -> ReceiptResponseDto.builder()
+                        .planName(payment.getPlanName())
+                        .paidPrice(BigDecimal.valueOf(payment.getPaidPrice())
+                                .setScale(2, RoundingMode.HALF_UP)
+                                .doubleValue())
+                        .paymentDate(payment.getPaymentDate())
+                        .status(payment.getPaymentMethod().toUpperCase())
+                        .receiptUrl(payment.getReceiptUrl())
+                        .build()).toList())
+                .pageNo(payments.getNumber())
+                .pageSize(payments.getSize())
+                .totalElements(payments.getTotalElements())
+                .totalPages(payments.getTotalPages())
+                .lastPage(payments.isLast())
+                .build();
+    }
+
+    /**
+     * Evicts all paginated receipt/transaction cache entries for a specific user.
+     * Pattern: receiptCache::[userId]*
+     * @param userId to evict cache for users
+     */
+    public void evictUserReceiptCache(String userId) {
+        final String cacheName = "receiptCache";
+        String pattern = cacheName + "::" + userId + "*";
+
+        Set<String> keysToDelete = safeKeys(pattern);
+
+        if (!keysToDelete.isEmpty()) {
+            redisTemplate.delete(keysToDelete);
+            log.info("Successfully evicted {} receipt cache keys for userId: {}",
+                    keysToDelete.size(), userId);
+        } else {
+            log.debug("No receipt cache keys found for userId: {}", userId);
+        }
+    }
+    private Set<String> safeKeys(String pattern) {
+        Set<String> keys = redisTemplate.keys(pattern);
+        if (keys == null) return Collections.emptySet();
+        return keys;
+    }
 }
