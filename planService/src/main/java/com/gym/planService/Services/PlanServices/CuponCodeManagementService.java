@@ -31,7 +31,6 @@ import java.time.LocalDate;
 import java.time.LocalDateTime;
 import java.time.format.DateTimeFormatter;
 import java.util.List;
-import java.util.Objects;
 
 /**
  * Service layer for management of coupon codes associated with plans.
@@ -75,7 +74,7 @@ public class CuponCodeManagementService {
      * @return Redis key
      */
     private String buildCuponKey(String cuponCode) {
-        return REDIS_CUPON_PREFIX + cuponCode;
+        return REDIS_CUPON_PREFIX + cuponCode+"_";
     }
 
     /**
@@ -91,6 +90,7 @@ public class CuponCodeManagementService {
             @CacheEvict(value = "cuponCodes", key = "'admin'"),
     })
     public AllCuponCodeWrapperResponseDto createCuponCode(String planId, CreateCuponCodeRequestDto requestDto) {
+        System.out.println("    ⌚ "+ LocalDateTime.now().format(formatter));
         log.info("SERVICE :: Creating coupon {} for plan {}", requestDto.getCuponCode(), planId);
         log.info("access is {}",requestDto.getAccess());
 
@@ -134,6 +134,7 @@ public class CuponCodeManagementService {
             @CacheEvict(value = "cuponCodes", key = "'public'")
     })
     public CuponCodeResponseDto updateCupon(String cuponCode, UpdateCuponRequestDto requestDto) {
+        System.out.println("    ⌚ "+ LocalDateTime.now().format(formatter));
         log.info("SERVICE :: Updating coupon {}", cuponCode);
 
         PlanCuponCode existing = cuponCodeRepository.findById(cuponCode)
@@ -173,6 +174,7 @@ public class CuponCodeManagementService {
      */
     @Cacheable(value = "cuponCodes", key = "#planId")
     public AllCuponCodeWrapperResponseDto getCuponCodesByPlanId(String planId) {
+        System.out.println("    ⌚ "+ LocalDateTime.now().format(formatter));
         log.debug("SERVICE :: Fetching coupons for plan {}", planId);
         return buildResponse(planId);
     }
@@ -187,6 +189,7 @@ public class CuponCodeManagementService {
             @CacheEvict(value = "cuponCodes", key = "'public'")
     })
     public String deleteCuponByCuponCode(String cuponCode, String planId) {
+        System.out.println("    ⌚ "+ LocalDateTime.now().format(formatter));
         log.info("SERVICE :: Deleting coupon {} for plan {}", cuponCode, planId);
 
         if (!cuponCodeRepository.existsById(cuponCode)) {
@@ -213,33 +216,45 @@ public class CuponCodeManagementService {
      * @param cuponCode coupon code string
      * @return validation result with off percentage
      */
-    public CuponValidationResponseDto validateCupon(String cuponCode) {
+    public CuponValidationResponseDto validateCupon(String cuponCode,String PlanId) {
+        System.out.println("    ⌚ "+ LocalDateTime.now().format(formatter));
         String key = buildCuponKey(cuponCode);
         String cachedValue = redisTemplate.opsForValue().get(key);
-        boolean valid = Objects.equals(cachedValue, cuponCode);
+        boolean valid = false;
         double offPercentage = 0.0;
+        if(cachedValue!=null){
+            log.info("line-220 {}::-> cachedValue is not null start retrieving operation","CuponCodeManagementService");
+            int indexOfUnderScore = cachedValue.indexOf("_");
+            String cachedCode = cachedValue.substring(0,indexOfUnderScore);
+            String cachedPlanId = cachedValue.substring(indexOfUnderScore+1);
 
-        if (!valid) {
-            // Cache miss — attempt recovery from DB
-            log.warn("SERVICE :: Cache miss for coupon {}, attempting recovery from DB", cuponCode);
+            log.info("Retrieved cupon code [{}] and planId [ {} ] from cache",cachedCode,cachedPlanId);
+            boolean validation = cachedCode.equals(cuponCode) && cachedPlanId.equals(PlanId);
 
-            PlanCuponCode dbCupon = cuponCodeRepository.findById(cuponCode).orElse(null);
-
-            if (dbCupon != null && dbCupon.getValidity().isAfter(LocalDate.now())) {
-                cacheCuponCode(dbCupon); // Rebuild cache
+            if(validation){
                 valid = true;
-                offPercentage = dbCupon.getPercentage();
-                log.info("SERVICE :: Coupon {} recovered from DB and re-cached", cuponCode);
-            } else {
-                log.warn("SERVICE :: Coupon {} not found or expired in DB", cuponCode);
+                offPercentage = cuponCodeRepository.findById(cuponCode)
+                        .map(PlanCuponCode::getPercentage)
+                        .orElse(0.00);
+                log.info("line-234::CuponCodeManagementService Set validation as ->true with percentage [{}%]"
+                        ,offPercentage);
             }
-        } else {
-            // Valid cache entry — get discount from DB
-            offPercentage = cuponCodeRepository.findById(cuponCode)
-                    .map(PlanCuponCode::getPercentage)
-                    .orElse(0.0);
+        } else{
+            log.info("Cache miss for coupon {}. Checking Database...", cuponCode);
+            PlanCuponCode code = cuponCodeRepository.findById(cuponCode)
+                    .orElseThrow(() -> {
+                        log.warn("No cupon code found for --> [{}]",cuponCode);
+                        return new PlanNotFoundException("Unable To Find Any CuponCode May Be this is an Old CuponCode");
+                    });
+            boolean condition = code.getPlanId().equals(PlanId)
+                    && code.getValidity().isAfter(LocalDate.now());
+            if(condition) {
+                cacheCuponCode(code);
+                offPercentage = code.getPercentage();
+                log.info("line-249::CuponCodeManagementService Set validation as ->true with percentage [{}%]"
+                        ,offPercentage);
+            }
         }
-
         return CuponValidationResponseDto.builder()
                 .valid(valid)
                 .offPercentage(offPercentage)
@@ -252,9 +267,10 @@ public class CuponCodeManagementService {
     private void cacheCuponCode(PlanCuponCode cupon) {
         long days = cupon.getValidity().toEpochDay() - LocalDate.now().toEpochDay();
         if (days <= 0) days = 1;
-
+        String value = cupon.getCuponCode()+"_"+cupon.getPlanId();
+        String key = buildCuponKey(cupon.getCuponCode());
         redisTemplate.opsForValue()
-                .set(buildCuponKey(cupon.getCuponCode()), cupon.getCuponCode(), Duration.ofDays(days));
+                .set(key, value, Duration.ofDays(days));
 
         log.debug("SERVICE :: Coupon {} cached for {} days", cupon.getCuponCode(), days);
     }
