@@ -2,6 +2,7 @@ package com.gym.planService.Controllers;
 
 import com.gym.planService.Dtos.OrderDtos.Responses.MonthlyRevenueResponseDto;
 import com.gym.planService.Dtos.PlanDtos.Responses.GenericResponse;
+import com.gym.planService.Dtos.PlanDtos.Responses.MostPopularPlanIds;
 import com.gym.planService.Dtos.PlanDtos.Responses.TotalUserResponseDto;
 import com.gym.planService.Dtos.PlanDtos.Wrappers.AllMonthlyRevenueWrapperResponseDto;
 import com.gym.planService.Services.PlanServices.PlanMatrixService;
@@ -43,14 +44,13 @@ public class MatricesDetailsController {
      * Fetch most popular plan(s) based on member count.
      */
     @GetMapping("/all/mostPopular")
-    public ResponseEntity<GenericResponse> getMostPopularPlan() {
+    public ResponseEntity<MostPopularPlanIds> getMostPopularPlan() {
         log.info("API :: [GET] /all/mostPopular | Request received to fetch most popular plan(s)");
 
-        List<String> message = matrixService.getMostPopularPlan();
-        String info = message.toString();
+        MostPopularPlanIds popularPlanIds = matrixService.getMostPopularPlan();
 
-        log.info("SERVICE :: Most popular plan(s) retrieved successfully: {}", info);
-        return ResponseEntity.status(HttpStatus.OK).body(new GenericResponse(info));
+        log.info("SERVICE :: Most popular plan(s) retrieved successfully: {}", popularPlanIds.getPlanIds().size());
+        return ResponseEntity.status(HttpStatus.OK).body(popularPlanIds);
     }
 
     /**
@@ -76,7 +76,7 @@ public class MatricesDetailsController {
         MonthlyRevenueResponseDto response = matrixService.getRevenue();
 
         log.info("SERVICE :: Monthly revenue retrieved successfully | Current Month Revenue: {} | Change: {}%",
-                response.getCurrentMonthReview(), response.getChangeInPercentage());
+                response.getCurrentMonthRevenue(), response.getChangeInPercentage());
         return ResponseEntity.status(HttpStatus.OK).body(response);
     }
 
@@ -90,7 +90,7 @@ public class MatricesDetailsController {
 
         log.info("API :: [GET] /admin/revenuePerMonth | Request received with pagination params | pageNo={} | pageSize={}", pageNo, pageSize);
 
-        AllMonthlyRevenueWrapperResponseDto response = matrixService.getAllReviewPerPerMonth(pageSize, pageNo);
+        AllMonthlyRevenueWrapperResponseDto response = matrixService.getAllRevenuePerPerMonth(pageSize, pageNo);
 
         log.info("SERVICE :: Paginated monthly revenue report generated successfully with {} entries",
                 response.getReviewResponseDtoList().size());
