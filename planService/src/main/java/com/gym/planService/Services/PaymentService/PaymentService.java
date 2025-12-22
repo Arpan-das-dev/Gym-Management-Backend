@@ -131,7 +131,8 @@ public class PaymentService {
             @CacheEvict(value = "totalUsers", key = "'totalUsersList'"),
             @CacheEvict(value = "recentTransactions", allEntries = true ),
             @CacheEvict(value = "allRevenue", allEntries = true),
-            @CacheEvict(value = "monthlyRevenue", key = "'revenue'")
+            @CacheEvict(value = "monthlyRevenue", key = "'revenue'"),
+            @CacheEvict(value = "mostPopular", key = "'popular'")
     })
     public Mono<GenericResponse> confirmPayment(ConfirmPaymentDto dto) {
         long startTime = System.currentTimeMillis();
