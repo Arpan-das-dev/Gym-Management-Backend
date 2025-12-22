@@ -10,6 +10,6 @@ import lombok.NoArgsConstructor;
 @AllArgsConstructor
 @NoArgsConstructor
 public class MonthlyRevenueResponseDto {
-    private Integer currentMonthReview;
+    private Integer currentMonthRevenue;
     private Double changeInPercentage;
 }
