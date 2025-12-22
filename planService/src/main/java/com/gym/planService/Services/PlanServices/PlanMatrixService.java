@@ -2,6 +2,7 @@ package com.gym.planService.Services.PlanServices;
 
 import com.gym.planService.Dtos.OrderDtos.Responses.MonthlyRevenueResponseDto;
 import com.gym.planService.Dtos.PlanDtos.Responses.MonthlyReviewResponseDto;
+import com.gym.planService.Dtos.PlanDtos.Responses.MostPopularPlanIds;
 import com.gym.planService.Dtos.PlanDtos.Responses.TotalUserResponseDto;
 import com.gym.planService.Dtos.PlanDtos.Wrappers.AllMonthlyRevenueWrapperResponseDto;
 import com.gym.planService.Exception.Custom.PlanNotFoundException;
@@ -15,14 +16,13 @@ import lombok.extern.slf4j.Slf4j;
 import org.springframework.cache.annotation.Cacheable;
 import org.springframework.data.domain.PageRequest;
 import org.springframework.data.domain.Pageable;
+import org.springframework.data.redis.core.StringRedisTemplate;
 import org.springframework.stereotype.Service;
 
+import java.time.Duration;
 import java.time.LocalDate;
 import java.time.YearMonth;
-import java.util.ArrayList;
-import java.util.Collections;
-import java.util.List;
-import java.util.Map;
+import java.util.*;
 import java.util.stream.Collectors;
 
 @Slf4j
@@ -33,18 +33,38 @@ public class PlanMatrixService {
     private final PlanRepository planRepository;
     private final PlanPaymentRepository paymentRepository;
     private final RevenueRepository revenueRepository;
+    private final StringRedisTemplate redisTemplate;
 
-    public String getActiveUsersCount(String planId){
+    public String getActiveUsersCount(String planId) {
+        log.info("Request received to get users count for plan --> {}", planId);
+
+        String key = "USERS::" + planId;
+        String cachedCount = redisTemplate.opsForValue().get(key);
+        if (cachedCount != null) {
+            log.info("Cache hit for key {}: count is {}", key, cachedCount);
+            return cachedCount;
+        }
+
+        log.info("Cache miss for key {}. Fetching from database...", key);
+
         Plan plan = planRepository.findById(planId)
-                .orElseThrow(()-> new PlanNotFoundException("No plan Found with the id::"+planId));
-        log.warn("No plan found with this id::{}",planId);
-        return plan.getMembersCount().toString();
+                .orElseThrow(() -> {
+                    log.error("Plan not found in database for ID: {}", planId);
+                    return new PlanNotFoundException("No plan found with the id::" + planId);
+                });
+        String usersCount = String.valueOf(plan.getMembersCount());
+        redisTemplate.opsForValue().set(key, usersCount, Duration.ofHours(6));
+        log.info("Cache updated for key {} with value {} (TTL: 6 hours)", key, usersCount);
+        return usersCount;
     }
 
-    public List<String> getMostPopularPlan() {
+    @Cacheable(value = "mostPopular", key = "'popular'")
+    public MostPopularPlanIds getMostPopularPlan() {
         List<Plan> plans = planRepository.findMostPopularPlans();
         log.info("fetched {} plans from db",plans.size());
-        return plans.stream().map(Plan::getPlanId).toList();
+        return MostPopularPlanIds.builder()
+                .planIds(plans.stream().map(Plan::getPlanId).toList())
+                .build();
     }
 
     @Cacheable(value = "totalUsers", key = "'totalUsersList'")
@@ -54,7 +74,7 @@ public class PlanMatrixService {
         Integer totalUsers = planRepository.findTotalUsers(); 
 
         String currentMonth = LocalDate.now().getMonth().toString();
-        String previousMonth = LocalDate.now().minusMonths(1).getMonth().toString();
+        String previousMonth = LocalDate.now().withDayOfMonth(1).minusDays(1).getMonth().toString();
 
         List<String> months = List.of(currentMonth, previousMonth);
         List<Object[]> results = revenueRepository.findUserCountsByMonths(months);
@@ -86,6 +106,7 @@ public class PlanMatrixService {
         return ((double) change / thisMonthUsers) * 100;
     }
 
+    @Cacheable(value = "monthlyRevenue", key = "'revenue'")
     public MonthlyRevenueResponseDto getRevenue(){
         log.info("SERVICE :: Calculating monthly revenue and growth percentage");
 
@@ -114,13 +135,13 @@ public class PlanMatrixService {
                 currentRevenue, previousRevenue, changePercentage);
 
         return MonthlyRevenueResponseDto.builder()
-                .currentMonthReview(currentRevenue.intValue())
+                .currentMonthRevenue(currentRevenue.intValue())
                 .changeInPercentage(Math.round(changePercentage * 100.0) / 100.0)
                 .build();
     }
 
     @Cacheable(value = "allRevenue",key = "revenue':'#pageSize':'#pageNo")
-    public AllMonthlyRevenueWrapperResponseDto getAllReviewPerPerMonth(int pageSize, int pageNo){
+    public AllMonthlyRevenueWrapperResponseDto getAllRevenuePerPerMonth(int pageSize, int pageNo){
         log.info("📊 Fetching paginated monthly revenue data | pageNo={} | pageSize={}", pageNo, pageSize);
 
         Pageable pageable = PageRequest.of(pageNo, pageSize);
@@ -130,7 +151,6 @@ public class PlanMatrixService {
             log.warn("⚠️ No monthly revenue records found for given pagination params.");
             return new AllMonthlyRevenueWrapperResponseDto(Collections.emptyList());
         }
-
         log.info("✅ Retrieved {} monthly revenue records from DB.", revenuesList.size());
 
         List<MonthlyReviewResponseDto> dtoList = new ArrayList<>();
@@ -143,11 +163,11 @@ public class PlanMatrixService {
             }
 
             dtoList.add(new MonthlyReviewResponseDto(
+                    revenue.getCurrentYear(),
                     revenue.getCurrentMonth(),
                     revenue.getMonthlyRevenue(),
-                    Math.round(change * 100.0) / 100.0 // round to 2 decimals
+                    Math.round(change * 100.0) / 100.0
             ));
-
             previousRevenue = revenue.getMonthlyRevenue();
             log.debug("🧾 Month: {} | Revenue: {} | Change: {}%",
                     revenue.getCurrentMonth(), revenue.getMonthlyRevenue(), change);
