@@ -139,7 +139,7 @@ public class WebClientService {
     }
 
     @Async
-    public void informUserForFailedCase(String cause, PlanPayment payment) {
+    public void informUserForFailedCase(String cause, PlanPayment payment,String userMail) {
         String endpoint = cause.equalsIgnoreCase("FAILED") ?
                 "/all/paymentFailed" : "/all/refundFailed";
         String url = notification_service_Base_URL+endpoint;
@@ -147,6 +147,7 @@ public class WebClientService {
                 "PAYMENT FAILED" : "REFUND FAILED";
         PaymentFailedDto payload = PaymentFailedDto.builder()
                 .subject(subject)
+                .emailId(userMail)
                 .cause(cause.toUpperCase())
                 .amount(BigDecimal.valueOf(payment.getPaidPrice())
                         .setScale(2, RoundingMode.HALF_UP)
