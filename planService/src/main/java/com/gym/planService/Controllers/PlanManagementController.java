@@ -15,6 +15,7 @@ import org.springframework.validation.annotation.Validated;
 import org.springframework.web.bind.annotation.*;
 
 import java.time.LocalDate;
+import java.util.List;
 
 /**
  * REST controller responsible for managing subscription plans.
@@ -111,11 +112,11 @@ public class PlanManagementController {
     }
 
     @PostMapping("all/memberCount")
-    public ResponseEntity<String> decreaseMembersCount(@Valid @RequestParam String planId){
+    public ResponseEntity<String> decreaseMembersCount(@Valid @RequestParam List<@NotBlank String> planIds){
         LocalDate date = LocalDate.now();
-        log.info("{}::{}::{}Request received to decrement members count for plan:: {}"
-               ,date.getYear(),date.getMonthValue(),date.getDayOfMonth() ,planId);
-        String response = planManagementService.decrementMemberCount(planId);
+        log.info("{}::{}::{}Request received to decrement members count for plan size of:: {}"
+               ,date.getYear(),date.getMonthValue(),date.getDayOfMonth() ,planIds.size());
+        String response = planManagementService.decrementMemberCount(planIds);
         return ResponseEntity.status(HttpStatus.CREATED).body(response);
     }
 }
