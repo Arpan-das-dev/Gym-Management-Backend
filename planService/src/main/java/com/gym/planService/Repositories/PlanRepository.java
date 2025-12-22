@@ -2,6 +2,7 @@ package com.gym.planService.Repositories;
 
 import com.gym.planService.Models.Plan;
 import io.lettuce.core.dynamic.annotation.Param;
+import jakarta.transaction.Transactional;
 import org.springframework.data.jpa.repository.JpaRepository;
 import org.springframework.data.jpa.repository.Modifying;
 import org.springframework.data.jpa.repository.Query;
@@ -56,4 +57,13 @@ public interface PlanRepository extends JpaRepository< Plan, String > {
     @Query("SELECT COUNT(p) > 0 FROM Plan p WHERE p.planId = :planId")
     boolean exists(@Param("planId") String planId);
 
+    @Modifying
+    @Query("UPDATE Plan p SET p.membersCount = p.membersCount - 1 " +
+            "WHERE p.id IN :planIds AND p.membersCount > 0")
+    int bulkDecrementMemberCount(@Param("planIds") List<String> planIds);
+
+    @Modifying
+    @Transactional
+    @Query("UPDATE Plan p SET p.membersCount = p.membersCount + 1 WHERE p.id = :planId")
+    void incrementMembersCount(@Param("planId") String planId);
 }
