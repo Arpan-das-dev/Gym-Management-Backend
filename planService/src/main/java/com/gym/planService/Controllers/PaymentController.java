@@ -4,9 +4,13 @@ import com.gym.planService.Dtos.OrderDtos.Requests.PlanPaymentRequestDto;
 
 import com.gym.planService.Dtos.OrderDtos.Requests.ConfirmPaymentDto;
 import com.gym.planService.Dtos.OrderDtos.Wrappers.AllRecentTransactionsResponseWrapperDto;
+import com.gym.planService.Dtos.OrderDtos.Wrappers.ReceiptResponseWrapperDto;
 import com.gym.planService.Dtos.PlanDtos.Responses.GenericResponse;
 import com.gym.planService.Services.PaymentService.PaymentService;
 import jakarta.validation.Valid;
+import jakarta.validation.constraints.NotBlank;
+import jakarta.validation.constraints.Positive;
+import jakarta.validation.constraints.PositiveOrZero;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.http.HttpStatus;
@@ -60,6 +64,25 @@ public class PaymentController {
         );
         AllRecentTransactionsResponseWrapperDto response = paymentService
                 .getPaginatedRecentTransactionWithSort(searchBy,sortBy,sortDirection,pageNo,pageSize);
+        return ResponseEntity.status(HttpStatus.OK).body(response);
+    }
+
+    @GetMapping("/user/{userId}")
+    public ResponseEntity<ReceiptResponseWrapperDto> getTransactionForUsers(
+            @PathVariable @NotBlank String userId,
+            @RequestParam(defaultValue = "date") String sortBy,
+            @RequestParam(defaultValue = "DESC") String sortDirection,
+            @RequestParam(defaultValue = "ALL") String status,
+            @RequestParam @PositiveOrZero int pageNo,
+            @RequestParam @Positive int pageSize
+    ){
+        log.info(
+                "users Transaction Request | page={} | size={} | statusBy {} | sortBy='{}' | direction='{}'",
+                pageNo, pageSize, status, sortBy, sortDirection
+        );
+        ReceiptResponseWrapperDto response = paymentService
+                .getReceiptForUsers(userId, sortBy, sortDirection, status, pageNo, pageSize);
+        log.info("Serving response for {} receipts ",response.getResponseDtoList().size());
         return ResponseEntity.status(HttpStatus.OK).body(response);
     }
 }
