@@ -9,6 +9,7 @@ import com.gym.planService.Dtos.OrderDtos.Responses.MonthlyRevenueResponseDto;
 import com.gym.planService.Dtos.OrderDtos.Wrappers.AllRecentTransactionsResponseWrapperDto;
 import com.gym.planService.Dtos.OrderDtos.Wrappers.ReceiptResponseWrapperDto;
 import com.gym.planService.Dtos.PlanDtos.Responses.MostPopularPlanIds;
+import com.gym.planService.Dtos.PlanDtos.Responses.RevenueGeneratedPerPlanResponseDto;
 import com.gym.planService.Dtos.PlanDtos.Responses.TotalUserResponseDto;
 import com.gym.planService.Dtos.PlanDtos.Wrappers.AllMonthlyRevenueWrapperResponseDto;
 import com.gym.planService.Dtos.PlanDtos.Wrappers.AllPlanResponseWrapperResponseDto;
@@ -89,6 +90,12 @@ public class RedisConfig {
     }
 
     @Bean
+    public TypedJsonRedisSerializer<RevenueGeneratedPerPlanResponseDto> revenueGeneratedPerPlanResponseDtoRedisSerializer
+            (ObjectMapper redisObjectMapper) {
+        return new TypedJsonRedisSerializer<>(redisObjectMapper, RevenueGeneratedPerPlanResponseDto.class);
+    }
+
+    @Bean
     public CacheManager cacheManager(
             RedisConnectionFactory connectionFactory,
             TypedJsonRedisSerializer<AllPlanResponseWrapperResponseDto> allPlanResponseWrapperDtoRedisSerializer,
@@ -98,7 +105,8 @@ public class RedisConfig {
             TypedJsonRedisSerializer<AllRecentTransactionsResponseWrapperDto> allRecentTransactionsResponseWrapperDtoRedisSerializer,
             TypedJsonRedisSerializer<MostPopularPlanIds> mostPopularPlanIdsRedisSerializer,
             TypedJsonRedisSerializer<MonthlyRevenueResponseDto> monthlyRevenueResponseDtoRedisSerializer,
-            TypedJsonRedisSerializer<ReceiptResponseWrapperDto> receiptResponseWrapperDtoRedisSerializer
+            TypedJsonRedisSerializer<ReceiptResponseWrapperDto> receiptResponseWrapperDtoRedisSerializer,
+            TypedJsonRedisSerializer<RevenueGeneratedPerPlanResponseDto> revenueGeneratedPerPlanResponseDtoRedisSerializer
     ) {
         RedisCacheConfiguration defaultConfig = RedisCacheConfiguration.defaultCacheConfig()
                 .serializeKeysWith(RedisSerializationContext.SerializationPair
@@ -146,6 +154,11 @@ public class RedisConfig {
                 .serializeValuesWith(RedisSerializationContext.SerializationPair
                         .fromSerializer(receiptResponseWrapperDtoRedisSerializer))
                 .entryTtl(Duration.ofHours(4)));
+
+        cacheConfigs.put("revenuePerPlan",defaultConfig
+                .serializeValuesWith(RedisSerializationContext.SerializationPair
+                        .fromSerializer(revenueGeneratedPerPlanResponseDtoRedisSerializer))
+                .entryTtl(Duration.ofHours(12)));
 
         return RedisCacheManager.builder(connectionFactory)
                 .cacheDefaults(defaultConfig)
