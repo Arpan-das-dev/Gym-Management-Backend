@@ -49,22 +49,17 @@ public class PaymentNotificationController {
     @PostMapping("/all/paymentFailed")
     public ResponseEntity<String> sendMailForFailedPayment(@Valid @RequestBody PaymentFailedDto failedDto){
         log.info("©️©️ request received to send email to [{}] for failed payment",failedDto.getEmailId());
-        try {
             String response = notificationService.sendFailedPaymentMail(failedDto);
+            log.info("sending response for failed payment as [{}]",response);
             return ResponseEntity.status(HttpStatus.OK).body(response);
-        } catch (Exception e) {
-            return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR).body(e.getMessage());
         }
-    }
     @PostMapping("/all/refundFailed")
     public ResponseEntity<String> sendMailForFailedRefund(@Valid @RequestBody PaymentFailedDto failedDto){
         log.info("©️©️ request received to send email to [{}] for failed refund",failedDto.getEmailId());
-        try {
             String response = notificationService.sendRefundFailedMail(failedDto);
+            log.info("sending response for failed refund as [{}]",response);
             return ResponseEntity.status(HttpStatus.OK).body(response);
-        } catch (Exception e) {
-            return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR).body(e.getMessage());
-        }
+
     }
 }
 
