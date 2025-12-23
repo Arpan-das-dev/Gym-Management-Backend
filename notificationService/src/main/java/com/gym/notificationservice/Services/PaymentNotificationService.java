@@ -49,6 +49,7 @@ public class PaymentNotificationService {
     }
 
     public String sendFailedPaymentMail(PaymentFailedDto failedDto) {
+        log.info("®️®️ request received in service class to send mail for failed payment ");
         long start = System.currentTimeMillis();
         if(failedDto.getEmailId().contains("@example")){
             return "Send mail To fake mail id";
@@ -73,6 +74,7 @@ public class PaymentNotificationService {
     }
 
     public String sendRefundFailedMail(PaymentFailedDto failedDto) {
+        log.info("®️®️ request received in service class to send mail for failed refund ");
         long start = System.currentTimeMillis();
         if(failedDto.getEmailId().contains("@example")){
             return "Send mail To fake mail id";
