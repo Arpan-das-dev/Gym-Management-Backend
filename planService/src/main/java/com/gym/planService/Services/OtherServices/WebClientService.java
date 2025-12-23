@@ -43,7 +43,7 @@ public class WebClientService {
         this.member_Service_Plan_URL = member_Service_Plan_URL;
     }
 
-    @Async
+    @Async("defaultTasks")
     public void sendUpdateBymMailWithAttachment
             (byte[] pdfReceiptArray, PlanPayment payment,Integer duration, String userMail)
             throws IOException {
@@ -68,7 +68,7 @@ public class WebClientService {
         return file;
     }
 
-    @Async
+    @Async("defaultTasks")
     private void sendAsyncPaymentMail(File attachment, String endpoint, PlanNotificationResponse response) {
         try {
             MultipartBodyBuilder builder = new MultipartBodyBuilder();
@@ -100,7 +100,7 @@ public class WebClientService {
         }
     }
 
-    @Async
+    @Async("defaultTasks")
     public CompletableFuture<String> sendReviewAttachment(byte[] pdfArray) {
         try {
             File file = convertFileFromByteArray(pdfArray,"INVOICE_FOR_YEAR_"+ LocalDate.now().getYear());
@@ -138,8 +138,9 @@ public class WebClientService {
 
     }
 
-    @Async
+    @Async("defaultTasks")
     public void informUserForFailedCase(String cause, PlanPayment payment,String userMail) {
+        log.info("Started calling for occurred exception to inform user -> {}",payment.getUserName());
         String endpoint = cause.equalsIgnoreCase("FAILED") ?
                 "/all/paymentFailed" : "/all/refundFailed";
         String url = notification_service_Base_URL+endpoint;
@@ -155,6 +156,7 @@ public class WebClientService {
                 .paymentId(payment.getPaymentId())
                 .userName(payment.getUserName())
                 .build();
+        log.warn("Preparing to send with subject {} and cause is {} to {}",subject,cause,payment.getUserName());
         webclient.build().post()
                 .uri(url)
                 .bodyValue(payload)
@@ -163,6 +165,6 @@ public class WebClientService {
                 .onErrorMap(err-> {
                     log.warn("error occurred due to {}",err.getMessage());
                     return new InterServiceCommunicationException("Unable To Send You Mail Kindly Contact Admin ");
-                });
+                }).subscribe();
     }
 }
