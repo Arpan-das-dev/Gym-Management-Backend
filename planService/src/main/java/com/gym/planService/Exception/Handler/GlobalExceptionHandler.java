@@ -35,7 +35,7 @@ public class GlobalExceptionHandler {
         return ExceptionUtil.buildErrorResponse(HttpStatus.CONFLICT, ex.getMessage(), request);
     }
 
-    @ExceptionHandler(RazorpayException.class)
+    @ExceptionHandler({RazorpayException.class, RevenueLimitExceededException.class})
     public ResponseEntity<ErrorResponse> handleRazorpayExceptions(Exception ex, HttpServletRequest request) {
         return ExceptionUtil.buildErrorResponse(HttpStatus.SERVICE_UNAVAILABLE,ex.getMessage(),request);
     }
