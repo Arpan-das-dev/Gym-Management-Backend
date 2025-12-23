@@ -223,21 +223,26 @@ public class CuponCodeManagementService {
         boolean valid = false;
         double offPercentage = 0.0;
         if(cachedValue!=null){
-            log.info("line-220 {}::-> cachedValue is not null start retrieving operation","CuponCodeManagementService");
-            int indexOfUnderScore = cachedValue.indexOf("_");
-            String cachedCode = cachedValue.substring(0,indexOfUnderScore);
-            String cachedPlanId = cachedValue.substring(indexOfUnderScore+1);
+            log.info("line-226 {}::-> cachedValue is not null start retrieving operation","CuponCodeManagementService");
+            String[] parts = cachedValue.split("_");
+            if(parts.length <3){
+                log.warn("Invalid/old cache format for coupon {}. Evicting cache.", cuponCode);
+                redisTemplate.delete(key);
+            }
+            else{
+                String cachedCode = parts[0];
+                String cachedPlanId = parts[1];
+                double cachedPercentage = Double.parseDouble(parts[2]);
 
-            log.info("Retrieved cupon code [{}] and planId [ {} ] from cache",cachedCode,cachedPlanId);
-            boolean validation = cachedCode.equals(cuponCode) && cachedPlanId.equals(PlanId);
+                log.info("Retrieved cupon code [{}] and planId [ {} ] from cache",cachedCode,cachedPlanId);
+                boolean validation = cachedCode.equals(cuponCode) && cachedPlanId.equals(PlanId);
 
-            if(validation){
-                valid = true;
-                offPercentage = cuponCodeRepository.findById(cuponCode)
-                        .map(PlanCuponCode::getPercentage)
-                        .orElse(0.00);
-                log.info("line-234::CuponCodeManagementService Set validation as ->true with percentage [{}%]"
-                        ,offPercentage);
+                if(validation){
+                    valid = true;
+                    offPercentage = cachedPercentage;
+                    log.info("line-234::CuponCodeManagementService Set validation as ->true with percentage [{}%]"
+                            ,offPercentage);
+                }
             }
         } else{
             log.info("Cache miss for coupon {}. Checking Database...", cuponCode);
@@ -249,6 +254,7 @@ public class CuponCodeManagementService {
             boolean condition = code.getPlanId().equals(PlanId)
                     && code.getValidity().isAfter(LocalDate.now());
             if(condition) {
+                valid = true;
                 cacheCuponCode(code);
                 offPercentage = code.getPercentage();
                 log.info("line-249::CuponCodeManagementService Set validation as ->true with percentage [{}%]"
@@ -267,7 +273,7 @@ public class CuponCodeManagementService {
     private void cacheCuponCode(PlanCuponCode cupon) {
         long days = cupon.getValidity().toEpochDay() - LocalDate.now().toEpochDay();
         if (days <= 0) days = 1;
-        String value = cupon.getCuponCode()+"_"+cupon.getPlanId();
+        String value = cupon.getCuponCode()+"_"+cupon.getPlanId()+"_"+cupon.getPercentage();
         String key = buildCuponKey(cupon.getCuponCode());
         redisTemplate.opsForValue()
                 .set(key, value, Duration.ofDays(days));
