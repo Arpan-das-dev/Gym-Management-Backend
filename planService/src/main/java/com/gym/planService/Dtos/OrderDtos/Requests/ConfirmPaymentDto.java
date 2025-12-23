@@ -13,6 +13,5 @@ public class ConfirmPaymentDto {
     private String orderId;
     private String razorpayPaymentId;
     private String razorpaySignature;
-    private String userId;
     private String userMail;
 }
