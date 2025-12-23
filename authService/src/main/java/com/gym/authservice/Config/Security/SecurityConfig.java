@@ -52,6 +52,7 @@ public class SecurityConfig {
                         .pathMatchers("/fitStudio/member-service/*/all/**").permitAll()
                         .pathMatchers("/fiStudio/member-service/*/all/**").permitAll()
                         .pathMatchers("/fitStudio/trainerservice/*/all/**").permitAll()
+                        .pathMatchers("/fitStudio/payment-service/matrices/all/**").permitAll()
                         .pathMatchers("/fitStudio/admin/report-message/all/users")
                         .hasAnyRole("MEMBER","TRAINER","ADMIN","TRAINER_PENDING")
                         // plan service configuration
