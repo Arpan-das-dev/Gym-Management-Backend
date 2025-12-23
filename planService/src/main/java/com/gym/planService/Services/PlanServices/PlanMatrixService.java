@@ -1,21 +1,21 @@
 package com.gym.planService.Services.PlanServices;
 
 import com.gym.planService.Dtos.OrderDtos.Responses.MonthlyRevenueResponseDto;
-import com.gym.planService.Dtos.PlanDtos.Responses.MonthlyReviewResponseDto;
-import com.gym.planService.Dtos.PlanDtos.Responses.MostPopularPlanIds;
-import com.gym.planService.Dtos.PlanDtos.Responses.TotalUserResponseDto;
+import com.gym.planService.Dtos.OrderDtos.Responses.OldAndNewTransactionResponseDto;
+import com.gym.planService.Dtos.PlanDtos.Responses.*;
 import com.gym.planService.Dtos.PlanDtos.Wrappers.AllMonthlyRevenueWrapperResponseDto;
 import com.gym.planService.Exception.Custom.PlanNotFoundException;
-import com.gym.planService.Models.MonthlyRevenue;
+import com.gym.planService.Exception.Custom.RevenueLimitExceededException;
 import com.gym.planService.Models.Plan;
+import com.gym.planService.Models.PlanPayment;
 import com.gym.planService.Repositories.PlanPaymentRepository;
 import com.gym.planService.Repositories.PlanRepository;
 import com.gym.planService.Repositories.RevenueRepository;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
+import org.springframework.cache.CacheManager;
 import org.springframework.cache.annotation.Cacheable;
 import org.springframework.data.domain.PageRequest;
-import org.springframework.data.domain.Pageable;
 import org.springframework.data.redis.core.StringRedisTemplate;
 import org.springframework.stereotype.Service;
 
@@ -34,6 +34,7 @@ public class PlanMatrixService {
     private final PlanPaymentRepository paymentRepository;
     private final RevenueRepository revenueRepository;
     private final StringRedisTemplate redisTemplate;
+    private final CacheManager manager;
 
     public String getActiveUsersCount(String planId) {
         log.info("Request received to get users count for plan --> {}", planId);
@@ -140,12 +141,18 @@ public class PlanMatrixService {
                 .build();
     }
 
-    @Cacheable(value = "allRevenue",key = "revenue':'#pageSize':'#pageNo")
-    public AllMonthlyRevenueWrapperResponseDto getAllRevenuePerPerMonth(int pageSize, int pageNo){
-        log.info("📊 Fetching paginated monthly revenue data | pageNo={} | pageSize={}", pageNo, pageSize);
-
-        Pageable pageable = PageRequest.of(pageNo, pageSize);
-        List<MonthlyRevenue> revenuesList = revenueRepository.findPaginatedData(pageable);
+    @Cacheable(value = "allRevenue", key = "#year")
+    public AllMonthlyRevenueWrapperResponseDto getAllRevenuePerPerMonth(int year){
+        log.info("📊 Fetching paginated monthly revenue for year {}", year);
+        List<Integer> yearlist = getOldAndNewestTime().getYarList();
+        boolean condition = yearlist.contains(year);
+        if(!condition) {
+          String message = yearlist.getFirst().equals(yearlist.getLast()) ?
+          "No Payment Present other than Year "+yearlist.getLast() :
+          "No Payment Present For "+year + "Kindly request Between "+yearlist.getFirst()+ " And" + yearlist.getLast();
+          throw new RevenueLimitExceededException(message);
+        }
+        List<Object[]> revenuesList = paymentRepository.findMonthlyRevenueByYear(year);
 
         if (revenuesList.isEmpty()) {
             log.warn("⚠️ No monthly revenue records found for given pagination params.");
@@ -156,26 +163,110 @@ public class PlanMatrixService {
         List<MonthlyReviewResponseDto> dtoList = new ArrayList<>();
         double previousRevenue = 0.0;
 
-        for (MonthlyRevenue revenue : revenuesList) {
+        for (Object[] revenue : revenuesList) {
             double change = 0.0;
+            int paymentYear = (int) revenue[0];
+            String  paymentMonth = (String) revenue[1];
+            double income = (double) revenue[2];
             if (previousRevenue != 0.0) {
-                change = ((revenue.getMonthlyRevenue() - previousRevenue) / previousRevenue) * 100;
+                change = ((income - previousRevenue) / previousRevenue) * 100;
             }
 
             dtoList.add(new MonthlyReviewResponseDto(
-                    revenue.getCurrentYear(),
-                    revenue.getCurrentMonth(),
-                    revenue.getMonthlyRevenue(),
-                    Math.round(change * 100.0) / 100.0
+                    paymentYear,paymentMonth, income, Math.round(change * 100.0) / 100.0
             ));
-            previousRevenue = revenue.getMonthlyRevenue();
+            previousRevenue = income;
             log.debug("🧾 Month: {} | Revenue: {} | Change: {}%",
-                    revenue.getCurrentMonth(), revenue.getMonthlyRevenue(), change);
+                    paymentMonth, income, change);
+        }
+        log.info("📦 Successfully built AllMonthlyRevenueWrapper with {} records.", dtoList.size());
+        return AllMonthlyRevenueWrapperResponseDto.builder()
+                .reviewResponseDtoList(dtoList)
+                .build();
+    }
+
+    public OldAndNewTransactionResponseDto getOldAndNewestTime() {
+        log.info("📆 Fetching available transaction year range");
+
+        int oldest = getCachedYear("PLAN_PAYMENT:OLDEST_YEAR", true);
+        int newest = getCachedYear("PLAN_PAYMENT:NEWEST_YEAR", false);
+
+        log.info("📆 Transaction year boundaries resolved | oldest={} | newest={}", oldest, newest);
+
+        List<Integer> yearList = new ArrayList<>();
+        for (int y = oldest; y <= newest; y++) {
+            yearList.add(y);
         }
 
-        AllMonthlyRevenueWrapperResponseDto response = new AllMonthlyRevenueWrapperResponseDto(dtoList);
-        log.info("📦 Successfully built AllMonthlyRevenueWrapper with {} records.", dtoList.size());
+        log.debug("📆 Available years list prepared -> {}", yearList);
 
-        return response;
+        return OldAndNewTransactionResponseDto.builder()
+                .yarList(yearList)
+                .build();
+    }
+
+
+    private int getCachedYear(String key, boolean oldest) {
+        log.debug("🧠 Resolving {} transaction year (cache key = {})",
+                oldest ? "OLDEST" : "NEWEST", key);
+
+        String cached = redisTemplate.opsForValue().get(key);
+        if (cached != null) {
+            log.info("🧠 Cache HIT for key [{}] -> year={}", key, cached);
+            return Integer.parseInt(cached);
+        }
+
+        log.warn("🧠 Cache MISS for key [{}]. Querying database…", key);
+
+        PlanPayment payment = oldest
+                ? paymentRepository.findOldestTransaction(PageRequest.of(0, 1)).getFirst()
+                : paymentRepository.findNewestTransaction(PageRequest.of(0, 1)).getFirst();
+
+        int resolvedYear = payment.getPaymentYear();
+
+        redisTemplate.opsForValue().set(
+                key,
+                String.valueOf(resolvedYear),
+                oldest ? Duration.ofHours(12) : Duration.ofHours(2)
+        );
+
+        log.info("🧠 Cached {} year={} with TTL={} hours",
+                oldest ? "OLDEST" : "NEWEST",
+                resolvedYear,
+                oldest ? 12 : 2
+        );
+
+        return resolvedYear;
+    }
+
+    @Cacheable(value = "revenuePerPlan", key = "'revenuePlan'")
+    public RevenueGeneratedPerPlanResponseDto getRevenuePerPlan() {
+        Map<String ,PlanLifeTimeIncome> incomeMap = new HashMap<>();
+        List<Object[]> lifeTimeRevenue = paymentRepository.findLifetimeIncomePerPlan();
+        for (Object[] revenue : lifeTimeRevenue) {
+            PlanLifeTimeIncome income = PlanLifeTimeIncome.builder()
+                    .revenue((Double) revenue[1])
+                    .usage((Integer) revenue[2])
+                    .build();
+            String planId = (String) revenue[0];
+            if(!incomeMap.containsKey(planId)){
+                incomeMap.put(planId,income);
+            }
+        }
+        return new RevenueGeneratedPerPlanResponseDto(incomeMap);
+    }
+
+    public void updateRevenuePerPlanCache(String planId,Double paidAmount){
+        RevenueGeneratedPerPlanResponseDto responseDto = (RevenueGeneratedPerPlanResponseDto) Objects
+                .requireNonNull(manager.getCache("revenuePerPlan")).get("revenuePlan");
+        if(responseDto!=null) {
+            PlanLifeTimeIncome income = responseDto.getAllPlanIncomes().get(planId);
+            income.setRevenue(income.getRevenue()+paidAmount);
+            income.setUsage(income.getUsage()+1);
+            Objects.requireNonNull(manager.getCache("revenuePerPlan")).put("revenuePlan",responseDto);
+        } else {
+            Objects.requireNonNull(manager.getCache("revenuePerPlan")).evict("revenuePlan");
+            getRevenuePerPlan();
+        }
     }
 }
