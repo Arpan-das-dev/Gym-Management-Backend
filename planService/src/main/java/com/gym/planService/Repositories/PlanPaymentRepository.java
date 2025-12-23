@@ -44,4 +44,49 @@ public interface PlanPaymentRepository extends JpaRepository<PlanPayment,String>
             Pageable pageable
     );
 
+    @Query("""
+            SELECT
+                p.paymentYear,
+                p.paymentMonth,
+                SUM(p.paidPrice)
+            FROM PlanPayment p
+            WHERE p.paymentYear = :year
+              AND p.paymentStatus = 'SUCCESS'
+            GROUP BY p.paymentYear, p.paymentMonth
+            ORDER BY
+              CASE p.paymentMonth
+                WHEN 'JANUARY' THEN 1
+                WHEN 'FEBRUARY' THEN 2
+                WHEN 'MARCH' THEN 3
+                WHEN 'APRIL' THEN 4
+                WHEN 'MAY' THEN 5
+                WHEN 'JUNE' THEN 6
+                WHEN 'JULY' THEN 7
+                WHEN 'AUGUST' THEN 8
+                WHEN 'SEPTEMBER' THEN 9
+                WHEN 'OCTOBER' THEN 10
+                WHEN 'NOVEMBER' THEN 11
+                WHEN 'DECEMBER' THEN 12
+              END
+            """)
+    List<Object[]> findMonthlyRevenueByYear(@Param("year") int year);
+
+    @Query("SELECT p FROM PlanPayment p ORDER BY p.paymentDate ASC")
+    List<PlanPayment> findOldestTransaction(Pageable pageable);
+
+    @Query("SELECT p FROM PlanPayment p ORDER BY p.paymentDate DESC")
+    List<PlanPayment> findNewestTransaction(Pageable pageable);
+
+    @Query("""
+            SELECT
+                p.planId,
+                SUM(p.paidPrice),
+                COUNT(p.planId)
+            FROM PlanPayment p
+            WHERE p.paymentStatus = 'SUCCESS'
+            GROUP BY p.planId
+            ORDER BY SUM(p.paidPrice) DESC
+            """)
+    List<Object[]> findLifetimeIncomePerPlan();
+
 }
