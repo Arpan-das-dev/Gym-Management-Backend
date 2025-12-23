@@ -25,6 +25,8 @@ import com.razorpay.RazorpayException;
 import jakarta.transaction.Transactional;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
+import org.springframework.cache.Cache;
+import org.springframework.cache.CacheManager;
 import org.springframework.cache.annotation.CacheEvict;
 import org.springframework.cache.annotation.Cacheable;
 import org.springframework.cache.annotation.Caching;
@@ -63,6 +65,7 @@ public class PaymentService {
     private final WebClientService webClientService;
     private final StringRedisTemplate redisTemplate;
     private final CuponCodeManagementService cuponCodeManagementService;
+    private final CacheManager cacheManager;
 
     @Transactional
     @CacheEvict(value = "recentTransactions", allEntries = true )
@@ -126,11 +129,9 @@ public class PaymentService {
         return razorOrder.get("id");
     }
 
-    @Transactional
     @Caching(evict = {
             @CacheEvict(value = "totalUsers", key = "'totalUsersList'"),
             @CacheEvict(value = "recentTransactions", allEntries = true ),
-            @CacheEvict(value = "allRevenue", allEntries = true),
             @CacheEvict(value = "monthlyRevenue", key = "'revenue'"),
             @CacheEvict(value = "mostPopular", key = "'popular'")
     })
@@ -149,14 +150,20 @@ public class PaymentService {
                     log.error("Plan not found for ID: {}", payment.getPlanId());
                     return new PlanNotFoundException("No plan found with ID: " + payment.getPlanId());
                 });
-        Mono<Tuple2<String, byte[]>> receiptFlowMono = generateAndUploadReceipt(payment);
-        Mono<String> memberServiceResponseMono = webClientService
-                .askMemberServiceToAppendPlan(plan, payment.getUserId())
-                .doOnSubscribe(s -> log.info("Initiating member service call"))
-                .doOnNext(res -> log.info("Received response from member service: {}", res))
-                .onErrorResume(err-> handlePaymentFailure(payment,err,dto.getUserMail()));
 
-        // --- 3. Combine and Process  ---
+        Mono<Tuple2<String, byte[]>> receiptFlowMono = generateAndUploadReceipt(payment).cache();
+        Mono<String> memberServiceResponseMono =
+                receiptFlowMono.flatMap(tuple -> {
+                    String receiptUrl = tuple.getT1();
+                    return webClientService
+                            .askMemberServiceToAppendPlan(plan, payment.getUserId())
+                            .doOnSubscribe(s -> log.info("Initiating member service call"))
+                            .doOnNext(res -> log.info("Received response from member service: {}", res))
+                            .onErrorResume(err ->
+                                    handlePaymentFailure(payment, err, dto.getUserMail(), receiptUrl)
+                            );
+                });
+
         return Mono.zip(receiptFlowMono, memberServiceResponseMono)
                 .flatMap(tuple -> {
                     String receiptUrl = tuple.getT1().getT1();
@@ -171,6 +178,7 @@ public class PaymentService {
                                 paymentRepository.save(payment);
                                 planRepository.incrementMembersCount(plan.getPlanId());
                                 evictUserReceiptCache(payment.getUserId());
+                                evictRevenueCache(payment.getPaymentYear());
                                 redisTemplate.delete("USERS::" + plan.getPlanId());
                                 return payment;
                             })
@@ -190,13 +198,12 @@ public class PaymentService {
                 });
     }
 
+
     private Mono<Tuple2<String, byte[]>> generateAndUploadReceipt(PlanPayment payment){
-        return Mono
-                .fromFuture(receiptGenerator.generatePlanPaymentReceipt(payment))
+        return Mono.fromFuture(receiptGenerator.generatePlanPaymentReceipt(payment))
                 .doOnSuccess(success -> log.debug("PDF bytes generated successfully of size {}",success.length))
                 .flatMap(pdfBytes -> Mono
                         .fromFuture(awsService.uploadPaymentReceipt(pdfBytes, payment.getPaymentId()))
-                        // Pass both the URL and the original PDF bytes needed for the email
                         .map(receiptUrl -> Tuples.of(receiptUrl, pdfBytes)));
     }
     private Double calculateDiscountedAmount(Double amount,CuponValidationResponseDto responseDto) {
@@ -205,12 +212,13 @@ public class PaymentService {
         return amount - discount;
     }
 
-    private Mono<String> handlePaymentFailure(PlanPayment payment, Throwable err,String userMail) {
-        log.info("💀💀 an error occurred during memberservice's plan appending due to {}",err.getMessage());
+    private Mono<String> handlePaymentFailure(PlanPayment payment, Throwable err,String userMail,String  receiptUrl) {
+        log.info("💀💀 an error occurred during memberservice's plan appending due to {}",err.toString());
         return Mono.<String>fromCallable(() -> {
             try {
                 String refundId = razorPayService.refundPayment(payment.getPaymentId(), payment.getPaidPrice(), "Service Failure");
                 payment.setPaymentStatus("REFUNDED");
+                payment.setReceiptUrl(receiptUrl);
                 payment.setTransactionTime(LocalDateTime.now());
                 paymentRepository.save(payment);
                 webClientService.informUserForFailedCase("FAILED", payment,userMail);
@@ -220,8 +228,10 @@ public class PaymentService {
                                 + " No action required. Refund should reflect in 5-7 days."
                 );
             } catch (Exception e) {
+                log.warn("💀💀 error occurred in refund due to {}",e.getMessage());
                 payment.setPaymentStatus("MANUAL_INTERVENTION");
                 payment.setTransactionTime(LocalDateTime.now());
+                payment.setReceiptUrl(receiptUrl);
                 paymentRepository.save(payment);
                 webClientService.informUserForFailedCase("CRITICAL", payment,userMail);
                 throw new RefundFailedException(
@@ -341,6 +351,32 @@ public class PaymentService {
                 .totalPages(payments.getTotalPages())
                 .lastPage(payments.isLast())
                 .build();
+    }
+
+    private void evictRevenueCache(Integer paymentYear) {
+        Cache cache = cacheManager.getCache("allRevenue");
+        if (cache != null) {
+            cache.evict(paymentYear);
+            log.info("🧹 Evicted allRevenue cache for year {}", paymentYear);
+        }
+        evictNewestYearCache(paymentYear);
+    }
+    public void evictNewestYearCache(Integer paymentYear) {
+        final String key = "PLAN_PAYMENT:NEWEST_YEAR";
+        String cached = redisTemplate.opsForValue().get(key);
+        if (cached == null) {
+            log.debug("🧹 Newest-year cache already empty. No eviction needed.");
+            return;
+        }
+        int cachedYear = Integer.parseInt(cached);
+        if (paymentYear >= cachedYear) {
+            redisTemplate.delete(key);
+            log.info("🧹 Evicted NEWEST year cache due to paymentYear={} (cached={})",
+                    paymentYear, cachedYear);
+        } else {
+            log.debug("🧹 No eviction needed for NEWEST year cache | paymentYear={} < cached={}",
+                    paymentYear, cachedYear);
+        }
     }
 
     /**
