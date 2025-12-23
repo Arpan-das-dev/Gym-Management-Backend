@@ -37,4 +37,17 @@ public class ThreadPoolConfig {
         executor.initialize();
         return executor;
     }
+
+    @Bean(name = "defaultTasks")
+    public Executor defaultExecutor(){
+        ThreadPoolTaskExecutor executor = new ThreadPoolTaskExecutor();
+        executor.setThreadNamePrefix("DEFAULT-EXEC-");
+        executor.setCorePoolSize(6);
+        executor.setMaxPoolSize(20);
+        executor.setWaitForTasksToCompleteOnShutdown(true);
+        executor.setQueueCapacity(200);
+        executor.setAwaitTerminationSeconds(20);
+        executor.initialize();
+        return executor;
+    }
 }
