@@ -19,7 +19,7 @@ import java.time.LocalDateTime;
         @Index(name = "idx_payment_plan", columnList = "plan_id"),
         @Index(name = "idx_user_name", columnList = "user_name"),
         @Index(name = "idx_payment_date", columnList = "payment_date"),
-        @Index(name = "idx_payment_month_year", columnList = "payment_month, payment_year")
+        @Index(name = "idx_year_status_month", columnList = "payment_year, payment_status, payment_month")
 })
 public class PlanPayment {
 
