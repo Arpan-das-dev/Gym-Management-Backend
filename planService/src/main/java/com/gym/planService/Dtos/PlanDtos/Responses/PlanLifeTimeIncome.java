@@ -11,5 +11,6 @@ import lombok.NoArgsConstructor;
 @NoArgsConstructor
 public class PlanLifeTimeIncome {
     private Double revenue;
-    private Integer usage;
+    private Long usage;
+    private String planName;
 }
