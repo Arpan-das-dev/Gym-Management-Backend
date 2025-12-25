@@ -19,6 +19,7 @@ import com.gym.planService.Services.OtherServices.RazorPayService;
 import com.gym.planService.Services.OtherServices.ReceiptGenerator;
 import com.gym.planService.Services.OtherServices.WebClientService;
 import com.gym.planService.Services.PlanServices.CuponCodeManagementService;
+import com.gym.planService.Services.PlanServices.PlanMatrixService;
 import com.gym.planService.Utils.PaymentIdGenUtil;
 import com.razorpay.Order;
 import com.razorpay.RazorpayException;
@@ -66,6 +67,7 @@ public class PaymentService {
     private final StringRedisTemplate redisTemplate;
     private final CuponCodeManagementService cuponCodeManagementService;
     private final CacheManager cacheManager;
+    private final PlanMatrixService matrixService;
 
     @Transactional
     @CacheEvict(value = "recentTransactions", allEntries = true )
@@ -129,6 +131,8 @@ public class PaymentService {
         return razorOrder.get("id");
     }
 
+
+    @Transactional
     @Caching(evict = {
             @CacheEvict(value = "totalUsers", key = "'totalUsersList'"),
             @CacheEvict(value = "recentTransactions", allEntries = true ),
@@ -144,6 +148,33 @@ public class PaymentService {
                     log.error("Payment not found for order ID: {}", dto.getOrderId());
                     return new PaymentNotFoundException("No payment found for this order ID");
                 });
+        switch (payment.getPaymentStatus().trim().toUpperCase()){
+            case "SUCCESS" -> {
+                return Mono
+                        .just(new GenericResponse(payment.getUserName()+" Your Payment Is Already Processed and Succeeded"));
+            }
+            case "FAILED" -> {
+                return Mono.just(
+                        new GenericResponse("This Payment Is Already Failed Wait Till You Get Refund Or Contact Admin")
+                );
+            }
+            case "REFUNDED" -> {
+                return Mono.just(
+                        new GenericResponse("Payment was refunded earlier. No further action required.")
+                );
+            }
+            case "MANUAL_INTERVENTION" -> {
+                return Mono.just(
+                        new GenericResponse("This Payment Is Failed To refund Admin is Already Notified Please Wait Or Contact Admin")
+                );
+            }
+            case "PROCESSING" -> {
+                return Mono.just(new GenericResponse("Payment is currently being processed"));
+            }
+        }
+        payment.setPaymentStatus("PROCESSING");
+        payment.setTransactionTime(LocalDateTime.now());
+        paymentRepository.save(payment);
 
         Plan plan = planRepository.findById(payment.getPlanId())
                 .orElseThrow(() -> {
@@ -177,9 +208,10 @@ public class PaymentService {
                                 payment.setReceiptUrl(receiptUrl);
                                 paymentRepository.save(payment);
                                 planRepository.incrementMembersCount(plan.getPlanId());
-                                evictUserReceiptCache(payment.getUserId());
-                                evictRevenueCache(payment.getPaymentYear());
                                 redisTemplate.delete("USERS::" + plan.getPlanId());
+                                evictAllCacheValues(payment.getPaymentYear(), payment.getPaidPrice(),
+                                                    payment.getUserId(), payment.getPlanId(),
+                                        payment.getTransactionTime());
                                 return payment;
                             })
                             .subscribeOn(Schedulers.boundedElastic())
@@ -197,6 +229,8 @@ public class PaymentService {
                             });
                 });
     }
+
+
 
 
     private Mono<Tuple2<String, byte[]>> generateAndUploadReceipt(PlanPayment payment){
@@ -222,6 +256,7 @@ public class PaymentService {
                 payment.setTransactionTime(LocalDateTime.now());
                 paymentRepository.save(payment);
                 webClientService.informUserForFailedCase("FAILED", payment,userMail);
+                evictUserReceiptCache(payment.getUserId());
                 throw new PaymentFailedException(
                         "Plan activation failed, but don't worry! We've initiated a full refund. "
                                 + refundId
@@ -234,6 +269,7 @@ public class PaymentService {
                 payment.setReceiptUrl(receiptUrl);
                 paymentRepository.save(payment);
                 webClientService.informUserForFailedCase("CRITICAL", payment,userMail);
+                evictUserReceiptCache(payment.getUserId());
                 throw new RefundFailedException(
                         "💀💀 Plan activation failed and refund encountered an issue. "
                                 + payment.getPaymentId()+
@@ -353,6 +389,28 @@ public class PaymentService {
                 .build();
     }
 
+    /**
+     * this method is responsible to call all the methods responsible to evict caches
+     * @param paymentYear  used to call {@link PaymentService#evictRevenueCache(Integer)}
+     *                    method to evict cache for admin
+     * @param paidPrice used to call {@link PlanMatrixService#autoIncrementLifeTimeIncome(Double)}
+     *                  to auto update cache
+     * @param planId used to call {@link PlanMatrixService#autoIncrement(String, Double)}
+     *              method to atomically update the revenue
+     *
+     * @param userId used to call {@link PaymentService#evictUserReceiptCache(String)}
+     *               to evict cache of recent transaction of a user
+     * @param transactionTime used to call {@link PlanMatrixService#autoUpdateQuickStats(LocalDateTime, Double)}
+     *                        to update quick stats details
+     */
+    private void evictAllCacheValues
+    (Integer paymentYear, Double paidPrice, String planId, String userId,LocalDateTime transactionTime) {
+        evictRevenueCache(paymentYear); // evicts cache for payment year
+        evictUserReceiptCache(userId);
+        matrixService.autoIncrement(planId, paidPrice);
+        matrixService.autoIncrementLifeTimeIncome(paidPrice);
+        matrixService.autoUpdateQuickStats(transactionTime,paidPrice);
+    }
     private void evictRevenueCache(Integer paymentYear) {
         Cache cache = cacheManager.getCache("allRevenue");
         if (cache != null) {
