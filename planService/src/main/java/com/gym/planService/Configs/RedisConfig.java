@@ -89,11 +89,7 @@ public class RedisConfig {
         return new TypedJsonRedisSerializer<>(redisObjectMapper, ReceiptResponseWrapperDto.class);
     }
 
-    @Bean
-    public TypedJsonRedisSerializer<RevenueGeneratedPerPlanResponseDto> revenueGeneratedPerPlanResponseDtoRedisSerializer
-            (ObjectMapper redisObjectMapper) {
-        return new TypedJsonRedisSerializer<>(redisObjectMapper, RevenueGeneratedPerPlanResponseDto.class);
-    }
+
 
     @Bean
     public CacheManager cacheManager(
@@ -105,8 +101,8 @@ public class RedisConfig {
             TypedJsonRedisSerializer<AllRecentTransactionsResponseWrapperDto> allRecentTransactionsResponseWrapperDtoRedisSerializer,
             TypedJsonRedisSerializer<MostPopularPlanIds> mostPopularPlanIdsRedisSerializer,
             TypedJsonRedisSerializer<MonthlyRevenueResponseDto> monthlyRevenueResponseDtoRedisSerializer,
-            TypedJsonRedisSerializer<ReceiptResponseWrapperDto> receiptResponseWrapperDtoRedisSerializer,
-            TypedJsonRedisSerializer<RevenueGeneratedPerPlanResponseDto> revenueGeneratedPerPlanResponseDtoRedisSerializer
+            TypedJsonRedisSerializer<ReceiptResponseWrapperDto> receiptResponseWrapperDtoRedisSerializer
+
     ) {
         RedisCacheConfiguration defaultConfig = RedisCacheConfiguration.defaultCacheConfig()
                 .serializeKeysWith(RedisSerializationContext.SerializationPair
@@ -154,11 +150,6 @@ public class RedisConfig {
                 .serializeValuesWith(RedisSerializationContext.SerializationPair
                         .fromSerializer(receiptResponseWrapperDtoRedisSerializer))
                 .entryTtl(Duration.ofHours(4)));
-
-        cacheConfigs.put("revenuePerPlan",defaultConfig
-                .serializeValuesWith(RedisSerializationContext.SerializationPair
-                        .fromSerializer(revenueGeneratedPerPlanResponseDtoRedisSerializer))
-                .entryTtl(Duration.ofHours(12)));
 
         return RedisCacheManager.builder(connectionFactory)
                 .cacheDefaults(defaultConfig)
