@@ -4,6 +4,7 @@ import com.gym.planService.Dtos.OrderDtos.Responses.MonthlyRevenueResponseDto;
 import com.gym.planService.Dtos.OrderDtos.Responses.OldAndNewTransactionResponseDto;
 import com.gym.planService.Dtos.PlanDtos.Responses.*;
 import com.gym.planService.Dtos.PlanDtos.Wrappers.AllMonthlyRevenueWrapperResponseDto;
+import com.gym.planService.Dtos.PlanDtos.Wrappers.AllPlanResponseWrapperResponseDto;
 import com.gym.planService.Exception.Custom.PlanNotFoundException;
 import com.gym.planService.Exception.Custom.RevenueLimitExceededException;
 import com.gym.planService.Models.Plan;
@@ -13,15 +14,13 @@ import com.gym.planService.Repositories.PlanRepository;
 import com.gym.planService.Repositories.RevenueRepository;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
-import org.springframework.cache.CacheManager;
 import org.springframework.cache.annotation.Cacheable;
 import org.springframework.data.domain.PageRequest;
 import org.springframework.data.redis.core.StringRedisTemplate;
+import org.springframework.scheduling.annotation.Async;
 import org.springframework.stereotype.Service;
 
-import java.time.Duration;
-import java.time.LocalDate;
-import java.time.YearMonth;
+import java.time.*;
 import java.util.*;
 import java.util.stream.Collectors;
 
@@ -34,7 +33,7 @@ public class PlanMatrixService {
     private final PlanPaymentRepository paymentRepository;
     private final RevenueRepository revenueRepository;
     private final StringRedisTemplate redisTemplate;
-    private final CacheManager manager;
+    private final PlanManagementService managementService;
 
     public String getActiveUsersCount(String planId) {
         log.info("Request received to get users count for plan --> {}", planId);
@@ -162,7 +161,7 @@ public class PlanMatrixService {
 
         List<MonthlyReviewResponseDto> dtoList = new ArrayList<>();
         double previousRevenue = 0.0;
-
+        String month = LocalDate.now().getMonth().toString().toUpperCase();
         for (Object[] revenue : revenuesList) {
             double change = 0.0;
             int paymentYear = (int) revenue[0];
@@ -178,11 +177,21 @@ public class PlanMatrixService {
             previousRevenue = income;
             log.debug("🧾 Month: {} | Revenue: {} | Change: {}%",
                     paymentMonth, income, change);
+            if(month.equalsIgnoreCase(paymentMonth.trim().toUpperCase())) {
+                String monthKey = buildMonthKey(month,year);
+                redisTemplate.opsForValue().set(monthKey,String.valueOf(income),Duration.ofDays(15));
+            }
         }
+        Double sum = dtoList.stream().mapToDouble(MonthlyReviewResponseDto::getRevenue).sum();
+        redisTemplate.opsForValue().set("YEAR::"+year,String.valueOf(sum),Duration.ofDays(30));
         log.info("📦 Successfully built AllMonthlyRevenueWrapper with {} records.", dtoList.size());
         return AllMonthlyRevenueWrapperResponseDto.builder()
                 .reviewResponseDtoList(dtoList)
                 .build();
+    }
+
+    private String buildMonthKey(String month, int year) {
+        return "MONTH::"+month+"::"+year;
     }
 
     public OldAndNewTransactionResponseDto getOldAndNewestTime() {
@@ -239,34 +248,265 @@ public class PlanMatrixService {
         return resolvedYear;
     }
 
-    @Cacheable(value = "revenuePerPlan", key = "'revenuePlan'")
     public RevenueGeneratedPerPlanResponseDto getRevenuePerPlan() {
-        Map<String ,PlanLifeTimeIncome> incomeMap = new HashMap<>();
-        List<Object[]> lifeTimeRevenue = paymentRepository.findLifetimeIncomePerPlan();
-        for (Object[] revenue : lifeTimeRevenue) {
-            PlanLifeTimeIncome income = PlanLifeTimeIncome.builder()
-                    .revenue((Double) revenue[1])
-                    .usage((Integer) revenue[2])
-                    .build();
-            String planId = (String) revenue[0];
-            if(!incomeMap.containsKey(planId)){
-                incomeMap.put(planId,income);
+        log.info("®️®️ request received to get revenue per plans");
+        Set<String> planIds = redisTemplate.opsForSet().members("REVENUE:PLANS");
+
+        if (planIds == null || planIds.isEmpty()) {
+            log.info("line -> 247 No value Stored in redis Calling Db method");
+            return fallBackLoadFromDb();
+        }
+        Map<String, PlanLifeTimeIncome> incomeMap = new HashMap<>();
+        log.info("line -> 251 key found in redis fetching from redis");
+        AllPlanResponseWrapperResponseDto responseDto =  managementService.getAllPlans();
+        int count = 1;
+        for (String planId : planIds) {
+
+            log.debug("Processing request no -> {}",count);
+             String planName = responseDto.getResponseDtoList().stream()
+                    .filter(plan -> planId.equalsIgnoreCase(plan.getPlanId()))
+                    .map(PlanResponseDto::getPlanName)
+                    .findFirst().orElse("");
+            String revenue = redisTemplate.opsForValue().get("REVENUE:PLAN:" + planId);
+            String usage = redisTemplate.opsForValue().get("USAGE:PLAN:" + planId);
+
+            if (revenue == null || usage == null) {
+               log.info("Null Value is Captured");
+               asyncRepairPlan(planId);
+               continue;
             }
+
+            incomeMap.put(planId, PlanLifeTimeIncome.builder()
+                            .revenue(Double.parseDouble(revenue))
+                            .usage(Long.parseLong(usage))
+                            .planName(planName)
+                            .build()
+            );
+            count ++;
+        }
+        if (incomeMap.isEmpty()) {
+            log.debug("Value in the map is empty calling fallback db load method");
+            return fallBackLoadFromDb();
         }
         return new RevenueGeneratedPerPlanResponseDto(incomeMap);
     }
 
-    public void updateRevenuePerPlanCache(String planId,Double paidAmount){
-        RevenueGeneratedPerPlanResponseDto responseDto = (RevenueGeneratedPerPlanResponseDto) Objects
-                .requireNonNull(manager.getCache("revenuePerPlan")).get("revenuePlan");
-        if(responseDto!=null) {
-            PlanLifeTimeIncome income = responseDto.getAllPlanIncomes().get(planId);
-            income.setRevenue(income.getRevenue()+paidAmount);
-            income.setUsage(income.getUsage()+1);
-            Objects.requireNonNull(manager.getCache("revenuePerPlan")).put("revenuePlan",responseDto);
-        } else {
-            Objects.requireNonNull(manager.getCache("revenuePerPlan")).evict("revenuePlan");
-            getRevenuePerPlan();
+    @Async("defaultTasks")
+    public void asyncRepairPlan(String planId) {
+        Boolean acquired = redisTemplate.opsForValue()
+                .setIfAbsent("LOCK:REPAIR:" + planId, "1", Duration.ofSeconds(30));
+        if(!Boolean.TRUE.equals(acquired)){
+            log.warn("A thread is Already busy in repair");
+            return;
+        }
+        try {
+            Object[] data = paymentRepository.findLifeTimeIncomeByPlanId(planId);
+            if (data == null || data[1] == null || data[2] == null) {
+                return;
+            }
+            redisTemplate.opsForValue().set("REVENUE:PLAN:" + planId, data[1].toString(),Duration.ofHours(18));
+            redisTemplate.opsForValue().set("USAGE:PLAN:" + planId, data[2].toString(),Duration.ofHours(18));
+            log.debug("Set income as->{} for plan[{}]",data[1].toString(),data[0].toString());
+        }  finally {
+           boolean value =  redisTemplate.delete("LOCK:REPAIR:" + planId);
+            if (value) {
+                log.debug("lock released");
+            } else {
+                log.debug("no lock found");
+            }
         }
     }
+    private RevenueGeneratedPerPlanResponseDto fallBackLoadFromDb() {
+        log.info("calling Db to fetch refreshed data and put in the redis");
+        List<Object[]> data = paymentRepository.findLifetimeIncomePerPlan();
+        log.info("Fetched {} no of data from db ",data.size());
+        Map<String, PlanLifeTimeIncome> map = new HashMap<>();
+        int count = 1;
+        for (Object[] row : data) {
+            log.debug("line-> 269 Processing row no of {} for planId[{}]",count,row[0].toString());
+            String planId = (String) row[0];
+            Double revenue = (Double) row[1];
+            Long usage = (Long) row[2];
+
+            map.put(planId,
+                    PlanLifeTimeIncome.builder()
+                            .revenue(revenue)
+                            .usage(usage)
+                            .build()
+            );
+            log.info("line->280 planId->[{}] stored in the map",planId);
+
+            redisTemplate.opsForSet().add("REVENUE:PLANS", planId);
+            redisTemplate.opsForValue().set("REVENUE:PLAN:" + planId, revenue.toString(),Duration.ofHours(18));
+            redisTemplate.opsForValue().set("USAGE:PLAN:" + planId, usage.toString(),Duration.ofHours(18));
+
+            count++;
+        }
+        redisTemplate.expire("REVENUE:PLANS", Duration.ofHours(18));
+        return new RevenueGeneratedPerPlanResponseDto(map);
+    }
+
+
+    public void autoIncrement(String planId, Double paidAmount) {
+        log.info("®️®️ received to autoupdate cache for revenue/plans");
+
+        redisTemplate.opsForSet().add("REVENUE:PLANS", planId);
+        redisTemplate.opsForValue().increment("REVENUE:PLAN:" + planId, paidAmount);
+        redisTemplate.opsForValue().increment("USAGE:PLAN:" + planId, 1);
+        redisTemplate.expire("REVENUE:PLANS", Duration.ofHours(18));
+        redisTemplate.expire("REVENUE:PLAN:" + planId, Duration.ofHours(18));
+        redisTemplate.expire("USAGE:PLAN:" + planId, Duration.ofHours(18));
+    }
+
+    public GenericResponse getLifeTimeIncome() {
+        String value = redisTemplate.opsForValue().get("LIFETIME:");
+        if(value!= null) {
+            return new GenericResponse(value);
+        }
+        synchronized (this) {
+            String data = redisTemplate.opsForValue().get("LIFETIME:");
+            if(data!=null) return new GenericResponse(data);
+            Double paidPrice = paymentRepository.getLifeTimeIncome();
+            double safeTotal = paidPrice == null ? 0.0 : paidPrice;
+            redisTemplate.opsForValue().set("LIFETIME:",String.valueOf(paidPrice),Duration.ofDays(30));
+            return new GenericResponse(String.valueOf(safeTotal));
+        }
+    }
+
+    public void autoIncrementLifeTimeIncome(Double paidPrice){
+        redisTemplate.opsForValue().setIfAbsent("LIFETIME:", "0");
+        redisTemplate.opsForValue().increment("LIFETIME:",paidPrice);
+        redisTemplate.expire("LIFETIME:",Duration.ofDays(30));
+    }
+
+    public QuickStatsResponseDto getSummaryStatsOfIncome(){
+        log.debug("®️®️ request received to get quick stats about income");
+        LocalDateTime now = LocalDateTime.now();
+        int year = now.getYear();
+        String month = now.getMonth().toString().toUpperCase();
+        String yearKey = "YEAR::" + year;
+        String monthKey = buildMonthKey(month, year);
+        String dayKey = "DAY::" + now.toLocalDate();
+        String yearly = redisTemplate.opsForValue().get(yearKey);
+        String monthly = redisTemplate.opsForValue().get(monthKey);
+        if(yearly== null || monthly== null){
+            log.warn("⚠️ Cache MISS for YEAR or MONTH | year={} | month={}", year, month);
+            synchronized (this) {
+                yearly = redisTemplate.opsForValue().get(yearKey);
+                monthly = redisTemplate.opsForValue().get(monthKey);
+                if (yearly == null || monthly == null) {
+                    log.info("🛢️ Fetching YEAR & MONTH revenue from DB");
+
+                    Object[] data = paymentRepository.findIncomeByYearAndMonth(year, month);
+
+                    double safeYearly = data[0] == null ? 0.0 : ((Number) data[0]).doubleValue();
+                    double safeMonthly = data[1] == null ? 0.0 : ((Number) data[1]).doubleValue();
+
+                    yearly = String.valueOf(safeYearly);
+                    monthly = String.valueOf(safeMonthly);
+
+                    redisTemplate.opsForValue().set(yearKey, yearly, Duration.ofDays(30));
+                    redisTemplate.opsForValue().set(monthKey, monthly, Duration.ofDays(15));
+
+                    log.info("📦 Cached YEAR={} and MONTH={} revenue", safeYearly, safeMonthly);
+                }
+            }
+        } else {
+            log.debug("✅ Cache HIT for YEAR & MONTH");
+        }
+        Double dailyIncome = getTodayIncome(dayKey,now);
+
+        log.info("✅ QUICK STATS READY | Today={} | Month={} | Year={}", dailyIncome, monthly, yearly);
+
+        return QuickStatsResponseDto.builder()
+                .yearlyIncome(Double.valueOf(yearly))
+                .monthlyIncome(Double.valueOf(monthly))
+                .todayIncome(dailyIncome)
+                .build();
+    }
+
+    private Double getTodayIncome(String  dayKey,LocalDateTime now) {
+        String todayIncome = redisTemplate.opsForValue().get(dayKey);
+        if (todayIncome == null) {
+            log.warn("⚠️ Cache MISS for TODAY revenue | key={}", dayKey);
+            synchronized (this) {
+                todayIncome = redisTemplate.opsForValue().get(dayKey);
+                if (todayIncome == null) {
+                    LocalDateTime start = now.toLocalDate().atStartOfDay();
+                    LocalDateTime end = now.toLocalDate().atTime(LocalTime.MAX);
+                    log.info("🛢️ Fetching TODAY revenue from DB | {} -> {}", start, end);
+
+                    Double dbValue = paymentRepository.findTodayIncome(start, end);
+                    double safeToday = dbValue == null ? 0.0 : dbValue;
+                    todayIncome = String.valueOf(safeToday);
+
+                    redisTemplate.opsForValue().set(dayKey, todayIncome, Duration.ofHours(4));
+                    log.info("📦 Cached TODAY revenue = {}", safeToday);
+                }
+            }
+        } else {
+            log.debug("✅ Cache HIT for TODAY revenue");
+        }
+        return Double.valueOf(todayIncome);
+    }
+
+    public void autoUpdateQuickStats(LocalDateTime transactionTime,Double paidPrice){
+        String month = transactionTime.getMonth().toString().toUpperCase();
+        String yearKey = "YEAR::" + transactionTime.getYear();
+        String monthKey = buildMonthKey(month, transactionTime.getYear());
+        String dayKey = "DAY::" + transactionTime.toLocalDate();
+
+        ensureExistence(monthKey,yearKey,dayKey,transactionTime);
+
+        redisTemplate.opsForValue().increment(yearKey,paidPrice);
+        redisTemplate.opsForValue().increment(monthKey, paidPrice);
+        redisTemplate.opsForValue().increment(dayKey,paidPrice);
+
+        redisTemplate.expire(yearKey,Duration.ofDays(30));
+        redisTemplate.expire(monthKey,Duration.ofDays(15));
+        redisTemplate.expire(dayKey,Duration.ofHours(4));
+    }
+
+    private void ensureExistence(String monthKey, String yearKey, String dayKey,LocalDateTime now) {
+        if(!redisTemplate.hasKey(monthKey) || !redisTemplate.hasKey(yearKey)) {
+            restoreFromDbSafely(now);
+        }
+        if(!redisTemplate.hasKey(dayKey)) {
+           getTodayIncome(dayKey,now);
+        }
+    }
+
+    private void restoreFromDbSafely(LocalDateTime now) {
+
+        Boolean acquired = redisTemplate.opsForValue()
+                .setIfAbsent("LOCK:QUICK_STATS", "1", Duration.ofSeconds(30));
+
+        if (!Boolean.TRUE.equals(acquired)) {
+            log.warn("⏳ QuickStats baseline restore already in progress");
+            return;
+        }
+
+        try {
+            int year = now.getYear();
+            String month = now.getMonth().toString().toUpperCase();
+
+            Object[] data = paymentRepository.findIncomeByYearAndMonth(year, month);
+
+            double yearly = data[0] == null ? 0.0 : ((Number) data[0]).doubleValue();
+            double monthly = data[1] == null ? 0.0 : ((Number) data[1]).doubleValue();
+
+            redisTemplate.opsForValue().set("YEAR::" + year, String.valueOf(yearly), Duration.ofDays(30));
+
+            redisTemplate.opsForValue().
+                    set(buildMonthKey(month, year),
+                    String.valueOf(monthly),
+                    Duration.ofDays(15));
+
+            log.info("📦 Restored QuickStats baseline from DB | year={} | month={}", yearly, monthly);
+
+        } finally {
+            redisTemplate.delete("LOCK:QUICK_STATS");
+        }
+    }
+
 }
