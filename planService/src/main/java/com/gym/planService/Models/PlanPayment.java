@@ -60,7 +60,7 @@ public class PlanPayment {
     @Column(name = "payment_method")
     private String paymentMethod; // e.g. UPI, CARD, NET BANKING, WALLET
 
-    @Column(name = "order_id")
+    @Column(name = "order_id",unique = true)
     private String orderId; // Razorpay Order ID (useful for verification or reconciliation)
 
     @Column(name = "receipt_url")
