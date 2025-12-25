@@ -2,17 +2,21 @@ package com.gym.planService.Repositories;
 
 import com.gym.planService.Models.PlanPayment;
 import io.lettuce.core.dynamic.annotation.Param;
+import jakarta.persistence.LockModeType;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
 import org.springframework.data.jpa.repository.JpaRepository;
+import org.springframework.data.jpa.repository.Lock;
 import org.springframework.data.jpa.repository.Query;
 
 
+import java.time.LocalDateTime;
 import java.util.List;
 import java.util.Optional;
 
 public interface PlanPaymentRepository extends JpaRepository<PlanPayment,String> {
 
+    @Lock(LockModeType.PESSIMISTIC_WRITE)
     @Query("SELECT p FROM PlanPayment p WHERE p.orderId = :orderId")
     Optional<PlanPayment> findByOrderId(@Param("orderId") String orderId);
 
@@ -88,5 +92,35 @@ public interface PlanPaymentRepository extends JpaRepository<PlanPayment,String>
             ORDER BY SUM(p.paidPrice) DESC
             """)
     List<Object[]> findLifetimeIncomePerPlan();
+
+    @Query(" SELECT p.planId,SUM(p.paidPrice),COUNT(p.planId) FROM PlanPayment p WHERE p.paymentStatus = 'SUCCESS' " +
+            "AND p.planId =:planId")
+    Object[] findLifeTimeIncomeByPlanId(@Param("planId")String planId);
+    @Query("SELECT SUM(p.paidPrice) FROM PlanPayment p WHERE p.paymentStatus = 'SUCCESS'")
+    Double getLifeTimeIncome();
+
+    @Query("""
+                SELECT
+                    SUM(CASE WHEN p.paymentYear = :year THEN p.paidPrice ELSE 0 END),
+                    SUM(CASE WHEN p.paymentYear = :year AND p.paymentMonth = :month THEN p.paidPrice ELSE 0 END)
+                FROM PlanPayment p
+                WHERE p.paymentStatus = 'SUCCESS'
+            """)
+    Object[] findIncomeByYearAndMonth(
+            @Param("year") int year,
+            @Param("month") String month
+    );
+
+
+    @Query("""
+                SELECT SUM(p.paidPrice)
+                FROM PlanPayment p
+                WHERE p.paymentStatus = 'SUCCESS'
+                  AND p.transactionTime BETWEEN :start AND :end
+            """)
+    Double findTodayIncome(
+            @Param("start") LocalDateTime start,
+            @Param("end") LocalDateTime end
+    );
 
 }
