@@ -1,9 +1,8 @@
 package com.gym.planService.Controllers;
 
 import com.gym.planService.Dtos.OrderDtos.Responses.MonthlyRevenueResponseDto;
-import com.gym.planService.Dtos.PlanDtos.Responses.GenericResponse;
-import com.gym.planService.Dtos.PlanDtos.Responses.MostPopularPlanIds;
-import com.gym.planService.Dtos.PlanDtos.Responses.TotalUserResponseDto;
+import com.gym.planService.Dtos.OrderDtos.Responses.OldAndNewTransactionResponseDto;
+import com.gym.planService.Dtos.PlanDtos.Responses.*;
 import com.gym.planService.Dtos.PlanDtos.Wrappers.AllMonthlyRevenueWrapperResponseDto;
 import com.gym.planService.Services.PlanServices.PlanMatrixService;
 import jakarta.validation.Valid;
@@ -89,6 +88,37 @@ public class MatricesDetailsController {
 
         log.info("SERVICE :: Paginated monthly revenue report generated successfully with {} entries",
                 response.getReviewResponseDtoList().size());
+        return ResponseEntity.status(HttpStatus.OK).body(response);
+    }
+
+    @GetMapping("/admin/yearRange")
+    public ResponseEntity <OldAndNewTransactionResponseDto> getYerList() {
+        log.info("API :: [GET] /admin/yearRange | Request received");
+        OldAndNewTransactionResponseDto response = matrixService.getOldAndNewestTime();
+        log.info("Serving list of {} size ",response.getYarList().size());
+        return ResponseEntity.status(HttpStatus.OK).body(response);
+    }
+    @GetMapping("/admin/getAllPlanRevenue")
+    public ResponseEntity<RevenueGeneratedPerPlanResponseDto> getRevenueDetailsPerPlan(){
+        log.info("API :: [GET] /admin/getAllPlanRevenue | Request received");
+        RevenueGeneratedPerPlanResponseDto response = matrixService.getRevenuePerPlan();
+        log.info("Serving Response for each Plan revenue of {} size",response.getAllPlanIncomes().size());
+        return ResponseEntity.status(HttpStatus.OK).body(response);
+    }
+
+    @GetMapping("/admin/LifeTimeIncome")
+    public ResponseEntity<GenericResponse> lifeTimeIncome(){
+        log.info("API :: [GET] /admin/LifeTimeIncome | Request received");
+        GenericResponse response = matrixService.getLifeTimeIncome();
+        log.info("Total Life time income is {}",response.getMessage());
+        return ResponseEntity.status(HttpStatus.OK).body(response);
+    }
+
+    @GetMapping("/admin/quickStats")
+    public ResponseEntity<QuickStatsResponseDto> getQuickIncomeStats(){
+        log.info("API :: [GET] /admin/quickStats | Request received");
+        QuickStatsResponseDto response = matrixService.getSummaryStatsOfIncome();
+        log.debug("Serving response as yearly income [{}]",response.getYearlyIncome());
         return ResponseEntity.status(HttpStatus.OK).body(response);
     }
 
