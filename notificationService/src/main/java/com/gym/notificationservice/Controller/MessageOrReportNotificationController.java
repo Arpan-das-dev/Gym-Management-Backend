@@ -38,7 +38,8 @@ public class MessageOrReportNotificationController {
     }
 
     @PostMapping("/freeze")
-    public ResponseEntity<Void> informTrainer(FreezeTrainerRequestDto requestDto){
+    public ResponseEntity<Void> informTrainer(
+            @RequestBody FreezeTrainerRequestDto requestDto){
         return void;
     }
 }
