@@ -1,5 +1,7 @@
 package com.gym.trainerService.Services.TrainerServices;
 
+import com.fasterxml.jackson.databind.ObjectMapper;
+import com.gym.trainerService.Dto.MemberDtos.Responses.GenericResponse;
 import com.gym.trainerService.Dto.MemberDtos.Responses.SessionMatrixInfo;
 import com.gym.trainerService.Dto.TrainerMangementDto.Requests.SpecialityResponseDto;
 import com.gym.trainerService.Dto.TrainerMangementDto.Requests.TrainerAboutRequestDto;
@@ -17,9 +19,12 @@ import com.gym.trainerService.Repositories.SpecialityRepository;
 import com.gym.trainerService.Repositories.TrainerRepository;
 import com.gym.trainerService.Services.MemberServices.SessionManagementService;
 import com.gym.trainerService.Services.OtherServices.SpecialityService;
+import com.gym.trainerService.Services.OtherServices.WebClientService;
 import com.gym.trainerService.Utils.CustomAnnotations.Annotations.LogRequestTime;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
+import org.springframework.cache.Cache;
+import org.springframework.cache.CacheManager;
 import org.springframework.cache.annotation.CacheEvict;
 import org.springframework.cache.annotation.CachePut;
 import org.springframework.cache.annotation.Cacheable;
@@ -27,6 +32,7 @@ import org.springframework.cache.annotation.Caching;
 import org.springframework.dao.DataAccessException;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
+import reactor.core.publisher.Mono;
 
 import java.time.LocalDate;
 import java.util.List;
@@ -52,10 +58,12 @@ public class TrainerManagementService {
     private final SpecialityService specialityService;
     private final SessionManagementService sessionManagementService;
     private final TrainerReviewService reviewService;
+    private final WebClientService webClientService;
     private final TrainerRepository trainerRepository;
     private final SpecialityRepository specialityRepository;
     private final ReviewRepository reviewRepository;
     private final MemberRepository memberRepository;
+    private final CacheManager manager;
     /**
      * Creates a new trainer in the system with validation and cache eviction.
      * This method performs duplicate validation by checking both trainer ID and email
@@ -130,8 +138,10 @@ public class TrainerManagementService {
                         .firstName(dto.getFirstName())
                         .lastName(dto.getLastName())
                         .email(dto.getEmail())
+                        .about(getTrainerAboutById(dto.getTrainerId()))
                         .phone(dto.getPhone())
                         .gender(dto.getGender())
+                        .frozen(dto.isFrozen())
                         .averageRating(dto.getAverageRating())
                         .lastLoginTime(dto.getLastLogin())
                         .build())
@@ -220,7 +230,11 @@ public class TrainerManagementService {
         }
         Trainer trainer = getById(trainerId);
         log.info("Trainer fetched successfully: {}", trainer.getTrainerId());
-
+        if(trainer.isFrozen()) {
+            log.info("🥶🥶 Can not change speciality because account of {} {} is frozen",
+                    trainer.getFirstName(),trainer.getLastName());
+            throw new UnAuthorizedRequestException("Your Account Is Frozen Can not Proceed Request");
+        }
         List<Specialities> existingSpecs = specialityRepository.findAllTrainerId(trainerId);
         log.debug("Existing specialities count for trainer {}: {}", trainerId, existingSpecs.size());
 
@@ -277,6 +291,11 @@ public class TrainerManagementService {
                                                                    String oldSpecialityName,
                                                                    String newSpecialityName) {
         Trainer trainer = getById(trainerId);
+        if(trainer.isFrozen()) {
+            log.info("🥶🥶 Can not update speciality because account of {} {} is frozen",
+                    trainer.getFirstName(),trainer.getLastName());
+            throw new UnAuthorizedRequestException("Your Account Is Frozen Can not Proceed Request");
+        }
         log.info("Successfully fetched trainer from db with name {} {}", trainer.getFirstName(),
                 trainer.getLastName());
         Specialities specialities = specialityRepository.findSpecialityByTrainerIdAndName(trainerId,
@@ -312,6 +331,12 @@ public class TrainerManagementService {
     })
     public String deleteSpecializationByName(String trainerId, String specialityName) {
         log.info("Request received to delete speciality with name {}", specialityName);
+        Trainer trainer = getById(trainerId);
+        if(trainer.isFrozen()) {
+            log.info("🥶🥶 Can not delete speciality because account of {} {} is frozen",
+                    trainer.getFirstName(),trainer.getLastName());
+            throw new UnAuthorizedRequestException("Your Account Is Frozen Can not Proceed Request");
+        }
         int effectedRows = specialityRepository.deleteByTrainerIdWithName(trainerId, specialityName);
         log.info("Successfully deleted and {} rows effected", effectedRows);
         return effectedRows > 0 ? "Successfully deleted speciality of name " + specialityName
@@ -337,6 +362,7 @@ public class TrainerManagementService {
                 .emailId(trainer.getEmail())
                 .phone(trainer.getPhone())
                 .gender(trainer.getGender())
+                .freeze(trainer.isFrozen())
                 .lastLoginTime(trainer.getLastLogin())
                 .averageRating(trainer.getAverageRating())
                 .build();
@@ -425,6 +451,11 @@ public class TrainerManagementService {
         Trainer trainer = getById(requestDto.getTrainerId());
         log.info("Successfully fetched 👟👟 trainer from db/cache {} {}",
                 trainer.getFirstName(),trainer.getLastName());
+        if(trainer.isFrozen()) {
+            log.info("🥶🥶 Can not update about because account of {} {} is frozen",
+                    trainer.getFirstName(),trainer.getLastName());
+            throw new UnAuthorizedRequestException("Your Account Is Frozen Can not Proceed Request");
+        }
         trainer.setAbout(requestDto.getAbout());
         trainerRepository.save(trainer);
         log.info("Successfully saved about for trainer {}",requestDto.getTrainerId());
@@ -439,6 +470,21 @@ public class TrainerManagementService {
         return response;
     }
 
+    /**
+     * <p> This Method is Responsible For</p>
+     * <ul>
+     *     <li>
+     *         get trainer by id {@link TrainerRepository#findById(Object)}
+     *     </li>
+     *     <li>
+     *         then store it in cache
+     *         {@link  com.gym.trainerService.Configs.RedisConfig#trainerTypedJsonRedisSerializer(ObjectMapper)}
+     *     </li>
+     * </ul>
+     * @param id a unique trainerId
+     * @return {@link Trainer}
+     * @throws NoTrainerFoundException if no trainer Found with unique id for trainer
+     */
     @Cacheable(value = "trainer",key = "#id")
     public Trainer getById(String id) {
         return trainerRepository.findById(id)
@@ -485,6 +531,83 @@ public class TrainerManagementService {
                 .previousMonthClientCount(previousClientCount)
                 .change(percentage)
                 .build();
+    }
+
+
+    /**
+     * <p> Method responsible to</p>
+     * <ul>
+     *     <li> Freeze or UnFreeze Trainer With Unique id and retrieve trainer from
+     *     a helper method {@link TrainerManagementService#getById(String)}
+     *     </li>
+     *     <li> Inform Trainer By Notification service via WebClient
+     *     {@link WebClientService#notifyForFreezeOrUnFreeze(boolean, Trainer)}
+     *     </li>
+     *     <li>
+     *         Update cache For trainer using helper method
+     *         {@link TrainerManagementService#updateTrainerCache(Trainer)}
+     *     </li>
+     *     <li>
+     *         see controller method
+     *         {@link com.gym.trainerService.Controllers.TrainerManagementController#updateTrainerFrozenStatus(String, boolean)}
+     *     </li>
+     * </ul>
+     * @param value a boolean value to set freeze status for trainer
+     * @param trainerId a unique trainer id to get trainer info
+     * @return {@link GenericResponse}
+     */
+    @LogRequestTime
+    @CacheEvict(value = "AllTrainerCache", key = "'All'")
+    public Mono<GenericResponse> freezeOrUnFreezeTrainer(boolean value,String trainerId) {
+        log.info("®️®️ request received to update trainer frozen status | trainerId={}", trainerId);
+        Trainer trainer = getById(trainerId);
+        String frozen = value ? "Frozen" : "UnFrozen";
+        if(trainer.isFrozen() == value) {
+            log.info("Admin tried to already {} account",frozen);
+            return Mono.just(new GenericResponse("The Trainer Is Already "+frozen));
+        }
+        trainer.setFrozen(value);
+        return Mono.fromCallable(()->trainerRepository.save(trainer))
+                .doOnNext(saved-> {
+                    log.info("Trainer Updated Successfully now Updating Cache");
+                    updateTrainerCache(saved);
+                })
+                .flatMap(saved->webClientService.notifyForFreezeOrUnFreeze(value,saved)
+                        .map(sent->{
+                            if(sent) {
+                                log.info("Successfully Send Notification to {} {}",
+                                        saved.getFirstName(),saved.getLastName());
+                                return new GenericResponse("Trainer " + frozen + " Successfully");
+                            } else{
+                                return new GenericResponse(
+                                        "Trainer " + frozen +
+                                                " Successfully, but notification could not be sent. " +
+                                                "Please contact the trainer personally."
+                                );
+                            }
+                        }));
+    }
+
+    /**
+     *  <p>This Method is Responsible for</p>
+     *  update trainer cache using {@link CacheManager}
+     * @see TrainerManagementService#getById(String) how it stores it in cache
+     * @param trainer a unique id for trainer
+     */
+    private void updateTrainerCache(Trainer trainer) {
+        Cache cache = manager.getCache("trainer");
+        if (cache == null) {
+            log.warn("⚠️ Trainer cache not configured, skipping cache update");
+            return;
+        }
+        try {
+            cache.put(trainer.getTrainerId(), trainer);
+            log.debug("♻️ Cache updated | cache=trainer | trainerId={}",
+                    trainer.getTrainerId());
+        } catch (Exception ex) {
+            log.warn("⚠️ Failed to update trainer cache | trainerId={} | reason={}",
+                    trainer.getTrainerId(), ex.getMessage());
+        }
     }
 
 
