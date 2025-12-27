@@ -1,6 +1,7 @@
 package com.gym.notificationservice.Controller;
 
 import com.gym.notificationservice.Dto.AuthNotificationRequests.MessageOrReportNotificationRequestDto;
+import com.gym.notificationservice.Dto.MailNotificationDtos.FreezeTrainerRequestDto;
 import com.gym.notificationservice.Dto.PaymentNotificationDtos.Responses.GenericAsyncResponseDto;
 import com.gym.notificationservice.Dto.PaymentNotificationDtos.Responses.GenericResponseDto;
 import com.gym.notificationservice.Services.AuthNotificationService;
@@ -34,5 +35,10 @@ public class MessageOrReportNotificationController {
            @RequestBody MessageOrReportNotificationRequestDto requestDto){
         return ResponseEntity.status(HttpStatus.OK)
                 .body(notificationService.sendMessageOrReportResolvedStatus(requestDto));
+    }
+
+    @PostMapping("/freeze")
+    public ResponseEntity<Void> informTrainer(FreezeTrainerRequestDto requestDto){
+        return void;
     }
 }
