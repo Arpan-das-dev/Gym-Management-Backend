@@ -89,8 +89,11 @@ public class RedisConfig {
         return new TypedJsonRedisSerializer<>(redisObjectMapper, ReceiptResponseWrapperDto.class);
     }
 
-
-
+    @Bean
+    public TypedJsonRedisSerializer<RevenueGeneratedPerPlanResponseDto> revenueGeneratedPerPlanResponseDtoSerializer
+            (ObjectMapper redisObjectMapper) {
+        return new TypedJsonRedisSerializer<>(redisObjectMapper, RevenueGeneratedPerPlanResponseDto.class);
+    }
     @Bean
     public CacheManager cacheManager(
             RedisConnectionFactory connectionFactory,
@@ -101,8 +104,8 @@ public class RedisConfig {
             TypedJsonRedisSerializer<AllRecentTransactionsResponseWrapperDto> allRecentTransactionsResponseWrapperDtoRedisSerializer,
             TypedJsonRedisSerializer<MostPopularPlanIds> mostPopularPlanIdsRedisSerializer,
             TypedJsonRedisSerializer<MonthlyRevenueResponseDto> monthlyRevenueResponseDtoRedisSerializer,
-            TypedJsonRedisSerializer<ReceiptResponseWrapperDto> receiptResponseWrapperDtoRedisSerializer
-
+            TypedJsonRedisSerializer<ReceiptResponseWrapperDto> receiptResponseWrapperDtoRedisSerializer,
+            TypedJsonRedisSerializer<RevenueGeneratedPerPlanResponseDto> revenueGeneratedPerPlanResponseDtoSerializer
     ) {
         RedisCacheConfiguration defaultConfig = RedisCacheConfiguration.defaultCacheConfig()
                 .serializeKeysWith(RedisSerializationContext.SerializationPair
@@ -150,6 +153,11 @@ public class RedisConfig {
                 .serializeValuesWith(RedisSerializationContext.SerializationPair
                         .fromSerializer(receiptResponseWrapperDtoRedisSerializer))
                 .entryTtl(Duration.ofHours(4)));
+
+        cacheConfigs.put("revenuePerPlan",defaultConfig
+                .serializeValuesWith(RedisSerializationContext.SerializationPair
+                        .fromSerializer(revenueGeneratedPerPlanResponseDtoSerializer))
+                .entryTtl(Duration.ofHours(1)));
 
         return RedisCacheManager.builder(connectionFactory)
                 .cacheDefaults(defaultConfig)
