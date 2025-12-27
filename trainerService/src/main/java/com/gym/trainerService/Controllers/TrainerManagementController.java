@@ -19,12 +19,14 @@ import com.gym.trainerService.Services.TrainerServices.TrainerManagementService;
 import com.gym.trainerService.Utils.CustomAnnotations.Annotations.LogExecutionTime;
 import com.gym.trainerService.Utils.CustomAnnotations.Annotations.LogRequestTime;
 import jakarta.validation.constraints.NotBlank;
+import jakarta.validation.constraints.NotNull;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.validation.annotation.Validated;
 import org.springframework.web.bind.annotation.*;
+import reactor.core.publisher.Mono;
 
 /**
  * REST Controller for managing Trainer-related operations.
@@ -263,9 +265,24 @@ public class TrainerManagementController {
 
     @LogExecutionTime
     @GetMapping("/all/getAbout")
-    public ResponseEntity<GenericResponse> getTrainerAboutById(String trainerId) {
+    public ResponseEntity<GenericResponse> getTrainerAboutById(
+            @RequestParam
+            @NotBlank(message = "Can Not Perform This Request Without Having a TrainerId")String trainerId) {
         log.info("Request reached for get about for trainer {}",trainerId);
         String response = trainerManagementService.getTrainerAboutById(trainerId);
         return ResponseEntity.status(HttpStatus.OK).body(new GenericResponse(response));
+    }
+
+    @LogExecutionTime
+    @PostMapping("/admin/freezeTrainer/{trainerId}")
+    public ResponseEntity<Mono<GenericResponse>> updateTrainerFrozenStatus(
+            @PathVariable
+            @NotBlank(message = "Can Not Perform This Request Without Having a TrainerId") String trainerId,
+            @RequestParam @NotNull boolean value
+    )
+    {
+        log.info("©️©️ Request reached for set status for trainer {}",trainerId);
+        Mono<GenericResponse> responseMono = trainerManagementService.freezeOrUnFreezeTrainer(value,trainerId);
+        return ResponseEntity.status(HttpStatus.OK).body(responseMono);
     }
 }
