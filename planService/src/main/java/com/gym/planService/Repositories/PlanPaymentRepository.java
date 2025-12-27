@@ -7,6 +7,7 @@ import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
 import org.springframework.data.jpa.repository.JpaRepository;
 import org.springframework.data.jpa.repository.Lock;
+import org.springframework.data.jpa.repository.Modifying;
 import org.springframework.data.jpa.repository.Query;
 
 
@@ -82,20 +83,32 @@ public interface PlanPaymentRepository extends JpaRepository<PlanPayment,String>
     List<PlanPayment> findNewestTransaction(Pageable pageable);
 
     @Query("""
+                SELECT
+                    p.planId,
+                    p.planName,
+                    SUM(p.paidPrice),
+                    COUNT(p.planId)
+                FROM PlanPayment p
+                WHERE p.paymentStatus = 'SUCCESS'
+                GROUP BY p.planId, p.planName
+                ORDER BY SUM(p.paidPrice) DESC
+            """)
+    List<Object[]> findLifetimeIncomePerPlan();
+
+
+    @Query("""
             SELECT
                 p.planId,
+                p.planName,
                 SUM(p.paidPrice),
                 COUNT(p.planId)
             FROM PlanPayment p
             WHERE p.paymentStatus = 'SUCCESS'
-            GROUP BY p.planId
-            ORDER BY SUM(p.paidPrice) DESC
+            AND p.planId = :planId
+            GROUP BY p.planId, p.planName
             """)
-    List<Object[]> findLifetimeIncomePerPlan();
+    Object[] findLifeTimeIncomeByPlanId(@Param("planId") String planId);
 
-    @Query(" SELECT p.planId,SUM(p.paidPrice),COUNT(p.planId) FROM PlanPayment p WHERE p.paymentStatus = 'SUCCESS' " +
-            "AND p.planId =:planId")
-    Object[] findLifeTimeIncomeByPlanId(@Param("planId")String planId);
     @Query("SELECT SUM(p.paidPrice) FROM PlanPayment p WHERE p.paymentStatus = 'SUCCESS'")
     Double getLifeTimeIncome();
 
@@ -123,4 +136,15 @@ public interface PlanPaymentRepository extends JpaRepository<PlanPayment,String>
             @Param("end") LocalDateTime end
     );
 
+    @Modifying
+    @Query("""
+                UPDATE PlanPayment p
+                SET p.planName = :newName
+                WHERE p.planId = :planId AND p.planName = :oldName
+            """)
+    int updatePlanName(
+            @Param("planId") String planId,
+            @Param("oldName") String oldName,
+            @Param("newName") String newName
+    );
 }
