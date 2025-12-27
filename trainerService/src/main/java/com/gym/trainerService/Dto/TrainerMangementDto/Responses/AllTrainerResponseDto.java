@@ -31,9 +31,11 @@ public class AllTrainerResponseDto {
     private String imageUrl;
     private String firstName;
     private String lastName;
+    private String about;
     private String email;
     private String phone;
     private String gender;
+    private boolean frozen;
     private double averageRating;
     private LocalDateTime lastLoginTime;
 }
