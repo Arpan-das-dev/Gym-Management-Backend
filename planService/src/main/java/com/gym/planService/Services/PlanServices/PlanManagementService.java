@@ -7,6 +7,7 @@ import com.gym.planService.Dtos.PlanDtos.Wrappers.AllPlanResponseWrapperResponse
 import com.gym.planService.Exception.Custom.DuplicatePlanFoundException;
 import com.gym.planService.Exception.Custom.PlanNotFoundException;
 import com.gym.planService.Models.Plan;
+import com.gym.planService.Repositories.PlanPaymentRepository;
 import com.gym.planService.Repositories.PlanRepository;
 import jakarta.transaction.Transactional;
 import lombok.RequiredArgsConstructor;
@@ -15,8 +16,11 @@ import org.springframework.cache.annotation.CacheEvict;
 import org.springframework.cache.annotation.CachePut;
 import org.springframework.cache.annotation.Cacheable;
 import org.springframework.cache.annotation.Caching;
+import org.springframework.dao.DataIntegrityViolationException;
+import org.springframework.data.redis.core.StringRedisTemplate;
 import org.springframework.stereotype.Service;
 
+import java.time.Duration;
 import java.util.List;
 
 /**
@@ -40,7 +44,8 @@ import java.util.List;
 public class PlanManagementService {
 
     private final PlanRepository planRepository;
-
+    private final StringRedisTemplate redisTemplate;
+    private final PlanPaymentRepository paymentRepository;
     /**
      * Creates a new subscription plan if one with the same ID or name does not exist.
      * Saves new plan entity and updates the cache of all plans.
@@ -70,6 +75,10 @@ public class PlanManagementService {
                 .build();
         planRepository.save(plan);
 
+        redisTemplate.opsForSet().add("REVENUE:PLANS", plan.getPlanId());
+        redisTemplate.opsForValue().set("PLAN:NAME:" + plan.getPlanId(), plan.getPlanName());
+
+        log.info("Plan created and matrix metadata updated | planId={}", plan.getPlanId());
         log.info("Successfully saved plan::{}", plan.getPlanName());
         return responseWrapperDtoBuilder();
     }
@@ -86,27 +95,65 @@ public class PlanManagementService {
     @Transactional
     @CacheEvict(value = "allPlansCache", key = "'all'")
     public PlanResponseDto updatePlan(String id, PlanUpdateRequestDto requestDto) {
-        Plan plan = planRepository.findById(id)
-                .orElseThrow(() -> new PlanNotFoundException("No plan found with the id::" + id));
 
-        log.info("Successfully retrieved plan -->{}", plan.getPlanName());
+        try {
+            Plan plan = planRepository.findById(id)
+                    .orElseThrow(() -> new PlanNotFoundException("No plan found with id " + id));
 
-        plan.setPlanName(requestDto.getPlanName());
-        plan.setPlanPrice(requestDto.getPrice());
-        plan.setFeatures(requestDto.getFeatures());
-        plan.setDuration(requestDto.getDuration());
-        planRepository.save(plan);
+            String oldName = plan.getPlanName();
 
-        log.info("Successfully saved plan of name::{} with duration of {} days",
-                plan.getPlanName(), plan.getDuration());
+            plan.setPlanName(requestDto.getPlanName());
+            plan.setPlanPrice(requestDto.getPrice());
+            plan.setFeatures(requestDto.getFeatures());
+            plan.setDuration(requestDto.getDuration());
 
-        return PlanResponseDto.builder()
-                .planId(plan.getPlanId())
-                .planName(plan.getPlanName())
-                .duration(plan.getDuration())
-                .price(plan.getPlanPrice())
-                .planFeatures(plan.getFeatures())
-                .build();
+            planRepository.save(plan);
+
+            int effectedRows = paymentRepository.updatePlanName(
+                    plan.getPlanId(),
+                    oldName,
+                    plan.getPlanName()
+            );
+            log.debug("Updated plan details and rows effected [{}]",effectedRows);
+            updatePlanNameCacheSafely(plan.getPlanId(), plan.getPlanName());
+
+            return PlanResponseDto.builder()
+                    .planId(plan.getPlanId())
+                    .planName(plan.getPlanName())
+                    .duration(plan.getDuration())
+                    .price(plan.getPlanPrice())
+                    .planFeatures(plan.getFeatures())
+                    .build();
+
+        } catch (DataIntegrityViolationException ex) {
+            throw new DuplicatePlanFoundException(
+                    "A plan with name '" + requestDto.getPlanName() + "' already exists"
+            );
+        }
+    }
+
+    private void updatePlanNameCacheSafely(String planId, String planName) {
+
+        String lockKey = "LOCK:PLAN_NAME:" + planId;
+
+        Boolean acquired = redisTemplate.opsForValue()
+                .setIfAbsent(lockKey, "1", Duration.ofSeconds(30));
+
+        if (!Boolean.TRUE.equals(acquired)) {
+            log.warn("Plan name cache update skipped due to active lock | planId={}", planId);
+            return;
+        }
+
+        try {
+            String key = "PLAN:NAME:" + planId;
+
+            if (redisTemplate.hasKey(key)) {
+                redisTemplate.opsForValue().set(key, planName);
+                log.info("Updated plan name in cache | planId={}", planId);
+            }
+        } finally {
+            redisTemplate.delete(lockKey);
+        }
     }
 
     /**
