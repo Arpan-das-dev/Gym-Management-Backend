@@ -2,13 +2,18 @@ package com.gym.trainerService.Services.OtherServices;
 
 import com.gym.trainerService.Dto.SessionDtos.Responses.SessionResponseDto;
 import com.gym.trainerService.Dto.SessionDtos.Responses.UpdateSessionResponseDto;
+import com.gym.trainerService.Dto.TrainerMangementDto.Responses.FreezeTrainerResponseDto;
 import com.gym.trainerService.Exception.Custom.InterServiceCommunicationError;
 import com.gym.trainerService.Models.Session;
+import com.gym.trainerService.Models.Trainer;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.stereotype.Service;
 import org.springframework.web.reactive.function.client.WebClient;
 import reactor.core.publisher.Mono;
+
+import java.time.LocalDateTime;
+import java.time.format.DateTimeFormatter;
 
 /**
  * Service responsible for inter-service communication between Trainer Service and Member Service.
@@ -45,7 +50,7 @@ public class WebClientService {
 
     /** Base URL for Member Service session-related endpoints. */
     private final String MemberService_BaseUrl_Session;
-
+    private final String NotificationService_Freeze;
     /**
      * Constructs the {@link WebClientService} with required dependencies.
      *
@@ -53,8 +58,10 @@ public class WebClientService {
      * @param memberService_BaseUrl_Session base URL for Member Service session endpoints (injected from application.properties)
      */
     public WebClientService(WebClient.Builder webClient,
-                            @Value("${app.memberService.Base_Url.session}") String memberService_BaseUrl_Session) {
+                            @Value("${app.memberService.Base_Url.session}") String memberService_BaseUrl_Session,
+                            @Value("${app.notificationService.Base_Url.freeze}") String Notification) {
         this.webClient = webClient;
+        this.NotificationService_Freeze = Notification;
         MemberService_BaseUrl_Session = memberService_BaseUrl_Session;
     }
 
@@ -182,6 +189,41 @@ public class WebClientService {
                 }).onErrorResume(err->{
                     log.warn("an error occurred due to {}",err.getMessage());
                     return null;
+                });
+    }
+
+    public Mono<Boolean> notifyForFreezeOrUnFreeze(boolean value, Trainer trainer) {
+        String endpoint = NotificationService_Freeze+"/freeze";
+        String subject = value ? "Account Frozen" : "Account UnFrozen";
+
+        LocalDateTime dateTime = LocalDateTime.now();
+        DateTimeFormatter formatter = DateTimeFormatter.ofPattern("dd/MM/yyyy HH:mm");
+        String formattedString = dateTime.format(formatter);
+
+        FreezeTrainerResponseDto requestDto = FreezeTrainerResponseDto.builder()
+                .frozen(value)
+                .trainerName(trainer.getFirstName()+" "+trainer.getLastName())
+                .subject(subject)
+                .trainerMail(trainer.getEmail())
+                .time(formattedString)
+                .build();
+        return webClient.build()
+                .post()
+                .uri(endpoint)
+                .bodyValue(requestDto)
+                .exchangeToMono(res -> {
+                    if (res.statusCode().is2xxSuccessful()) {
+                        log.info("📩 Notification sent to {}", trainer.getEmail());
+                        return Mono.just(true);
+                    }
+                    log.warn("⚠️ Notification failed | status={} | trainerId={}",
+                            res.statusCode(), trainer.getTrainerId());
+                    return Mono.just(false);
+                })
+                .onErrorResume(err -> {
+                    log.warn("⚠️ Notification service unreachable | trainerId={} | reason={}",
+                            trainer.getTrainerId(), err.getMessage());
+                    return Mono.just(false);
                 });
     }
 }
