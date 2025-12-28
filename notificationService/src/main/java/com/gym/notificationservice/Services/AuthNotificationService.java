@@ -1,6 +1,7 @@
 package com.gym.notificationservice.Services;
 
 import com.gym.notificationservice.Dto.AuthNotificationRequests.*;
+import com.gym.notificationservice.Dto.MailNotificationDtos.FreezeTrainerRequestDto;
 import com.gym.notificationservice.Dto.PaymentNotificationDtos.Responses.GenericResponseDto;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
@@ -68,8 +69,27 @@ public class AuthNotificationService {
 
     public GenericResponseDto sendMessageOrReportResolvedStatus(MessageOrReportNotificationRequestDto requestDto) {
 //       return mailService.sendMail(requestDto.getSendTo(), requestDto.getSubject(), requestDto.getMessage());
+        if(requestDto.getSendTo().contains("@example")) {
+            log.info("fake Email detected and the fake email is {}",requestDto.getSendTo());
+            return new GenericResponseDto("Mail Sent Successfully to fake email");
+        }
         log.info("sending to {}", requestDto.getSendTo());
         mailjetService.sendMail(requestDto.getSendTo(), requestDto.getSubject(), requestDto.getMessage());
         return new GenericResponseDto("Mail sent successfully to user for deleting account");
+    }
+
+    public void sendFreezeMail(FreezeTrainerRequestDto requestDto) {
+        if(!requestDto.getTrainerMail().contains("@example")) {
+            log.info("®️®️ request received to process mail to {} ",requestDto.getTrainerName());
+            Context context = new Context();
+            context.setVariable("name",requestDto.getTrainerName());
+            context.setVariable("time",requestDto.getTime());
+            context.setVariable("subject",requestDto.getSubject());
+            String template = requestDto.isFrozen() ? "freeze-trainer" : "unfreeze-trainer";
+            String body = templateEngine.process(template,context);
+            mailjetService.sendMail(requestDto.getTrainerMail(),requestDto.getSubject(),body);
+        } else {
+            log.info("Fake Email Detected and did not sending mail via mail jet");
+        }
     }
 }
