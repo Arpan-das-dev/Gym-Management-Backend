@@ -274,6 +274,17 @@ public class TrainerManagementController {
     }
 
     @LogExecutionTime
+    @GetMapping("/admin/clientInfo/{trainerId}")
+    public ResponseEntity<GenericResponse> getTrainerClientInfo(
+            @PathVariable @NotBlank(message = "Can Not Perform This Request Without Having a TrainerId") String trainerId
+    ){
+        log.info("©️©️ request reached to get client matrix info for trainer {}",trainerId);
+        Integer response = trainerManagementService.getTrainerDashBoardInfo(trainerId)
+                .getClientMatrixInfo().getCurrentMonthClientCount();
+        log.info("sending response as {}",response);
+        return ResponseEntity.status(HttpStatus.OK).body(new GenericResponse(String.valueOf(response)));
+    }
+    @LogExecutionTime
     @PostMapping("/admin/freezeTrainer/{trainerId}")
     public ResponseEntity<Mono<GenericResponse>> updateTrainerFrozenStatus(
             @PathVariable
