@@ -1,0 +1,114 @@
+<!DOCTYPE html>
+<html xmlns:th="http://www.thymeleaf.org" lang="en">
+<head>
+    <meta charset="UTF-8">
+    <title th:text="${subject}">Trainer Account Reactivated</title>
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            background-color: #f4f4f4;
+            margin: 0;
+            padding: 0;
+        }
+        .container {
+            max-width: 620px;
+            margin: 30px auto;
+            background: #ffffff;
+            border-radius: 14px;
+            box-shadow: 0 6px 18px rgba(0,0,0,0.12);
+            overflow: hidden;
+            border: 1px solid #ddd;
+        }
+        .header {
+            background: linear-gradient(90deg, #2e7d32, #111);
+            color: #fff;
+            padding: 22px;
+            text-align: center;
+        }
+        .header h2 {
+            margin: 0;
+            font-size: 22px;
+        }
+        .content {
+            padding: 28px;
+            color: #333;
+            line-height: 1.7;
+        }
+        .content p {
+            margin: 14px 0;
+        }
+        .highlight {
+            color: #ff7a00;
+            font-weight: bold;
+        }
+        .success {
+            color: #2e7d32;
+            font-weight: bold;
+        }
+        .info-box {
+            margin-top: 18px;
+            padding: 16px;
+            background: #f1f8f4;
+            border-left: 4px solid #2e7d32;
+            border-radius: 6px;
+            font-size: 14px;
+        }
+        .footer {
+            background: #111;
+            color: #ccc;
+            text-align: center;
+            font-size: 12px;
+            padding: 16px;
+        }
+    </style>
+</head>
+<body>
+
+<div class="container">
+    <div class="header">
+        <h2 th:text="${subject}">Trainer Account Reactivated</h2>
+    </div>
+
+    <div class="content">
+        <p>Hello <span class="highlight" th:text="${name}">Trainer</span>,</p>
+
+        <p class="success">
+            ✅ Your <strong>FIT STUDIO Trainer Account</strong> has been successfully <strong>re-activated</strong>.
+        </p>
+
+        <div class="info-box">
+            <p><strong>Your access has been fully restored:</strong></p>
+            <ul>
+                <li>Member discovery and assignments</li>
+                <li>Session scheduling and management</li>
+                <li>Trainer dashboard and analytics</li>
+            </ul>
+        </div>
+
+        <p>
+            Your profile is once again visible to members,
+            and all platform features are available without restriction.
+        </p>
+
+        <p>
+            We appreciate your patience during the review process and
+            encourage continued compliance with platform policies.
+        </p>
+
+        <p>
+            <strong>Reactivation Time:</strong>
+            <span class="success" th:text="${time}">12 Sep 2025, 10:45 AM</span>
+        </p>
+
+        <p>
+            We wish you continued success on the FIT STUDIO platform.
+        </p>
+    </div>
+
+    <div class="footer">
+        © FIT STUDIO · Trainer Management System
+    </div>
+</div>
+
+</body>
+</html>
