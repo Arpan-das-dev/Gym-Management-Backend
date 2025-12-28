@@ -62,13 +62,17 @@ public interface MemberRepository extends JpaRepository<Member, String> {
      * JPQL Method 1: Counts members currently eligible.
      * @param currentDate The current date (e.g., 2025-12-05).
      */
-    @Query("SELECT COUNT(m) FROM Member m WHERE m.eligibilityEnd >= :currentDate")
-    Long countCurrentMembers(@Param("currentDate") LocalDate currentDate);
+    @Query("SELECT COUNT(m) FROM Member m WHERE m.eligibilityEnd >= :currentDate " +
+            "AND m.trainerId =:trainerId")
+    Long countCurrentMembers(@Param("currentDate") LocalDate currentDate,
+                             @Param("trainerId") String  trainerId);
 
     /**
      * JPQL Method 2: Counts members eligible at the end of the last month.
      * @param lastMonthEndDate The last day of the previous month (e.g., 2025-11-30).
      */
-    @Query("SELECT COUNT(m) FROM Member m WHERE m.eligibilityEnd >= :lastMonthEndDate")
-    Long countMembersEligibleAtLastMonthEnd(@Param("lastMonthEndDate") LocalDate lastMonthEndDate);
+    @Query("SELECT COUNT(m) FROM Member m WHERE m.eligibilityEnd >= :lastMonthEndDate " +
+            "AND m.trainerId =:trainerId")
+    Long countMembersEligibleAtLastMonthEnd(@Param("lastMonthEndDate") LocalDate lastMonthEndDate,
+                                            @Param("trainerId") String  trainerId);
 }
