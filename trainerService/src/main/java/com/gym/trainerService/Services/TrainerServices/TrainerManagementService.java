@@ -518,8 +518,8 @@ public class TrainerManagementService {
     @Cacheable(value = "ClientMatrix",key = "#trainerId")
     private ClientMatrixInfo getClientMatricesInfo(LocalDate current, LocalDate previous, String trainerId) {
         log.info("📊📊 Request received to get client matrix for trainer {}",trainerId);
-        int currentClientCount = memberRepository.countCurrentMembers(current).intValue();
-        int previousClientCount = memberRepository.countMembersEligibleAtLastMonthEnd(previous).intValue();
+        int currentClientCount = memberRepository.countCurrentMembers(current,trainerId).intValue();
+        int previousClientCount = memberRepository.countMembersEligibleAtLastMonthEnd(previous,trainerId).intValue();
 
         int change = (currentClientCount-previousClientCount);
         double percentage = ((double) change /currentClientCount)*100;
