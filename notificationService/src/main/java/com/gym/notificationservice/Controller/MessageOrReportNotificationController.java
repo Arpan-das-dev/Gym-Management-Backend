@@ -26,7 +26,8 @@ public class MessageOrReportNotificationController {
 
     private final  AuthNotificationService notificationService;
     @PostMapping("/resolved")
-    public ResponseEntity<GenericResponseDto> sendMessageStatusMailByService(MessageOrReportNotificationRequestDto requestDto){
+    public ResponseEntity<GenericResponseDto> sendMessageStatusMailByService(
+            @RequestBody MessageOrReportNotificationRequestDto requestDto){
         return ResponseEntity.status(HttpStatus.OK)
                 .body(notificationService.sendMessageOrReportResolvedStatus(requestDto));
     }
@@ -38,8 +39,10 @@ public class MessageOrReportNotificationController {
     }
 
     @PostMapping("/freeze")
-    public ResponseEntity<Void> informTrainer(
-            @RequestBody FreezeTrainerRequestDto requestDto){
-        return void;
+    public ResponseEntity<Void> informTrainer(@RequestBody FreezeTrainerRequestDto requestDto){
+       log.info("request received to send mail to {} for {}",requestDto.getTrainerMail(),
+               requestDto.isFrozen() ? "Freeze Account": "UnFreeze Account");
+       notificationService.sendFreezeMail(requestDto);
+       return ResponseEntity.status(HttpStatus.OK).build();
     }
 }
