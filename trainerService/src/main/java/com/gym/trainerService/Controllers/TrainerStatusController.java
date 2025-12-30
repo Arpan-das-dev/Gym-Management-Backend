@@ -130,7 +130,7 @@ public class TrainerStatusController {
      * as of now it's returning but near future
      * it will return using websocket
      */
-    @GetMapping("all/active-count")
+    @GetMapping("/all/active-count")
     public ResponseEntity<Long> getActiveMemberCount() {
         return ResponseEntity.status(HttpStatus.OK).body(trainerStatusService.getActiveTrainersCount());
         // returning member count as OK http status
