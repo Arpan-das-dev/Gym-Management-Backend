@@ -1,5 +1,6 @@
 package com.gym.trainerService.Services.MemberServices;
 import com.gym.trainerService.Dto.MemberDtos.Requests.AssignMemberRequestDto;
+import com.gym.trainerService.Dto.MemberDtos.Responses.GenericResponse;
 import com.gym.trainerService.Dto.MemberDtos.Responses.MemberResponseDto;
 import com.gym.trainerService.Dto.MemberDtos.Wrappers.AllMemberResponseWrapperDto;
 import com.gym.trainerService.Exception.Custom.InvalidMemberException;
@@ -8,6 +9,7 @@ import com.gym.trainerService.Models.Member;
 import com.gym.trainerService.Models.Trainer;
 import com.gym.trainerService.Repositories.MemberRepository;
 import com.gym.trainerService.Repositories.TrainerRepository;
+import com.gym.trainerService.Services.OtherServices.WebClientService;
 import jakarta.transaction.Transactional;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
@@ -15,6 +17,8 @@ import org.springframework.cache.annotation.CacheEvict;
 import org.springframework.cache.annotation.Cacheable;
 import org.springframework.cache.annotation.Caching;
 import org.springframework.stereotype.Service;
+import reactor.core.publisher.Mono;
+import reactor.core.scheduler.Schedulers;
 
 import java.time.LocalDate;
 import java.util.List;
@@ -45,6 +49,7 @@ public class MemberManagementService {
     private final MemberRepository memberRepository;
     // injecting TrainerRepository by constructor injection using @RequiredArgsConstructor
     private final TrainerRepository trainerRepository;
+    private final WebClientService webClientService;
 
     /**
      * Assigns a member to a trainer. Handles three cases:
@@ -83,16 +88,17 @@ public class MemberManagementService {
             boolean sameTrainer = member.getTrainerId().equals(trainer.getTrainerId());
             boolean expired = member.getEligibilityEnd().isBefore(LocalDate.now());
 
-            if (sameTrainer && expired) {
+            if (sameTrainer && !expired) {
                 log.info("Extending eligibility for existing member {}", member.getMemberId());
                 return incrementEligibility(requestDto, member);
-            } else if (!sameTrainer && !expired) {
+            }else if (!sameTrainer && !expired) {
                 log.warn("Member {} is already assigned to another trainer", member.getMemberId());
                 throw new InvalidMemberException("Cannot assign new trainer: member is still active with another trainer");
-            } else if (!sameTrainer) {
+            }else if (!sameTrainer) {
                 log.info("Reassigning member {} to new trainer {}", member.getMemberId(), trainerId);
                 return updateMember(trainerId, member, requestDto);
             }
+
         }
 
         // Create new member
@@ -145,9 +151,23 @@ public class MemberManagementService {
             @CacheEvict(value = "AllMemberListCache",key ="#trainerId"),
             @CacheEvict(value = "DashboardInfo",key = "#trainerId"),
     })
-    public String deleteMemberByIds(String trainerId, String memberId) {
-        int effectedRows = memberRepository.deleteByTrainerAndMember(trainerId,memberId);
-       return effectedRows > 0 ? "Successfully deleted" : "No memberFound with the ids";
+    public Mono<GenericResponse> deleteMemberByIds(String trainerId, String memberId, boolean value) {
+        return webClientService.deleteTrainer(trainerId, memberId, value)
+                .flatMap(res -> {
+                    log.info("Reached Response in service class with response -> [{}]", res.getMessage());
+
+                    return Mono.fromCallable(() ->
+                                    memberRepository.deleteByTrainerAndMember(trainerId, memberId)
+                            )
+                            .subscribeOn(Schedulers.boundedElastic())
+                            .thenReturn(res);
+                })
+                .onErrorResume(err -> {
+                    log.warn("Error occurred, triggering compensation: {}", err.getMessage());
+                    return webClientService
+                            .deleteTrainer(trainerId, memberId, !value)
+                            .then(Mono.error(err));
+                });
     }
 
     /**
