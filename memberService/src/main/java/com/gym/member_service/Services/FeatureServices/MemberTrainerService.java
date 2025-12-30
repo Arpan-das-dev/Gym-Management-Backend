@@ -21,6 +21,7 @@ import com.gym.member_service.Utils.CustomJavaEvict;
 import jakarta.transaction.Transactional;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
+import org.springframework.cache.annotation.CacheEvict;
 import org.springframework.cache.annotation.CachePut;
 import org.springframework.cache.annotation.Cacheable;
 import org.springframework.dao.DataAccessException;
@@ -198,6 +199,9 @@ public class MemberTrainerService {
                             requestDto.getEligibilityEnd().toEpochDay() - LocalDate.now().toEpochDay())
                     : requestDto.getEligibilityEnd(); trainer.setEligibilityEnd(newEligibility);
                     log.info("Updated eligibility to {}", newEligibility);
+                    if(trainer.isDeleted()){
+                        trainer.setDeleted(false);
+                    }
         } else {
             trainer = Trainer.builder()
                     .trainerId(requestDto.getTrainerId())
@@ -237,7 +241,7 @@ public class MemberTrainerService {
     @Cacheable(value = "member'sTrainer", key="#memberId")
     public TrainerInfoResponseDto getTrainerInfo(String memberId) {
         Trainer trainer = trainerRepository.findTrainerByMemberId(memberId).orElse(null);
-        if(trainer==null){
+        if(trainer==null || trainer.isDeleted()){
             return new TrainerInfoResponseDto();
         }
         log.info("Trainer found with this id {} and eligible till {}",trainer.getTrainerId(), trainer.getEligibilityEnd());
@@ -247,6 +251,24 @@ public class MemberTrainerService {
                 .profileImageUrl(trainer.getTrainerProfileImageUrl())
                 .eligibilityDate(trainer.getEligibilityEnd()) .build();
     }
+
+
+    @Transactional
+    @CacheEvict(value = "member'sTrainer", key="#memberId")
+    public String  deleteTrainer(String trainerId,String memberId,boolean value) {
+        log.info("request received to delete trainer by trainerId {}",trainerId);
+        Trainer trainer = trainerRepository.findTrainerByMemberId(memberId)
+                .orElseThrow(()-> {
+                    log.warn("no trainer Found from db with id {}",trainerId);
+                    return new TrainerNotFoundException("No Trainer Found With Corresponding id");
+                });
+        trainer.setDeleted(value);
+        trainerRepository.save(trainer);
+        String status = value ? "Deleted" : "RolledBack";
+        return "Trainer "+status+" Successfully From MemberService";
+    }
+
+
     /**
      * Creates a new training session for a member.
      *
