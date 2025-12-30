@@ -1,5 +1,6 @@
 package com.gym.trainerService.Services.OtherServices;
 
+import com.gym.trainerService.Dto.MemberDtos.Responses.GenericResponse;
 import com.gym.trainerService.Dto.SessionDtos.Responses.SessionResponseDto;
 import com.gym.trainerService.Dto.SessionDtos.Responses.UpdateSessionResponseDto;
 import com.gym.trainerService.Dto.TrainerMangementDto.Responses.FreezeTrainerResponseDto;
@@ -226,4 +227,35 @@ public class WebClientService {
                     return Mono.just(false);
                 });
     }
+
+    public Mono<GenericResponse> deleteTrainer(String trainerId, String memberId, boolean value) {
+
+        String endpoint = MemberService_BaseUrl_Session + "/delete"
+                + "?trainerId=" + trainerId
+                + "&memberId=" + memberId
+                + "&value=" + value;
+
+        return webClient.build()
+                .delete()
+                .uri(endpoint)
+                .retrieve()
+                .onStatus(
+                        status -> !status.is2xxSuccessful(),
+                        res -> Mono.error(
+                                new InterServiceCommunicationError(
+                                        "Member Service returned status: " + res.statusCode()
+                                )
+                        )
+                )
+                .bodyToMono(GenericResponse.class)
+                .defaultIfEmpty(new GenericResponse("Trainer Deleted Successfully"))
+                .doOnNext(msg ->
+                        log.info("Response from member service [{}] -> {}", endpoint, msg.getMessage())
+                )
+                .onErrorMap(err -> {
+                    log.warn("Failed to communicate with Member service: {}", err.getMessage());
+                    return new InterServiceCommunicationError("Failed To Communicate with Member Service");
+                });
+    }
+
 }
