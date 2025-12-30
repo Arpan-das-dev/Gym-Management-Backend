@@ -1,6 +1,7 @@
 package com.gym.trainerService.Controllers;
 
 import com.gym.trainerService.Dto.MemberDtos.Requests.AssignMemberRequestDto;
+import com.gym.trainerService.Dto.MemberDtos.Responses.GenericResponse;
 import com.gym.trainerService.Dto.MemberDtos.Responses.MemberResponseDto;
 import com.gym.trainerService.Dto.MemberDtos.Wrappers.AllMemberResponseWrapperDto;
 import com.gym.trainerService.Services.MemberServices.MemberManagementService;
@@ -12,6 +13,7 @@ import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.validation.annotation.Validated;
 import org.springframework.web.bind.annotation.*;
+import reactor.core.publisher.Mono;
 
 /**
  * Controller class for managing member-trainer relationships in the Trainer Service.
@@ -43,17 +45,17 @@ public class MemberManagementController {
      *
      * @param trainerId  unique identifier of the trainer
      * @param requestDto request body containing member assignment details
-     * @return {@link MemberResponseDto} with assigned member details
+     * @return {@link GenericResponse} with response message
      */
     @PostMapping("/admin/addMember")
-    public ResponseEntity<String> assignMembersToTrainer(@RequestParam String trainerId,
-                                                                    @Valid @RequestBody AssignMemberRequestDto requestDto)
+    public ResponseEntity<GenericResponse> assignMembersToTrainer(@RequestParam String trainerId,
+                                                                  @Valid @RequestBody AssignMemberRequestDto requestDto)
     {
         log.info("Request received to assign member for trainer with id: {}",trainerId);
         MemberResponseDto response = memberManagementService.addMember(trainerId,requestDto);
         log.info("member {} saved for trainer {}",response.getMemberName(),response.getTrainerId());
         String res = "Assigned Member In Trainer Service Successfully";
-        return ResponseEntity.status(HttpStatus.CREATED).body(res);
+        return ResponseEntity.status(HttpStatus.CREATED).body(new GenericResponse(res));
     }
 
     /**
@@ -76,12 +78,14 @@ public class MemberManagementController {
      *
      * @param trainerId ID of the trainer
      * @param memberId  ID of the member to delete
-     * @return confirmation message string
+     * @return {@link GenericResponse} with confirmation message string
      */
     @DeleteMapping("/trainer/deleteMember")
-    public ResponseEntity<String> deleteMember(@RequestParam String trainerId, @RequestParam String memberId) {
+    public ResponseEntity<Mono<GenericResponse>> deleteMember(@RequestParam String trainerId,
+                                                              @RequestParam String memberId,
+                                                              @RequestParam boolean value) {
         log.info("Request received to delete member {} for trainer {}",memberId,trainerId);
-        String response = memberManagementService.deleteMemberByIds(trainerId,memberId);
+        Mono<GenericResponse> response = memberManagementService.deleteMemberByIds(trainerId,memberId,value);
         return  ResponseEntity.status(HttpStatus.ACCEPTED).body(response);
     }
 
