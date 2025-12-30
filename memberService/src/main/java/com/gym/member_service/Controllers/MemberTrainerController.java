@@ -149,6 +149,16 @@ public class MemberTrainerController {
         TrainerInfoResponseDto response = trainerService.getTrainerInfo(memberId);
         return ResponseEntity.status(HttpStatus.OK).body(response);
     }
+    @DeleteMapping("/delete")
+    public ResponseEntity<GenericResponse> deleteOrRollBackTrainer(
+            @RequestParam @NotBlank(message = "Can Not Proceed Request With a Valid Id") String memberId,
+            @RequestParam @NotBlank(message = "Can Not Proceed Request With a Valid Id") String trainerId,
+            @RequestParam boolean value) {
+        log.info("©️©️ Request received to [{}] data for trainer {}",
+                value ? "Delete":"RollBack",trainerId);
+        String response = trainerService.deleteTrainer(trainerId,memberId,value);
+        return ResponseEntity.status(HttpStatus.ACCEPTED).body(new GenericResponse(response));
+    }
     /**
      * Adds a new training session for a member.
      *
