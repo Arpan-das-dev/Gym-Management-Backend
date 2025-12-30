@@ -3,6 +3,7 @@ package com.gym.member_service.Model;
 import jakarta.persistence.*;
 import lombok.*;
 
+import java.io.Serializable;
 import java.time.LocalDate;
 
 /**
@@ -22,7 +23,7 @@ import java.time.LocalDate;
 @NoArgsConstructor
 @AllArgsConstructor
 @Builder
-public class Trainer {
+public class Trainer implements Serializable {
 
     /**
      * Primary key for Trainer entity.
@@ -55,4 +56,6 @@ public class Trainer {
      */
     @Column(nullable = false)
     private LocalDate eligibilityEnd;
+
+    private boolean deleted = false;
 }
