@@ -20,6 +20,7 @@ import com.gym.member_service.Dto.MemberTrainerDtos.Responses.TrainerInfoRespons
 import com.gym.member_service.Dto.MemberTrainerDtos.Wrapper.AllSessionInfoResponseDto;
 import com.gym.member_service.Dto.NotificationDto.GenericResponse;
 import com.gym.member_service.Model.Member;
+import com.gym.member_service.Model.Trainer;
 import org.springframework.cache.CacheManager;
 import org.springframework.cache.annotation.EnableCaching;
 import org.springframework.context.annotation.Bean;
@@ -53,6 +54,11 @@ public class RedisConfig {
         return new TypedJsonRedisSerializer<>(redisObjectMapper,Member.class);
     }
 
+    @Bean
+    public TypedJsonRedisSerializer<Trainer> trainerTypedJsonRedisSerializer
+            (ObjectMapper redisObjectMapper) {
+        return new TypedJsonRedisSerializer<>(redisObjectMapper, Trainer.class);
+    }
     @Bean
     public TypedJsonRedisSerializer<AllMemberResponseDto> memberDtoSerializer(ObjectMapper redisObjectMapper) {
         return new TypedJsonRedisSerializer<>(redisObjectMapper, AllMemberResponseDto.class);
@@ -140,6 +146,7 @@ public class RedisConfig {
     @Bean
     public CacheManager cacheManager(RedisConnectionFactory connectionFactory,
                                      TypedJsonRedisSerializer<Member> memberTypedJsonRedisSerializer,
+                                     TypedJsonRedisSerializer<Trainer> trainerTypedJsonRedisSerializer,
                                      TypedJsonRedisSerializer<AllMemberResponseDto> memberDtoSerializer,
                                      TypedJsonRedisSerializer<TrainerInfoResponseDto> trainerInfoResponseDtoSerializer,
                                      TypedJsonRedisSerializer<AllSessionInfoResponseDto> allSessionInfoResponseDtoSerializer,
@@ -163,6 +170,11 @@ public class RedisConfig {
 
         cacheConfigs.put("MemberEntity",defaultConfig.serializeValuesWith(RedisSerializationContext.SerializationPair
                 .fromSerializer(memberTypedJsonRedisSerializer)).entryTtl(Duration.ofHours(6)));
+
+        cacheConfigs.put("trainerEntity",defaultConfig.serializeValuesWith(
+                RedisSerializationContext.SerializationPair.fromSerializer(trainerTypedJsonRedisSerializer))
+                .entryTtl(Duration.ofHours(6)));
+
         cacheConfigs.put("membersDetailsCache",defaultConfig
                 .serializeValuesWith(RedisSerializationContext.SerializationPair.fromSerializer(memberDtoSerializer))
                 .entryTtl(Duration.ofHours(2)));
